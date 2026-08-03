@@ -6,8 +6,16 @@ from src.pipeline import run_single_spectrum_pipeline
 from src.plotting import save_publication_plots
 
 app = Flask(__name__, template_folder='templates')
-UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads')
-PLOT_FOLDER   = os.path.join(os.path.dirname(__file__), 'outputs', 'plots')
+# Detect Vercel or other serverless env where local storage is read-only
+IS_SERVERLESS = os.environ.get('VERCEL') == '1' or not os.access(os.path.dirname(__file__) or '.', os.W_OK)
+
+if IS_SERVERLESS:
+    UPLOAD_FOLDER = '/tmp/uploads'
+    PLOT_FOLDER   = '/tmp/plots'
+else:
+    UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads')
+    PLOT_FOLDER   = os.path.join(os.path.dirname(__file__), 'outputs', 'plots')
+
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(PLOT_FOLDER,   exist_ok=True)
 
