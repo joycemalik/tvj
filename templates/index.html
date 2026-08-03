@@ -3,316 +3,356 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AGN Spectrum Emission Line Fitter</title>
-    <!-- Google Fonts -->
+    <title>AGN Spectrum Emission Line Analyzer</title>
+    <!-- Google Fonts: Inter & JetBrains Mono for Nolan Scientific Instrumentation aesthetic -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Plus+Jakarta+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
     
     <style>
         :root {
-            --bg-color: #0b0c16;
-            --panel-bg: rgba(20, 21, 38, 0.6);
-            --border-color: rgba(255, 255, 255, 0.08);
-            --accent-primary: #7c4dff;
-            --accent-primary-glow: rgba(124, 77, 255, 0.4);
-            --accent-secondary: #00e5ff;
-            --accent-secondary-glow: rgba(0, 229, 255, 0.4);
-            --text-main: #f3f4f6;
-            --text-muted: #9ca3af;
-            --success-color: #00e676;
-            --success-bg: rgba(0, 230, 118, 0.15);
-            --fail-color: #ff1744;
-            --fail-bg: rgba(255, 23, 68, 0.15);
-            --font-display: 'Outfit', sans-serif;
-            --font-body: 'Plus Jakarta Sans', sans-serif;
+            --bg-dark: #07080b;
+            --surface-dark: #0d0f14;
+            --surface-card: #12151e;
+            --border-dim: rgba(255, 255, 255, 0.1);
+            --border-bright: rgba(255, 255, 255, 0.25);
+            --amber-warm: #f59e0b;
+            --amber-dim: rgba(245, 158, 11, 0.15);
+            --starlight: #e2e8f0;
+            --text-muted: #64748b;
+            --text-light: #94a3b8;
+            --success-gold: #eab308;
+            --fail-crimson: #ef4444;
+            --font-main: 'Inter', -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
         }
 
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+            border-radius: 0 !important; /* STRICTLY ARCHITECTURAL / NON-ROUNDED */
         }
 
         body {
-            background-color: var(--bg-color);
+            background-color: var(--bg-dark);
             background-image: 
-                radial-gradient(at 10% 20%, rgba(124, 77, 255, 0.12) 0px, transparent 50%),
-                radial-gradient(at 90% 80%, rgba(0, 229, 255, 0.1) 0px, transparent 50%);
-            color: var(--text-main);
-            font-family: var(--font-body);
+                linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 40px 40px;
+            color: var(--starlight);
+            font-family: var(--font-main);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
             align-items: center;
             overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
         }
 
         header {
             width: 100%;
-            max-width: 1200px;
-            padding: 2.5rem 1.5rem 1.5rem 1.5rem;
+            max-width: 1280px;
+            padding: 2.25rem 2rem 1.25rem 2rem;
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-end;
+            border-bottom: 1px solid var(--border-dim);
+            margin-bottom: 2rem;
         }
 
-        .logo-container {
+        .brand-block {
             display: flex;
-            align-items: center;
-            gap: 0.75rem;
+            flex-direction: column;
+            gap: 0.25rem;
         }
 
-        .logo-icon {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 0 15px var(--accent-primary-glow);
-        }
-
-        .logo-icon svg {
-            width: 22px;
-            height: 22px;
-            fill: white;
+        .brand-meta {
+            font-family: var(--font-mono);
+            font-size: 0.68rem;
+            color: var(--amber-warm);
+            letter-spacing: 3px;
+            text-transform: uppercase;
         }
 
         h1 {
-            font-family: var(--font-display);
-            font-size: 1.5rem;
-            font-weight: 700;
-            background: linear-gradient(to right, #ffffff, #9ca3af);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            font-family: var(--font-main);
+            font-size: 1.35rem;
+            font-weight: 600;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: #ffffff;
+        }
+
+        .header-instrument-id {
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            color: var(--text-light);
+            letter-spacing: 1px;
+            text-align: right;
         }
 
         main {
             width: 100%;
-            max-width: 1200px;
-            padding: 0 1.5rem 3rem 1.5rem;
+            max-width: 1280px;
+            padding: 0 2rem 5rem 2rem;
             flex-grow: 1;
             display: flex;
             flex-direction: column;
             gap: 2rem;
         }
 
-        /* Glassmorphism panel style */
-        .glass-panel {
-            background: var(--panel-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 24px;
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+        /* Nolan Architectural Instrument Card */
+        .nolan-card {
+            background: var(--surface-dark);
+            border: 1px solid var(--border-dim);
             padding: 2rem;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+        }
+
+        .nolan-card::before {
+            content: '';
+            position: absolute;
+            top: -1px;
+            left: -1px;
+            width: 6px;
+            height: 6px;
+            background: var(--amber-warm);
+        }
+
+        .nolan-card::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            right: -1px;
+            width: 6px;
+            height: 6px;
+            background: var(--border-bright);
         }
 
         /* Upload Zone */
-        .upload-section {
+        .upload-area {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            border: 2px dashed rgba(255, 255, 255, 0.15);
-            border-radius: 20px;
-            padding: 3.5rem 2rem;
+            border: 1px dashed var(--border-bright);
+            padding: 4.5rem 2rem;
             cursor: pointer;
             text-align: center;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
+            background: rgba(0, 0, 0, 0.4);
             position: relative;
-            overflow: hidden;
-            background: rgba(255, 255, 255, 0.01);
         }
 
-        .upload-section:hover, .upload-section.dragover {
-            border-color: var(--accent-primary);
-            background: rgba(124, 77, 255, 0.04);
-            box-shadow: 0 0 20px rgba(124, 77, 255, 0.15);
+        .upload-area:hover, .upload-area.dragover {
+            border-color: var(--amber-warm);
+            background: rgba(245, 158, 11, 0.03);
         }
 
-        .upload-icon {
-            font-size: 3rem;
-            margin-bottom: 1.25rem;
-            transition: transform 0.3s ease;
-            color: var(--accent-primary);
-        }
-
-        .upload-section:hover .upload-icon {
-            transform: translateY(-4px);
+        .upload-symbol {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--amber-warm);
+            letter-spacing: 2px;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
         }
 
         .upload-title {
-            font-family: var(--font-display);
-            font-size: 1.25rem;
+            font-family: var(--font-main);
+            font-size: 1.1rem;
             font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
             margin-bottom: 0.5rem;
+            color: #ffffff;
         }
 
         .upload-subtitle {
-            font-size: 0.9rem;
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
             color: var(--text-muted);
+            margin-bottom: 1.5rem;
         }
 
         #fileInput {
             display: none;
         }
 
-        /* Loading Spinner */
+        .btn-nolan {
+            background: transparent;
+            color: var(--starlight);
+            border: 1px solid var(--border-bright);
+            padding: 0.75rem 2rem;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-nolan:hover {
+            background: #ffffff;
+            color: #000000;
+            border-color: #ffffff;
+        }
+
+        /* Loading Indicator */
         .loader-container {
             display: none;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 3rem;
+            padding: 4rem 2rem;
         }
 
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid rgba(255, 255, 255, 0.1);
-            border-top: 4px solid var(--accent-primary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 0 15px rgba(124, 77, 255, 0.2);
+        .progress-line-wrapper {
+            width: 180px;
+            height: 2px;
+            background: var(--border-dim);
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 1.25rem;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .progress-line {
+            width: 40%;
+            height: 100%;
+            background: var(--amber-warm);
+            position: absolute;
+            animation: pulse-line 1.2s infinite ease-in-out;
+        }
+
+        @keyframes pulse-line {
+            0% { left: -40%; }
+            100% { left: 100%; }
         }
 
         .loading-text {
-            font-family: var(--font-display);
-            font-weight: 500;
-            color: var(--text-main);
-            letter-spacing: 0.5px;
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            color: var(--amber-warm);
+            letter-spacing: 2px;
+            text-transform: uppercase;
         }
 
-        /* Error Message */
+        /* Error Box */
         .error-container {
             display: none;
-            background: var(--fail-bg);
-            border: 1px solid var(--fail-color);
-            color: #ff8a80;
-            padding: 1rem 1.5rem;
-            border-radius: 12px;
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid var(--fail-crimson);
+            color: #fca5a5;
+            padding: 1rem 1.25rem;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
             margin-top: 1rem;
-            font-weight: 500;
-            text-align: center;
-            animation: fadeIn 0.3s ease;
         }
 
         /* Results Section */
         .results-section {
             display: none;
             flex-direction: column;
-            gap: 2rem;
-            animation: fadeIn 0.5s ease forwards;
+            gap: 1.75rem;
+            animation: fadeIn 0.3s ease-out forwards;
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(15px); }
+            from { opacity: 0; transform: translateY(6px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Header row with badges */
         .result-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
             gap: 1rem;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 1.25rem;
+            border-bottom: 1px solid var(--border-dim);
+            padding-bottom: 1rem;
         }
 
         .filename-display {
-            font-family: var(--font-display);
-            font-size: 1.5rem;
-            font-weight: 700;
+            font-family: var(--font-mono);
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #ffffff;
+            letter-spacing: 1px;
         }
 
         .status-badge {
-            font-family: var(--font-display);
-            font-size: 0.85rem;
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
             font-weight: 700;
-            letter-spacing: 1px;
+            letter-spacing: 2px;
             text-transform: uppercase;
-            padding: 0.5rem 1.25rem;
-            border-radius: 50px;
+            padding: 0.4rem 1.25rem;
+            border: 1px solid transparent;
         }
 
         .status-accepted {
-            background-color: var(--success-bg);
-            color: var(--success-color);
-            border: 1px solid rgba(0, 230, 118, 0.3);
-            box-shadow: 0 0 10px rgba(0, 230, 118, 0.1);
+            background-color: var(--amber-dim);
+            color: var(--amber-warm);
+            border-color: var(--amber-warm);
         }
 
         .status-rejected {
-            background-color: var(--fail-bg);
-            color: var(--fail-color);
-            border: 1px solid rgba(255, 23, 68, 0.3);
-            box-shadow: 0 0 10px rgba(255, 23, 68, 0.1);
+            background-color: rgba(239, 68, 68, 0.1);
+            color: var(--fail-crimson);
+            border-color: var(--fail-crimson);
         }
 
-        /* Overview metrics grid */
+        /* Overview grid */
         .overview-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 1.25rem;
         }
 
         .metric-card {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 1.25rem;
+            background: var(--surface-card);
+            border: 1px solid var(--border-dim);
+            padding: 1.35rem 1.5rem;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            transition: all 0.2s ease;
+            transition: border-color 0.2s ease;
         }
 
         .metric-card:hover {
-            border-color: rgba(255, 255, 255, 0.15);
-            background: rgba(255, 255, 255, 0.04);
-            transform: translateY(-2px);
+            border-color: var(--border-bright);
         }
 
         .metric-label {
-            font-size: 0.8rem;
+            font-family: var(--font-mono);
+            font-size: 0.68rem;
             color: var(--text-muted);
-            font-weight: 500;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 0.5rem;
+            letter-spacing: 2px;
+            margin-bottom: 0.75rem;
         }
 
         .metric-value {
-            font-family: var(--font-display);
-            font-size: 1.5rem;
-            font-weight: 700;
+            font-family: var(--font-mono);
+            font-size: 1.75rem;
+            font-weight: 600;
             color: #ffffff;
         }
 
         .metric-unit {
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             font-weight: 400;
-            color: var(--text-muted);
-            margin-left: 0.25rem;
+            color: var(--amber-warm);
+            margin-left: 0.35rem;
         }
 
-        /* Detail section grid (Plot and detailed parameters) */
+        /* Detail section grid */
         .detail-grid {
             display: grid;
             grid-template-columns: 1.5fr 1fr;
-            gap: 2rem;
+            gap: 1.75rem;
         }
 
         @media (max-width: 900px) {
@@ -327,37 +367,36 @@
             gap: 1rem;
         }
 
+        .plot-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
         .plot-title {
-            font-family: var(--font-display);
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--text-main);
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--amber-warm);
         }
 
         .plot-image-wrapper {
             width: 100%;
-            border-radius: 16px;
-            overflow: hidden;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-            background-color: #171821;
+            border: 1px solid var(--border-dim);
+            background-color: #000000;
             cursor: zoom-in;
-            transition: border-color 0.3s ease;
+            transition: border-color 0.2s ease;
         }
 
         .plot-image-wrapper:hover {
-            border-color: rgba(124, 77, 255, 0.4);
+            border-color: var(--amber-warm);
         }
 
         .plot-image {
             width: 100%;
             height: auto;
             display: block;
-            transition: transform 0.3s ease;
-        }
-
-        .plot-image-wrapper:hover .plot-image {
-            transform: scale(1.02);
         }
 
         /* Tables and details */
@@ -368,10 +407,11 @@
         }
 
         .section-subtitle {
-            font-family: var(--font-display);
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--text-main);
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--amber-warm);
         }
 
         .details-table-panel {
@@ -387,11 +427,12 @@
         .params-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.95rem;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
         }
 
         .params-table tr {
-            border-bottom: 1px solid var(--border-color);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         .params-table tr:last-child {
@@ -399,18 +440,16 @@
         }
 
         .params-table td {
-            padding: 0.85rem 0.5rem;
+            padding: 0.75rem 0.25rem;
         }
 
         .params-table td.param-name {
-            font-weight: 600;
             color: var(--text-muted);
-            width: 50%;
+            width: 55%;
         }
 
         .params-table td.param-value {
-            font-family: var(--font-display);
-            font-weight: 700;
+            font-weight: 600;
             text-align: right;
             color: #ffffff;
         }
@@ -424,8 +463,8 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(5, 5, 10, 0.95);
-            backdrop-filter: blur(10px);
+            background-color: rgba(5, 6, 9, 0.96);
+            backdrop-filter: blur(6px);
             align-items: center;
             justify-content: center;
             padding: 2rem;
@@ -435,127 +474,92 @@
         .modal-content {
             max-width: 95%;
             max-height: 90vh;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--amber-warm);
         }
 
         .close-btn {
             position: absolute;
             top: 1.5rem;
             right: 2rem;
-            color: #ffffff;
-            font-size: 2.5rem;
-            font-weight: 300;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+            font-size: 1.8rem;
             cursor: pointer;
             transition: color 0.2s ease;
         }
 
         .close-btn:hover {
-            color: var(--accent-secondary);
+            color: var(--amber-warm);
         }
 
-        .demo-btn {
-            background: linear-gradient(135deg, var(--accent-primary), #651fff);
-            color: white;
-            border: none;
-            padding: 0.65rem 1.75rem;
-            border-radius: 50px;
-            font-family: var(--font-display);
-            font-weight: 600;
-            font-size: 0.95rem;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(124, 77, 255, 0.3);
-            transition: all 0.2s ease;
-        }
-
-        .demo-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(124, 77, 255, 0.5);
-            background: linear-gradient(135deg, #651fff, var(--accent-primary));
-        }
-
-        /* ---- Candidate Shortlist ---- */
-        .shortlist-panel {
-            margin-top: 0;
-        }
-
+        /* Shortlist Panel */
         .shortlist-header {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            margin-bottom: 1.5rem;
+            justify-content: space-between;
+            margin-bottom: 1.25rem;
         }
 
         .shortlist-badge {
-            font-family: var(--font-display);
-            font-size: 0.7rem;
-            font-weight: 700;
-            letter-spacing: 1px;
+            font-family: var(--font-mono);
+            font-size: 0.68rem;
+            letter-spacing: 2px;
             text-transform: uppercase;
             padding: 0.25rem 0.75rem;
-            border-radius: 50px;
-            background: rgba(0, 229, 255, 0.15);
-            color: var(--accent-secondary);
-            border: 1px solid rgba(0, 229, 255, 0.3);
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-light);
+            border: 1px solid var(--border-dim);
         }
 
         .shortlist-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 1.25rem;
         }
 
         .candidate-card {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 1.25rem;
+            background: var(--surface-card);
+            border: 1px solid var(--border-dim);
+            padding: 1.35rem 1.25rem;
             display: flex;
             flex-direction: column;
-            gap: 0.5rem;
-            transition: all 0.25s ease;
+            gap: 0.6rem;
+            transition: all 0.2s ease;
             position: relative;
-            overflow: hidden;
         }
 
         .candidate-card.rank-1 {
-            border-color: rgba(124, 77, 255, 0.5);
-            background: rgba(124, 77, 255, 0.06);
-            box-shadow: 0 0 20px rgba(124, 77, 255, 0.1);
+            border-color: var(--amber-warm);
+            background: rgba(245, 158, 11, 0.03);
         }
 
         .candidate-card:hover {
-            border-color: rgba(0, 229, 255, 0.4);
-            background: rgba(0, 229, 255, 0.04);
-            transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+            border-color: var(--border-bright);
         }
 
         .candidate-rank {
-            font-family: var(--font-display);
-            font-size: 0.7rem;
-            font-weight: 700;
-            letter-spacing: 0.5px;
+            font-family: var(--font-mono);
+            font-size: 0.68rem;
             text-transform: uppercase;
             color: var(--text-muted);
-            margin-bottom: 0.25rem;
+            letter-spacing: 1.5px;
         }
 
         .candidate-rank.top {
-            color: var(--accent-primary);
+            color: var(--amber-warm);
+            font-weight: 700;
         }
 
         .candidate-score {
-            font-family: var(--font-display);
-            font-size: 1.75rem;
-            font-weight: 800;
+            font-family: var(--font-mono);
+            font-size: 1.6rem;
+            font-weight: 600;
             color: #ffffff;
             line-height: 1;
         }
 
         .candidate-score small {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: 400;
             color: var(--text-muted);
         }
@@ -564,13 +568,14 @@
             margin-top: 0.5rem;
             display: flex;
             flex-direction: column;
-            gap: 0.3rem;
+            gap: 0.35rem;
+            font-family: var(--font-mono);
         }
 
         .cand-row {
             display: flex;
             justify-content: space-between;
-            font-size: 0.82rem;
+            font-size: 0.78rem;
         }
 
         .cand-key {
@@ -579,60 +584,53 @@
 
         .cand-val {
             font-weight: 600;
-            font-family: var(--font-display);
-            color: var(--text-main);
+            color: var(--starlight);
         }
 
         .score-bar-container {
-            margin-top: 0.75rem;
-            background: rgba(255,255,255,0.06);
-            border-radius: 100px;
-            overflow: hidden;
-            height: 5px;
+            margin-top: 0.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            height: 2px;
+            width: 100%;
         }
 
         .score-bar {
             height: 100%;
-            border-radius: 100px;
-            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
-            transition: width 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+            background: var(--amber-warm);
+            transition: width 0.5s ease;
         }
     </style>
 </head>
 <body>
 
     <header>
-        <div class="logo-container">
-            <div class="logo-icon">
-                <svg viewBox="0 0 24 24">
-                    <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12C20,13.8 19.4,15.4 18.4,16.8L16.8,15.2C17.5,14.3 18,13.2 18,12C18,8.7 15.3,6 12,6C10.8,6 9.7,6.5 8.8,7.2L7.2,5.6C8.6,4.6 10.2,4 12,4M12,8A4,4 0 0,1 16,12C16,13.1 15.6,14.1 14.9,14.9L9.1,9.1C9.9,8.4 10.9,8 12,8M7.2,8.8L8.8,10.4C8.3,10.9 8,11.4 8,12C8,14.2 9.8,16 12,16C12.6,16 13.1,15.7 13.6,15.2L15.2,16.8C14.3,17.5 13.2,18 12,18A6,6 0 0,1 6,12C6,10.8 6.5,9.7 7.2,8.8Z" />
-                </svg>
-            </div>
-            <h1>Spectrum Fitter</h1>
+        <div class="brand-block">
+            <div class="brand-meta">// ASTROPHYSICS INSTRUMENT SUITE</div>
+            <h1>Spectrum Engine</h1>
+        </div>
+        <div class="header-instrument-id">
+            SYSTEM STATUS: ONLINE<br>
+            REST FRAME: LYα (1216.0 Å)
         </div>
     </header>
 
     <main>
-        <div class="glass-panel">
-            <div class="upload-section" id="dropzone">
-                <div class="upload-icon">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="17 8 12 3 7 8"></polyline>
-                        <line x1="12" y1="3" x2="12" y2="15"></line>
-                    </svg>
-                </div>
-                <div class="upload-title">Upload Spectrum File</div>
-                <div class="upload-subtitle">Drag & drop your spectrum .txt file here, or click to browse</div>
-                <div style="margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: center; z-index: 10;">
-                    <button type="button" class="demo-btn" id="demoBtn">Try Demo Spectrum</button>
+        <div class="nolan-card">
+            <div class="upload-area" id="dropzone">
+                <div class="upload-symbol">[ INPUT SPECTRUM DATASET ]</div>
+                <div class="upload-title">LOAD RAW SPECTRUM (.TXT)</div>
+                <div class="upload-subtitle">Drag and drop spectrum file or execute reference standard</div>
+                <div>
+                    <button type="button" class="btn-nolan" id="demoBtn">EXECUTE BENCHMARK DEMO</button>
                 </div>
                 <input type="file" id="fileInput" accept=".txt">
             </div>
 
             <div class="loader-container" id="loader">
-                <div class="spinner"></div>
-                <div class="loading-text" id="loadingText">Searching ~8,000 candidates...</div>
+                <div class="progress-line-wrapper">
+                    <div class="progress-line"></div>
+                </div>
+                <div class="loading-text" id="loadingText">COMPUTING DISCRETE CANDIDATE MATRIX...</div>
             </div>
 
             <div class="error-container" id="errorBox"></div>
@@ -640,11 +638,11 @@
 
         <!-- Results Dashboard -->
         <div class="results-section" id="resultsDashboard">
-            <!-- Summary stats -->
-            <div class="glass-panel result-header">
+            <!-- Summary stats header -->
+            <div class="nolan-card result-header">
                 <div>
-                    <div class="filename-display" id="resFilename">spectrum.txt</div>
-                    <div style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0.25rem;" id="resFittingDetails">Fitting Lyman Alpha (Lyα)</div>
+                    <div class="filename-display" id="resFilename">SPECTRUM_DATASET</div>
+                    <div style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-top: 0.35rem;" id="resFittingDetails">// LYMAN ALPHA LINE ANALYSIS (5,600 CANDIDATE EVALUATION)</div>
                 </div>
                 <div class="status-badge" id="resStatusBadge">ACCEPTED</div>
             </div>
@@ -656,30 +654,32 @@
                     <span class="metric-value" id="valSNR">0.0</span>
                 </div>
                 <div class="metric-card">
-                    <span class="metric-label">Reduced χ²</span>
+                    <span class="metric-label">REDUCED χ²</span>
                     <span class="metric-value" id="valChi2">0.0</span>
                 </div>
                 <div class="metric-card">
-                    <span class="metric-label">FWHM (km/s)</span>
+                    <span class="metric-label">FWHM (KM/S)</span>
                     <span class="metric-value" id="valFWHM">0.0<span class="metric-unit">km/s</span></span>
                 </div>
                 <div class="metric-card">
-                    <span class="metric-label">Line Center</span>
+                    <span class="metric-label">LINE CENTER</span>
                     <span class="metric-value" id="valCenter">0.0<span class="metric-unit">Å</span></span>
                 </div>
             </div>
 
             <!-- Visual and detail breakdown -->
             <div class="detail-grid">
-                <div class="glass-panel plot-container">
-                    <div class="plot-title">Gaussian Line Fit Plot</div>
+                <div class="nolan-card plot-container">
+                    <div class="plot-header">
+                        <div class="plot-title">// SPECTRAL MODEL OVERLAY</div>
+                    </div>
                     <div class="plot-image-wrapper" id="plotWrapper">
                         <img class="plot-image" id="resPlot" src="" alt="Fit Visualization">
                     </div>
                 </div>
 
-                <div class="glass-panel parameters-container">
-                    <div class="section-subtitle">Fit Parameters</div>
+                <div class="nolan-card parameters-container">
+                    <div class="section-subtitle">// PRIMARY MODEL PARAMETERS</div>
                     <table class="params-table">
                         <tr>
                             <td class="param-name">Amplitude</td>
@@ -694,14 +694,14 @@
                             <td class="param-value" id="valFWHMAng">0.0 Å</td>
                         </tr>
                         <tr>
-                            <td class="param-name">Fit Score</td>
+                            <td class="param-name">Composite Score</td>
                             <td class="param-value" id="valScore">0.0 / 1.0</td>
                         </tr>
                     </table>
                 </div>
 
-                <div class="glass-panel details-table-panel">
-                    <div class="section-subtitle" style="margin-bottom: 1.25rem;">Detailed Metrics</div>
+                <div class="nolan-card details-table-panel">
+                    <div class="section-subtitle" style="margin-bottom: 1.25rem;">// ASTROPHYSICAL DERIVED METRICS</div>
                     <table class="params-table">
                         <tr>
                             <td class="param-name">Integrated Flux</td>
@@ -744,10 +744,10 @@
             </div>
 
             <!-- Candidate Shortlist -->
-            <div class="glass-panel shortlist-panel" id="shortlistPanel" style="display:none;">
+            <div class="nolan-card shortlist-panel" id="shortlistPanel" style="display:none;">
                 <div class="shortlist-header">
-                    <div class="section-subtitle">Alternative Candidates</div>
-                    <span class="shortlist-badge">Top 5 Ranked</span>
+                    <div class="section-subtitle">// TOP RANKED CANDIDATE MATRIX</div>
+                    <span class="shortlist-badge">EXHAUSTIVE EVALUATION</span>
                 </div>
                 <div class="shortlist-grid" id="shortlistGrid"></div>
             </div>
@@ -796,7 +796,7 @@
         const demoBtn = document.getElementById('demoBtn');
 
         demoBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); // Stop click from bubbling up to dropzone
+            e.stopPropagation();
             loadDemo();
         });
 
@@ -887,11 +887,9 @@
         }
 
         function renderResults(data, filename) {
-            // Safe formatting helpers
             const fmtExp = (val, dec = 4) => (val !== undefined && val !== null && !isNaN(val)) ? Number(val).toExponential(dec) : 'N/A';
             const fmtNum = (val, dec = 2) => (val !== undefined && val !== null && !isNaN(val)) ? Number(val).toFixed(dec) : 'N/A';
 
-            // Filename and status
             document.getElementById('resFilename').textContent = filename;
 
             const badge = document.getElementById('resStatusBadge');
@@ -900,19 +898,16 @@
                 ? 'status-badge status-accepted'
                 : 'status-badge status-rejected';
 
-            // Overview metrics
             document.getElementById('valSNR').textContent = fmtNum(data.snr, 2);
             document.getElementById('valChi2').textContent = fmtNum(data.reduced_chi2, 2);
             document.getElementById('valFWHM').innerHTML = `${fmtNum(data.fwhm_kms, 1)} <span class="metric-unit">km/s</span>`;
             document.getElementById('valCenter').innerHTML = `${fmtNum(data.center, 2)} <span class="metric-unit">Å</span>`;
 
-            // Core parameters
             document.getElementById('valAmplitude').textContent = fmtExp(data.amplitude, 4);
             document.getElementById('valSigma').textContent = `${fmtNum(data.sigma, 2)} Å`;
             document.getElementById('valFWHMAng').textContent = `${fmtNum(data.fwhm_ang, 2)} Å`;
             document.getElementById('valScore').textContent = `${fmtNum(data.quality_score, 2)} / 1.0`;
 
-            // Detailed parameters
             document.getElementById('valFlux').textContent = fmtExp(data.flux, 4);
             document.getElementById('valFluxErr').textContent = fmtExp(data.flux_err, 4);
             document.getElementById('valEW').textContent = `${fmtNum(data.ew, 2)} Å`;
@@ -923,10 +918,9 @@
             document.getElementById('valContAmp').textContent = fmtExp(data.continuum_amplitude, 4);
             document.getElementById('valSpecIdx').textContent = fmtNum(data.spectral_index, 4);
 
-            // Plot image
             document.getElementById('resPlot').src = `${data.plot_url}?t=${new Date().getTime()}`;
 
-            // ---- Candidate Shortlist ----
+            // Candidate Shortlist
             const shortlist = data.shortlist || [];
             const shortlistPanel = document.getElementById('shortlistPanel');
             const shortlistGrid = document.getElementById('shortlistGrid');
@@ -943,7 +937,7 @@
                     card.className = `candidate-card${isTop ? ' rank-1' : ''}`;
                     card.innerHTML = `
                         <div class="candidate-rank${isTop ? ' top' : ''}">
-                            ${isTop ? '★ Best Fit' : `#${rank} Candidate`}
+                            ${isTop ? '[★ OPTIMAL FIT]' : `[CANDIDATE #${rank}]`}
                         </div>
                         <div class="candidate-score">
                             ${fmtNum(score, 3)}<small> / 1.0</small>
@@ -983,13 +977,12 @@
 
                 shortlistPanel.style.display = 'block';
 
-                // Animate score bars after a brief delay
                 requestAnimationFrame(() => {
                     setTimeout(() => {
                         document.querySelectorAll('.score-bar').forEach(bar => {
                             bar.style.width = bar.dataset.pct + '%';
                         });
-                    }, 200);
+                    }, 100);
                 });
             } else {
                 shortlistPanel.style.display = 'none';
@@ -1014,6 +1007,10 @@
         });
 
         modal.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+
+        closeModal.addEventListener('click', () => {
             modal.style.display = 'none';
         });
     </script>

@@ -73,7 +73,8 @@ def compute_statistics(
     reduced_chi2 = chi2 / dof
     
     # 3. Flux via Trapezoidal integration
-    flux = float(np.trapezoid(sub_win, wl_win)) if len(wl_win) > 1 else 0.0
+    _trapz = getattr(np, 'trapezoid', getattr(np, 'trapz', None))
+    flux = float(_trapz(sub_win, wl_win)) if len(wl_win) > 1 else 0.0
     
     # Flux Error estimation (matching JS bundle: sqrt(N) * noise_sigma * factor * mean_cont)
     n_pts = len(wl_win)
@@ -84,7 +85,7 @@ def compute_statistics(
     
     # 5. Equivalent Width (EW) via Trapezoidal integration of (F_sub / F_cont)
     ratio = np.where(cont_win > 0, sub_win / cont_win, 0.0)
-    ew = float(np.trapezoid(ratio, wl_win)) if len(wl_win) > 1 else 0.0
+    ew = float(_trapz(ratio, wl_win)) if len(wl_win) > 1 else 0.0
     ew_err = abs(ew) * (flux_err / abs(flux)) if abs(flux) > 0 else 0.0
     
     # 6. FWHM
