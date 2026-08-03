@@ -1,0 +1,23 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDEs
+.vscode/
+.idea/
+
+# Application custom ignores
+uploads/
+outputs/
+test_api.py
+diagnostic_spectrum70.py
+diagnostic_sp70_all.csv
+diagnostic_sp70_top50.csv

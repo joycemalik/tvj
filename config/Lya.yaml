@@ -1,0 +1,35 @@
+line_name: "Lyman Alpha (Lyα)"
+rest_wavelength: 1216.0  # Angstrom
+
+# ---- Candidate Engine Grid Search Parameters ----
+# The new engine performs exhaustive discrete search over these grids.
+
+amplitude:
+  # Amp range is auto-computed relative to observed peak (0.4x .. 2.0x)
+  # You can override with explicit min/max in physical units (erg/s/cm2/Ang):
+  # min: 1.0e-14
+  # max: 1.0e-11
+  steps: 20           # Number of amplitude steps
+
+center:
+  range: 5.0          # Search +/- this many Angstrom around observed peak
+  step: 0.5           # Grid step in Angstrom (expert-preferred half-Angstrom resolution)
+
+sigma:
+  # Integer Angstrom values preferred by expert astronomers:
+  grid: [4, 5, 6, 7, 8, 9, 10]
+
+wing_window:
+  # Integer Angstrom values preferred by expert astronomers:
+  grid: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
+
+# Peak search radius (Angstrom around rest_wavelength to find emission peak)
+peak_search_radius: 15.0
+
+# SNR target for scoring (used in snr_score component)
+snr_target: 7.0
+
+# Quality criteria for ACCEPTED / REJECTED classification
+snr_min: 5.0
+snr_max: 12.0
+chi2_red_max: 5.0
