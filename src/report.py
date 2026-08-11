@@ -189,13 +189,15 @@ def save_batch_results(
         f.write("| " + " | ".join(["---"] * len(headers)) + " |\n")
 
         for row in all_line_rows:
-            fit_stat = str(row.get('fit_status', ''))
-            if 'ACCEPTED' in fit_stat:
-                status_short = '✓ ACCEPTED'
-            elif 'MARGINAL' in fit_stat:
+            fit_stat = str(row.get('fit_status', '')).upper()
+            if 'MARGINAL' in fit_stat:
                 status_short = '⚠ MARGINAL'
+            elif 'NOT_DETECTED' in fit_stat or 'NOT DETECTED' in fit_stat:
+                status_short = '— NOT DETECTED'
             elif 'REJECTED' in fit_stat:
                 status_short = '✕ REJECTED'
+            elif 'ACCEPTED' in fit_stat:
+                status_short = '✓ ACCEPTED'
             else:
                 status_short = '— NOT DETECTED'
                 

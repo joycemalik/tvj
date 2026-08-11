@@ -204,6 +204,8 @@
 
         function renderDashboard(data, filename) {
             currentRecord = data;
+            const fmtExp = v => v ? Number(v).toExponential(2) : '-';
+            document.getElementById('final-score').innerHTML = `<b>Model-selection diagnostic score:</b> ${fmtExp(data.final_score)} <span style="font-size:0.8em">(uncalibrated)</span>`;
             document.getElementById('resFilename').textContent = filename;
             document.getElementById('resGlobalChi2').textContent = (data.global_reduced_chi2 || 0).toFixed(3);
             const badge = document.getElementById('resStatusBadge');
@@ -241,11 +243,12 @@
                 const tr = document.createElement('tr'); tr.onclick = () => selectLine(idx);
                 const fmtExp = v => v ? Number(v).toExponential(2) : '-'; const fmtNum = (v, d=2) => (v !== undefined && v !== null && !isNaN(v)) ? Number(v).toFixed(d) : '-';
                 const deltaWl = l.center ? (l.center - l.rest_wavelength) : 0; const velOffset = (deltaWl / l.rest_wavelength) * 299792.458;
-                const fitStat = String(l.fit_status || '');
+                const fitStat = String(l.fit_status || '').toUpperCase();
                 let badgeText = '— NOT DETECTED', badgeClass = 'status-rejected';
-                if (fitStat.includes('ACCEPTED')) { badgeText = '✓ ACCEPTED'; badgeClass = 'status-accepted'; }
-                else if (fitStat.includes('MARGINAL')) { badgeText = '⚠ MARGINAL'; badgeClass = 'status-rejected'; } // Could define status-warning class
+                if (fitStat.includes('MARGINAL')) { badgeText = '⚠ MARGINAL'; badgeClass = 'status-rejected'; } 
+                else if (fitStat.includes('NOT_DETECTED') || fitStat.includes('NOT DETECTED')) { badgeText = '— NOT DETECTED'; badgeClass = 'status-rejected'; }
                 else if (fitStat.includes('REJECTED')) { badgeText = '✕ REJECTED'; badgeClass = 'status-rejected'; }
+                else if (fitStat.includes('ACCEPTED')) { badgeText = '✓ ACCEPTED'; badgeClass = 'status-accepted'; }
 
                 tr.innerHTML = `<td style="font-weight:600; color:#fff;">${l.line_name}</td><td>${l.rest_wavelength.toFixed(1)}</td><td>${l.detected ? fmtNum(l.center, 2) : '-'}</td><td>${l.detected ? fmtNum(deltaWl, 2) : '-'}</td><td>${l.detected ? fmtNum(velOffset, 1) : '-'}</td><td>${l.detected ? fmtNum(l.sigma, 2) : '-'}</td><td>${l.detected ? fmtExp(l.flux) : '-'}</td><td>${l.detected ? fmtNum(l.ew, 1) : '-'}</td><td>${l.detected ? fmtNum(l.snr, 2) : '-'}</td><td>${l.detected ? fmtNum(l.reduced_chi2, 3) : '-'}</td><td><span class="status-badge ${badgeClass}" style="padding:0.15rem 0.4rem; font-size:0.65rem;">${badgeText}</span></td>`;
                 tbody.appendChild(tr);

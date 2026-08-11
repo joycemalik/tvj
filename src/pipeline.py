@@ -143,7 +143,9 @@ def run_single_spectrum_pipeline(
     spectrum_name = os.path.basename(spectrum_path)
     wavelength, flux = load_spectrum(spectrum_path)
 
-    # ---- Continuum subtraction ----
+    # ---- Continuum modeling & subtraction ----
+    print(f'[PREPROCESS] Parsed {len(wavelength)} spectral data points...')
+    print(f'[CONTINUUM] Estimating power-law continuum and subtracting baseline...')
     amp_cont, spec_idx_cont, continuum_fit, subtracted_y = fit_continuum(
         wavelength, flux, continuum_windows
     )
@@ -173,6 +175,7 @@ def run_single_spectrum_pipeline(
     # ---- Fit each enabled line ----
     line_results: List[Dict[str, Any]] = []
 
+    print(f'[CONFIG] Loaded {len(line_entries)} atomic transition parameters from catalog...')
     for entry in line_entries:
         if not entry.get('enabled', True):
             continue
@@ -195,6 +198,7 @@ def run_single_spectrum_pipeline(
         if 'line_name' not in cfg:
             cfg['line_name'] = entry.get('name', f"Line_{entry.get('rest_wavelength', 0):.0f}")
 
+        print(f'[ENGINE] Starting diagnostic fit for {cfg.get("line_name", entry.get("name", "Unknown Line"))} at {float(entry.get("rest_wavelength", 1216.0))}Å...')
         result = fit_single_line(
             wavelength=wavelength,
             subtracted_y=subtracted_y,

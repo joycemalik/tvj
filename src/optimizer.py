@@ -21,10 +21,10 @@ def fit_emission_line_two_stage(
     if config is None:
         config = {}
         
-    amp_grid = config.get('amplitude', {}).get('grid', [5.0e-13, 6.0e-13, 7.0e-13, 8.0e-13, 9.0e-13, 10.0e-13])
-    center_grid = config.get('center', {}).get('grid', [1213.0, 1214.0, 1215.0, 1215.5, 1216.0])
-    sigma_grid = config.get('sigma', {}).get('grid', [4.0, 5.0, 6.0, 7.0, 7.5, 8.0])
-    wing_grid = config.get('wing_window', {}).get('grid', [5.0, 8.0, 10.0, 13.0, 15.0])
+    amp_grid = (config.get('amplitude') or {}).get('grid', [5.0e-13, 6.0e-13, 7.0e-13, 8.0e-13, 9.0e-13, 10.0e-13])
+    center_grid = (config.get('center') or {}).get('grid', [1213.0, 1214.0, 1215.0, 1215.5, 1216.0])
+    sigma_grid = (config.get('sigma') or {}).get('grid', [4.0, 5.0, 6.0, 7.0, 7.5, 8.0])
+    wing_grid = (config.get('wing_window') or {}).get('grid', [5.0, 8.0, 10.0, 13.0, 15.0])
     
     # Identify approximate observed peak around rest wavelength
     peak_region_mask = (wavelength >= rest_wl - 15) & (wavelength <= rest_wl + 15)
@@ -81,12 +81,12 @@ def fit_emission_line_two_stage(
         model_scaled = a_scaled * np.exp(-((wl_win - b) ** 2) / (2.0 * (c ** 2)))
         return sub_win_scaled - model_scaled
         
-    amp_min_scaled = config.get('amplitude', {}).get('min', 1.0e-15) * SCALE_FACTOR
-    amp_max_scaled = config.get('amplitude', {}).get('max', 1.0e-10) * SCALE_FACTOR
-    center_min = config.get('center', {}).get('min', rest_wl - 15.0)
-    center_max = config.get('center', {}).get('max', rest_wl + 15.0)
-    sigma_min = config.get('sigma', {}).get('min', 1.0)
-    sigma_max = config.get('sigma', {}).get('max', 20.0)
+    amp_min_scaled = (config.get('amplitude') or {}).get('min', 1.0e-15) * SCALE_FACTOR
+    amp_max_scaled = (config.get('amplitude') or {}).get('max', 1.0e-10) * SCALE_FACTOR
+    center_min = (config.get('center') or {}).get('min', rest_wl - 15.0)
+    center_max = (config.get('center') or {}).get('max', rest_wl + 15.0)
+    sigma_min = (config.get('sigma') or {}).get('min', 1.0)
+    sigma_max = (config.get('sigma') or {}).get('max', 20.0)
     
     lower_bounds = [amp_min_scaled, center_min, sigma_min]
     upper_bounds = [amp_max_scaled, center_max, sigma_max]

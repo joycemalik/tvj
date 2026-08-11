@@ -219,10 +219,11 @@ def generate_candidates(
     # ------------------------------------------------------------------
     # 3. Parameter grids
     # ------------------------------------------------------------------
-    amp_cfg    = config.get('amplitude', {})
-    center_cfg = config.get('center', {})
-    sigma_cfg  = config.get('sigma', {})
-    wing_cfg   = config.get('wing_window', {})
+    amp_cfg    = config.get('amplitude') or {}
+    center_cfg = config.get('center') or {}
+    sigma_cfg  = config.get('sigma') or {}
+    wing_cfg   = config.get('wing_window') or {}
+    wing_val   = float(wing_cfg.get('value', wing_cfg.get('grid', [20.0])[0]))
 
     amp_lo     = float(amp_cfg.get('min', obs_peak_amp * 0.4))
     amp_hi     = float(amp_cfg.get('max', obs_peak_amp * 2.0))
@@ -242,47 +243,84 @@ def generate_candidates(
     snr_target = float(config.get('snr_target', 7.0))
 
     # ------------------------------------------------------------------
-    # 4. Exhaustive evaluation
+    # 4. Generate all combinations
     # ------------------------------------------------------------------
+    candidates_params = []
+    print(f'         => Grid ranges: {len(amp_grid)} amplitudes × {len(center_grid)} centers × {len(sigma_grid)} sigmas × 1 wing')
+    
+    for s in sigma_grid:
+        for c in center_grid:
+            for a in amp_grid:
+                candidates_params.append((c, s, wing_val, a))
+
+    n_candidates = len(candidates_params)
+    print(f'[ENGINE] Evaluating {n_candidates} candidate models via coarse discrete grid search...')
+    
     results_raw: List[Tuple[float, float, float, float, float, Dict[str, float]]] = []
     # (score, amp, center, sigma, wing, components)
 
-    for wing in wing_grid:
-        for center in center_grid:
-            mask_w = (wavelength >= center - wing) & (wavelength <= center + wing)
-            if np.sum(mask_w) < 5:
-                continue
-            for sigma in sigma_grid:
-                for amp in amp_grid:
-                    composite, comps = _score_candidate(
-                        wl=wavelength,
-                        sub_y=subtracted_y,
-                        obs_peak_wl=obs_peak_wl,
-                        amp=float(amp),
-                        center=float(center),
-                        sigma=sigma,
-                        wing=wing,
-                        noise=noise,
-                        snr_target=snr_target,
-                        rest_wl=rest_wl,
-                    )
-                    if composite > 0.0:
-                        results_raw.append((composite, float(amp), float(center), sigma, wing, comps))
+    half_wing = wing_val / 2.0
+    for center in center_grid:
+        mask_w = (wavelength >= center - half_wing) & (wavelength <= center + half_wing)
+        if np.sum(mask_w) < 5:
+            continue
+        for sigma in sigma_grid:
+            for amp in amp_grid:
+                composite, comps = _score_candidate(
+                    wl=wavelength,
+                    sub_y=subtracted_y,
+                    obs_peak_wl=obs_peak_wl,
+                    amp=float(amp),
+                    center=float(center),
+                    sigma=sigma,
+                    wing=half_wing,
+                    noise=noise,
+                    snr_target=snr_target,
+                    rest_wl=rest_wl,
+                )
+                if composite > 0.0:
+                    results_raw.append((composite, float(amp), float(center), sigma, wing_val, comps))
 
     # Sort descending
+    print(f'[OPTIMIZER] Found {len(results_raw)} valid candidates. Sorting by composite objective...')
     results_raw.sort(key=lambda x: x[0], reverse=True)
     top_raw = results_raw[:top_n]
+    if top_raw:
+        print(f'[STATS] Top candidate initial guess: sigma={top_raw[0][3]:.2f}, A={top_raw[0][1]:.2e}')
 
     # ------------------------------------------------------------------
-    # 5. Compute full statistics for each top candidate
+    # 5. Compute full statistics for each top candidate (Stage B Amplitude)
     # ------------------------------------------------------------------
     ranked = []
-    for rank, (score, amp, center, sigma, wing, comps) in enumerate(top_raw, start=1):
+    for rank, (score, grid_amp, center, sigma, wing, comps) in enumerate(top_raw, start=1):
+        # Stage B: Profile-weighted amplitude estimator
+        # To avoid peak domination, we compute A = sum(w * g * y) / sum(w * g^2)
+        # using a weight that suppresses the core: w_i = 1 - g_i
+        half_w = wing / 2.0
+        mask = (wavelength >= center - half_w) & (wavelength <= center + half_w)
+        wl_win = wavelength[mask]
+        sub_y_win = subtracted_y[mask]
+        
+        g_model = np.exp(-((wl_win - center) ** 2) / (2.0 * (sigma ** 2)))
+        w_i = 1.0 - g_model  # Zero weight at the exact peak, approaching 1 in the wings
+        
+        num = np.sum(w_i * g_model * sub_y_win)
+        den = np.sum(w_i * (g_model ** 2))
+        
+        if den > 0:
+            stage_b_amp = float(num / den)
+        else:
+            stage_b_amp = grid_amp
+
+        # Fallback if unphysical negative amplitude due to noise
+        if stage_b_amp <= 0:
+            stage_b_amp = grid_amp
+
         stats = compute_statistics(
             wavelength=wavelength,
             subtracted_y=subtracted_y,
             continuum_fit=continuum_fit,
-            amplitude=amp,
+            amplitude=stage_b_amp,
             center=center,
             sigma=sigma,
             wing_window=wing,
