@@ -55,11 +55,11 @@ def evaluate_fit_quality(
     if snr < 3.0:
         is_acceptable = False
         status = f"NOT_DETECTED: SNR too low ({snr:.2f} < 3.0)"
-    elif snr < snr_min:
+    elif snr < 5.0:
         is_acceptable = False
-        status = f"MARGINAL: SNR {snr:.2f} < {snr_min}"
+        status = f"MARGINAL: SNR {snr:.2f} < 5.0"
     else:
-        # SNR >= snr_min (5.0)
+        # SNR >= 5.0
         if chi2 > chi2_max or peak_diff > 3.0:
             is_acceptable = False
             status = f"REJECTED: {', '.join(reasons)}"
