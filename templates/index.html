@@ -205,7 +205,8 @@
         function renderDashboard(data, filename) {
             currentRecord = data;
             const fmtExp = v => v ? Number(v).toExponential(2) : '-';
-            document.getElementById('final-score').innerHTML = `<b>Model-selection diagnostic score:</b> ${fmtExp(data.final_score)} <span style="font-size:0.8em">(uncalibrated)</span>`;
+            const fsEl = document.getElementById('final-score');
+            if (fsEl) fsEl.innerHTML = `<b>Model-selection diagnostic score:</b> ${fmtExp(data.final_score)} <span style="font-size:0.8em">(uncalibrated)</span>`;
             document.getElementById('resFilename').textContent = filename;
             document.getElementById('resGlobalChi2').textContent = (data.global_reduced_chi2 || 0).toFixed(3);
             const badge = document.getElementById('resStatusBadge');
