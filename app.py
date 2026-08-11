@@ -67,12 +67,44 @@ def fit_spectrum():
         plot_path = save_publication_plots(record, output_dir=PLOT_FOLDER)
         plot_filename = os.path.basename(plot_path)
 
-        # Serialize – drop numpy arrays, keep scalars + shortlist
+        # Serialize – keep numeric arrays for full spectrum plotting in UI
         clean = {}
         for k, v in record.items():
-            serialized = _serialize(v)
-            if serialized is not None:
-                clean[k] = serialized
+            if isinstance(v, np.ndarray):
+                clean[k] = [round(float(x), 6) for x in v]
+            elif k == 'lines':
+                # Serialize each line result dict individually
+                clean_lines = []
+                for line in (v or []):
+                    def _clean_line(l):
+                        cl = {}
+                        for lk, lv in l.items():
+                            if isinstance(lv, np.ndarray):
+                                cl[lk] = [round(float(x), 6) for x in lv]
+                            else:
+                                ser = _serialize(lv)
+                                if ser is not None:
+                                    cl[lk] = ser
+                        return cl
+
+                    # Flatten hierarchical components for UI graphing
+                    if 'components' in line and isinstance(line['components'], list):
+                        for c in line['components']:
+                            flat_comp = dict(line)  # copy parent attrs
+                            flat_comp.update(c)     # overwrite with component attrs
+                            flat_comp['parent'] = line.get('line_name', '')
+                            flat_comp['component'] = c.get('name', '')
+                            # Remove the raw components list to avoid circular/nested issues
+                            if 'components' in flat_comp:
+                                del flat_comp['components']
+                            clean_lines.append(_clean_line(flat_comp))
+                    else:
+                        clean_lines.append(_clean_line(line))
+                clean['lines'] = clean_lines
+            else:
+                serialized = _serialize(v)
+                if serialized is not None:
+                    clean[k] = serialized
 
         clean['plot_url'] = f'/plots/{plot_filename}'
 

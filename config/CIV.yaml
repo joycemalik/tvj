@@ -1,0 +1,23 @@
+line_name: "C IV"
+rest_wavelength: 1549.0       # Angstrom (C IV doublet 1548.2 + 1550.8, blended)
+
+amplitude:
+  steps: 8
+
+center:
+  range: 6.0
+  step: 0.5
+
+sigma:
+  grid: [4, 5, 6, 7, 8, 9, 10, 11, 12]
+  min: 2.0
+  max: 22.0
+
+wing_window:
+  grid: [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
+
+peak_search_radius: 15.0
+
+snr_min: 3.0
+snr_max: 15.0
+chi2_red_max: 5.0

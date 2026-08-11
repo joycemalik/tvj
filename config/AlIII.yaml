@@ -1,0 +1,23 @@
+line_name: "Al III"
+rest_wavelength: 1857.0       # Angstrom (Al III 1854.7 + 1862.8 doublet)
+
+amplitude:
+  steps: 8
+
+center:
+  range: 6.0
+  step: 0.5
+
+sigma:
+  grid: [3, 4, 5, 6, 7, 8, 9, 10]
+  min: 1.5
+  max: 18.0
+
+wing_window:
+  grid: [12, 13, 14, 15, 16, 17, 18, 19, 20]
+
+peak_search_radius: 10.0
+
+snr_min: 3.0
+snr_max: 15.0
+chi2_red_max: 5.0

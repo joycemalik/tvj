@@ -123,6 +123,23 @@ def _score_candidate(
     raw_snr   = amp / noise if noise > 0 else 0.0
     snr_score = float(np.exp(-0.5 * ((raw_snr - snr_target) / (snr_target * 0.5)) ** 2))
 
+    # Diagnostic Shape Components (Step 4A)
+    dist = np.abs(wl_w - center)
+    core_mask = dist <= sigma
+    wing_mask = dist > sigma
+    
+    res_w = sy_w - model
+    chi2_core = float(np.sum((res_w[core_mask] / noise) ** 2) / max(1, np.sum(core_mask)))
+    chi2_wing = float(np.sum((res_w[wing_mask] / noise) ** 2) / max(1, np.sum(wing_mask)))
+    
+    y_base = np.min(sy_w)
+    m_base = np.min(model)
+    y_norm = (sy_w - y_base) / (np.max(sy_w - y_base) + 1e-30)
+    m_norm = (model - m_base) / (np.max(model - m_base) + 1e-30)
+    R_profile = float(np.mean((y_norm - m_norm) ** 2))
+    
+    J_shape = float(1.0 * chi2_core + 1.5 * chi2_wing + 1.0 * R_profile)
+
     composite = (
         W_CHI2  * chi2_score  +
         W_PEAK  * peak_score  +
@@ -138,6 +155,10 @@ def _score_candidate(
         'left_score':  round(left_score,  4),
         'right_score': round(right_score, 4),
         'snr_score':   round(snr_score,   4),
+        'chi2_core':   round(chi2_core,   4),
+        'chi2_wing':   round(chi2_wing,   4),
+        'R_profile':   round(R_profile,   6),
+        'J_shape':     round(J_shape,     4),
     }
     return float(composite), components
 

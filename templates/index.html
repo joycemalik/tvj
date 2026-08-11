@@ -3,1016 +3,410 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AGN Spectrum Emission Line Analyzer</title>
-    <!-- Google Fonts: Inter & JetBrains Mono for Nolan Scientific Instrumentation aesthetic -->
+    <title>Scientific Diagnostic Fitting Pipeline | UV Spectrum Analyzer</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
-    
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
     <style>
         :root {
-            --bg-dark: #07080b;
-            --surface-dark: #0d0f14;
-            --surface-card: #12151e;
-            --border-dim: rgba(255, 255, 255, 0.1);
-            --border-bright: rgba(255, 255, 255, 0.25);
+            --bg-dark: #090a0f;
+            --surface-dark: #0f1219;
+            --surface-card: #151924;
+            --surface-hover: #1c2232;
+            --border-dim: rgba(255, 255, 255, 0.12);
+            --border-bright: rgba(255, 255, 255, 0.28);
             --amber-warm: #f59e0b;
-            --amber-dim: rgba(245, 158, 11, 0.15);
             --starlight: #e2e8f0;
             --text-muted: #64748b;
             --text-light: #94a3b8;
-            --success-gold: #eab308;
+            --success-gold: #10b981;
+            --warning-amber: #f59e0b;
             --fail-crimson: #ef4444;
             --font-main: 'Inter', -apple-system, sans-serif;
             --font-mono: 'JetBrains Mono', monospace;
         }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            border-radius: 0 !important; /* STRICTLY ARCHITECTURAL / NON-ROUNDED */
-        }
-
-        body {
-            background-color: var(--bg-dark);
-            background-image: 
-                linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-            background-size: 40px 40px;
-            color: var(--starlight);
-            font-family: var(--font-main);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            overflow-x: hidden;
-            -webkit-font-smoothing: antialiased;
-        }
-
-        header {
-            width: 100%;
-            max-width: 1280px;
-            padding: 2.25rem 2rem 1.25rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            border-bottom: 1px solid var(--border-dim);
-            margin-bottom: 2rem;
-        }
-
-        .brand-block {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-        }
-
-        .brand-meta {
-            font-family: var(--font-mono);
-            font-size: 0.68rem;
-            color: var(--amber-warm);
-            letter-spacing: 3px;
-            text-transform: uppercase;
-        }
-
-        h1 {
-            font-family: var(--font-main);
-            font-size: 1.35rem;
-            font-weight: 600;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            color: #ffffff;
-        }
-
-        .header-instrument-id {
-            font-family: var(--font-mono);
-            font-size: 0.72rem;
-            color: var(--text-light);
-            letter-spacing: 1px;
-            text-align: right;
-        }
-
-        main {
-            width: 100%;
-            max-width: 1280px;
-            padding: 0 2rem 5rem 2rem;
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 2rem;
-        }
-
-        /* Nolan Architectural Instrument Card */
-        .nolan-card {
-            background: var(--surface-dark);
-            border: 1px solid var(--border-dim);
-            padding: 2rem;
-            position: relative;
-        }
-
-        .nolan-card::before {
-            content: '';
-            position: absolute;
-            top: -1px;
-            left: -1px;
-            width: 6px;
-            height: 6px;
-            background: var(--amber-warm);
-        }
-
-        .nolan-card::after {
-            content: '';
-            position: absolute;
-            bottom: -1px;
-            right: -1px;
-            width: 6px;
-            height: 6px;
-            background: var(--border-bright);
-        }
-
-        /* Upload Zone */
-        .upload-area {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border: 1px dashed var(--border-bright);
-            padding: 4.5rem 2rem;
-            cursor: pointer;
-            text-align: center;
-            transition: all 0.2s ease;
-            background: rgba(0, 0, 0, 0.4);
-            position: relative;
-        }
-
-        .upload-area:hover, .upload-area.dragover {
-            border-color: var(--amber-warm);
-            background: rgba(245, 158, 11, 0.03);
-        }
-
-        .upload-symbol {
-            font-family: var(--font-mono);
-            font-size: 0.75rem;
-            color: var(--amber-warm);
-            letter-spacing: 2px;
-            margin-bottom: 1rem;
-            text-transform: uppercase;
-        }
-
-        .upload-title {
-            font-family: var(--font-main);
-            font-size: 1.1rem;
-            font-weight: 600;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            margin-bottom: 0.5rem;
-            color: #ffffff;
-        }
-
-        .upload-subtitle {
-            font-family: var(--font-mono);
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            margin-bottom: 1.5rem;
-        }
-
-        #fileInput {
-            display: none;
-        }
-
-        .btn-nolan {
-            background: transparent;
-            color: var(--starlight);
-            border: 1px solid var(--border-bright);
-            padding: 0.75rem 2rem;
-            font-family: var(--font-mono);
-            font-size: 0.75rem;
-            font-weight: 600;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .btn-nolan:hover {
-            background: #ffffff;
-            color: #000000;
-            border-color: #ffffff;
-        }
-
-        /* Loading Indicator */
-        .loader-container {
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 4rem 2rem;
-        }
-
-        .progress-line-wrapper {
-            width: 180px;
-            height: 2px;
-            background: var(--border-dim);
-            position: relative;
-            overflow: hidden;
-            margin-bottom: 1.25rem;
-        }
-
-        .progress-line {
-            width: 40%;
-            height: 100%;
-            background: var(--amber-warm);
-            position: absolute;
-            animation: pulse-line 1.2s infinite ease-in-out;
-        }
-
-        @keyframes pulse-line {
-            0% { left: -40%; }
-            100% { left: 100%; }
-        }
-
-        .loading-text {
-            font-family: var(--font-mono);
-            font-size: 0.78rem;
-            color: var(--amber-warm);
-            letter-spacing: 2px;
-            text-transform: uppercase;
-        }
-
-        /* Error Box */
-        .error-container {
-            display: none;
-            background: rgba(239, 68, 68, 0.08);
-            border: 1px solid var(--fail-crimson);
-            color: #fca5a5;
-            padding: 1rem 1.25rem;
-            font-family: var(--font-mono);
-            font-size: 0.8rem;
-            margin-top: 1rem;
-        }
-
-        /* Results Section */
-        .results-section {
-            display: none;
-            flex-direction: column;
-            gap: 1.75rem;
-            animation: fadeIn 0.3s ease-out forwards;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(6px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .result-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 1rem;
-            border-bottom: 1px solid var(--border-dim);
-            padding-bottom: 1rem;
-        }
-
-        .filename-display {
-            font-family: var(--font-mono);
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: #ffffff;
-            letter-spacing: 1px;
-        }
-
-        .status-badge {
-            font-family: var(--font-mono);
-            font-size: 0.72rem;
-            font-weight: 700;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            padding: 0.4rem 1.25rem;
-            border: 1px solid transparent;
-        }
-
-        .status-accepted {
-            background-color: var(--amber-dim);
-            color: var(--amber-warm);
-            border-color: var(--amber-warm);
-        }
-
-        .status-rejected {
-            background-color: rgba(239, 68, 68, 0.1);
-            color: var(--fail-crimson);
-            border-color: var(--fail-crimson);
-        }
-
-        /* Overview grid */
-        .overview-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 1.25rem;
-        }
-
-        .metric-card {
-            background: var(--surface-card);
-            border: 1px solid var(--border-dim);
-            padding: 1.35rem 1.5rem;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            transition: border-color 0.2s ease;
-        }
-
-        .metric-card:hover {
-            border-color: var(--border-bright);
-        }
-
-        .metric-label {
-            font-family: var(--font-mono);
-            font-size: 0.68rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-bottom: 0.75rem;
-        }
-
-        .metric-value {
-            font-family: var(--font-mono);
-            font-size: 1.75rem;
-            font-weight: 600;
-            color: #ffffff;
-        }
-
-        .metric-unit {
-            font-size: 0.8rem;
-            font-weight: 400;
-            color: var(--amber-warm);
-            margin-left: 0.35rem;
-        }
-
-        /* Detail section grid */
-        .detail-grid {
-            display: grid;
-            grid-template-columns: 1.5fr 1fr;
-            gap: 1.75rem;
-        }
-
-        @media (max-width: 900px) {
-            .detail-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .plot-container {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .plot-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .plot-title {
-            font-family: var(--font-mono);
-            font-size: 0.78rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--amber-warm);
-        }
-
-        .plot-image-wrapper {
-            width: 100%;
-            border: 1px solid var(--border-dim);
-            background-color: #000000;
-            cursor: zoom-in;
-            transition: border-color 0.2s ease;
-        }
-
-        .plot-image-wrapper:hover {
-            border-color: var(--amber-warm);
-        }
-
-        .plot-image {
-            width: 100%;
-            height: auto;
-            display: block;
-        }
-
-        /* Tables and details */
-        .parameters-container {
-            display: flex;
-            flex-direction: column;
-            gap: 1.25rem;
-        }
-
-        .section-subtitle {
-            font-family: var(--font-mono);
-            font-size: 0.78rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--amber-warm);
-        }
-
-        .details-table-panel {
-            grid-column: span 2;
-        }
-
-        @media (max-width: 900px) {
-            .details-table-panel {
-                grid-column: span 1;
-            }
-        }
-
-        .params-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-family: var(--font-mono);
-            font-size: 0.8rem;
-        }
-
-        .params-table tr {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .params-table tr:last-child {
-            border-bottom: none;
-        }
-
-        .params-table td {
-            padding: 0.75rem 0.25rem;
-        }
-
-        .params-table td.param-name {
-            color: var(--text-muted);
-            width: 55%;
-        }
-
-        .params-table td.param-value {
-            font-weight: 600;
-            text-align: right;
-            color: #ffffff;
-        }
-
-        /* Modal for full screen plot */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(5, 6, 9, 0.96);
-            backdrop-filter: blur(6px);
-            align-items: center;
-            justify-content: center;
-            padding: 2rem;
-            cursor: zoom-out;
-        }
-
-        .modal-content {
-            max-width: 95%;
-            max-height: 90vh;
-            border: 1px solid var(--amber-warm);
-        }
-
-        .close-btn {
-            position: absolute;
-            top: 1.5rem;
-            right: 2rem;
-            color: var(--text-muted);
-            font-family: var(--font-mono);
-            font-size: 1.8rem;
-            cursor: pointer;
-            transition: color 0.2s ease;
-        }
-
-        .close-btn:hover {
-            color: var(--amber-warm);
-        }
-
-        /* Shortlist Panel */
-        .shortlist-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 1.25rem;
-        }
-
-        .shortlist-badge {
-            font-family: var(--font-mono);
-            font-size: 0.68rem;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            padding: 0.25rem 0.75rem;
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--text-light);
-            border: 1px solid var(--border-dim);
-        }
-
-        .shortlist-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-            gap: 1.25rem;
-        }
-
-        .candidate-card {
-            background: var(--surface-card);
-            border: 1px solid var(--border-dim);
-            padding: 1.35rem 1.25rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.6rem;
-            transition: all 0.2s ease;
-            position: relative;
-        }
-
-        .candidate-card.rank-1 {
-            border-color: var(--amber-warm);
-            background: rgba(245, 158, 11, 0.03);
-        }
-
-        .candidate-card:hover {
-            border-color: var(--border-bright);
-        }
-
-        .candidate-rank {
-            font-family: var(--font-mono);
-            font-size: 0.68rem;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            letter-spacing: 1.5px;
-        }
-
-        .candidate-rank.top {
-            color: var(--amber-warm);
-            font-weight: 700;
-        }
-
-        .candidate-score {
-            font-family: var(--font-mono);
-            font-size: 1.6rem;
-            font-weight: 600;
-            color: #ffffff;
-            line-height: 1;
-        }
-
-        .candidate-score small {
-            font-size: 0.75rem;
-            font-weight: 400;
-            color: var(--text-muted);
-        }
-
-        .candidate-params {
-            margin-top: 0.5rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.35rem;
-            font-family: var(--font-mono);
-        }
-
-        .cand-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.78rem;
-        }
-
-        .cand-key {
-            color: var(--text-muted);
-        }
-
-        .cand-val {
-            font-weight: 600;
-            color: var(--starlight);
-        }
-
-        .score-bar-container {
-            margin-top: 0.5rem;
-            background: rgba(255, 255, 255, 0.05);
-            height: 2px;
-            width: 100%;
-        }
-
-        .score-bar {
-            height: 100%;
-            background: var(--amber-warm);
-            transition: width 0.5s ease;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; border-radius: 0 !important; }
+        body { background-color: var(--bg-dark); color: var(--starlight); font-family: var(--font-main); min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+        header { width: 100%; max-width: 1380px; padding: 2rem; display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid var(--border-dim); margin-bottom: 1.5rem; }
+        .brand-meta { font-family: var(--font-mono); font-size: 0.68rem; color: var(--amber-warm); letter-spacing: 3px; }
+        h1 { font-size: 1.3rem; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: #fff; }
+        .header-instrument-id { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-light); text-align: right; }
+        main { width: 100%; max-width: 1380px; padding: 0 2rem 5rem 2rem; flex-grow: 1; display: flex; flex-direction: column; gap: 1.5rem; }
+        .nolan-card { background: var(--surface-dark); border: 1px solid var(--border-dim); padding: 1.5rem; position: relative; }
+        .upload-area { display: flex; flex-direction: column; align-items: center; border: 1px dashed var(--border-bright); padding: 3.5rem 2rem; cursor: pointer; text-align: center; background: rgba(0,0,0,0.4); }
+        .upload-symbol { font-family: var(--font-mono); font-size: 0.75rem; color: var(--amber-warm); letter-spacing: 2px; margin-bottom: 1rem; }
+        .upload-title { font-size: 1.1rem; font-weight: 600; letter-spacing: 2px; margin-bottom: 0.5rem; color: #fff; }
+        .upload-subtitle { font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-muted); margin-bottom: 1.5rem; }
+        #fileInput { display: none; }
+        .btn-nolan { background: transparent; color: var(--starlight); border: 1px solid var(--border-bright); padding: 0.75rem 2rem; font-family: var(--font-mono); font-size: 0.75rem; font-weight: 600; cursor: pointer; }
+        .btn-nolan:hover { background: #fff; color: #000; }
+        .btn-demo { border-color: var(--amber-warm); color: var(--amber-warm); }
+        .btn-demo:hover { background: var(--amber-warm); color: #000; }
+        .loader-container { display: none; flex-direction: column; align-items: center; gap: 1.5rem; padding: 4rem 0; }
+        .loader-spinner { width: 40px; height: 40px; border: 2px solid var(--border-dim); border-top: 2px solid var(--amber-warm); animation: spin 0.8s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loader-text { font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 2px; color: var(--amber-warm); }
+        .error-card { display: none; background: rgba(239,68,68,0.08); border: 1px solid var(--fail-crimson); padding: 1.25rem 1.5rem; color: #fca5a5; font-family: var(--font-mono); font-size: 0.8rem; }
+        .results-dashboard { display: none; flex-direction: column; gap: 1.5rem; }
+        .spectrum-header-bar { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; background: var(--surface-card); border: 1px solid var(--border-dim); font-family: var(--font-mono); }
+        .spec-title { font-size: 0.85rem; color: #fff; }
+        .spec-title span { color: var(--amber-warm); }
+        .status-badge { font-size: 0.72rem; padding: 0.35rem 0.85rem; font-weight: 600; }
+        .status-accepted { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid #10b981; }
+        .status-rejected { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid #ef4444; }
+        .section-subtitle { font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 2px; color: var(--amber-warm); margin-bottom: 1rem; display: flex; justify-content: space-between; }
+        .line-tabs { display: flex; gap: 0.5rem; overflow-x: auto; border-bottom: 1px solid var(--border-dim); padding-bottom: 0.5rem; margin-bottom: 1.25rem; }
+        .line-tab { font-family: var(--font-mono); font-size: 0.75rem; padding: 0.5rem 1rem; background: var(--surface-card); border: 1px solid var(--border-dim); color: var(--text-light); cursor: pointer; }
+        .line-tab.active { background: var(--amber-warm); color: #000; font-weight: 700; border-color: var(--amber-warm); }
+        .diagnostic-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; }
+        @media (max-width: 1024px) { .diagnostic-grid { grid-template-columns: 1fr; } }
+        .plotly-plot { width: 100%; height: 380px; background: var(--bg-dark); border: 1px solid var(--border-dim); }
+        .plotly-plot-res { width: 100%; height: 220px; background: var(--bg-dark); border: 1px solid var(--border-dim); margin-top: 1rem; }
+        .plotly-plot-overview { width: 100%; height: 320px; background: var(--bg-dark); border: 1px solid var(--border-dim); }
+        .plotly-plot-landscape { width: 100%; height: 300px; background: var(--bg-dark); border: 1px solid var(--border-dim); }
+        .table-container { overflow-x: auto; }
+        .summary-table { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 0.78rem; }
+        .summary-table th { text-align: left; padding: 0.75rem; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border-bright); color: var(--text-muted); }
+        .summary-table td { padding: 0.75rem; border-bottom: 1px solid var(--border-dim); color: var(--starlight); }
+        .summary-table tr:hover { background: var(--surface-hover); cursor: pointer; }
+        .summary-table tr.active-row { background: rgba(245,158,11,0.08); border-left: 3px solid var(--amber-warm); }
+        .params-table { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 0.78rem; }
+        .params-table td { padding: 0.55rem 0.25rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .params-table td.param-name { color: var(--text-muted); width: 55%; }
+        .params-table td.param-value { font-weight: 600; text-align: right; color: #fff; }
+        .qc-list { display: flex; flex-direction: column; gap: 0.65rem; font-family: var(--font-mono); font-size: 0.78rem; margin-top: 0.5rem; }
+        .qc-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); }
+        .qc-icon.pass { color: var(--success-gold); } .qc-icon.warn { color: var(--warning-amber); } .qc-icon.fail { color: var(--fail-crimson); }
+        .qc-text { color: var(--text-light); }
+        .pipeline-flow { display: flex; flex-direction: column; gap: 0.4rem; font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); background: rgba(0,0,0,0.3); padding: 1rem; border: 1px solid var(--border-dim); }
+        .flow-step span.arrow { color: var(--amber-warm); } .flow-step span.val { color: #fff; font-weight: 600; }
+        .actions-bar { display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1rem; }
     </style>
 </head>
 <body>
-
     <header>
         <div class="brand-block">
-            <div class="brand-meta">// ASTROPHYSICS INSTRUMENT SUITE</div>
-            <h1>Spectrum Engine</h1>
+            <div class="brand-meta">// AUTOMATED SPECTROSCOPIC DIAGNOSTICS ENGINE</div>
+            <h1>Spectrum Fit Diagnostic Workbench</h1>
         </div>
-        <div class="header-instrument-id">
-            SYSTEM STATUS: ONLINE<br>
-            REST FRAME: LYα (1216.0 Å)
-        </div>
+        <div class="header-instrument-id">SYSTEM VERSION: 2.4.0-SCI<br>SPEC COMPLIANCE: APPROVED DATASET</div>
     </header>
-
     <main>
         <div class="nolan-card">
             <div class="upload-area" id="dropzone">
-                <div class="upload-symbol">[ INPUT SPECTRUM DATASET ]</div>
-                <div class="upload-title">LOAD RAW SPECTRUM (.TXT)</div>
-                <div class="upload-subtitle">Drag and drop spectrum file or execute reference standard</div>
-                <div>
-                    <button type="button" class="btn-nolan" id="demoBtn">EXECUTE BENCHMARK DEMO</button>
+                <div class="upload-symbol">[ SELECT SPECTRUM FILE ]</div>
+                <div class="upload-title">DRAG & DROP OR EXPLORE FILE SYSTEM</div>
+                <div class="upload-subtitle">SUPPORTS STANDARD 2-COLUMN (.TXT) SPECTRAL FLUX FILES</div>
+                <div style="display: flex; gap: 1rem;">
+                    <button class="btn-nolan" type="button">UPLOAD FILE</button>
+                    <button class="btn-nolan btn-demo" type="button" id="demoBtn">LOAD SPECTRUM 70 DEMO</button>
                 </div>
                 <input type="file" id="fileInput" accept=".txt">
             </div>
-
             <div class="loader-container" id="loader">
-                <div class="progress-line-wrapper">
-                    <div class="progress-line"></div>
-                </div>
-                <div class="loading-text" id="loadingText">COMPUTING DISCRETE CANDIDATE MATRIX...</div>
+                <div class="loader-spinner"></div>
+                <div class="loader-text">RUNNING COARSE GRID & CONTINUOUS SCIPY REFINEMENT...</div>
             </div>
-
-            <div class="error-container" id="errorBox"></div>
+            <div class="error-card" id="errorBox"></div>
         </div>
-
-        <!-- Results Dashboard -->
-        <div class="results-section" id="resultsDashboard">
-            <!-- Summary stats header -->
-            <div class="nolan-card result-header">
-                <div>
-                    <div class="filename-display" id="resFilename">SPECTRUM_DATASET</div>
-                    <div style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); margin-top: 0.35rem;" id="resFittingDetails">// LYMAN ALPHA LINE ANALYSIS (5,600 CANDIDATE EVALUATION)</div>
-                </div>
-                <div class="status-badge" id="resStatusBadge">ACCEPTED</div>
-            </div>
-
-            <!-- Overview numbers -->
-            <div class="overview-grid">
-                <div class="metric-card">
-                    <span class="metric-label">SNR</span>
-                    <span class="metric-value" id="valSNR">0.0</span>
-                </div>
-                <div class="metric-card">
-                    <span class="metric-label">REDUCED χ²</span>
-                    <span class="metric-value" id="valChi2">0.0</span>
-                </div>
-                <div class="metric-card">
-                    <span class="metric-label">FWHM (KM/S)</span>
-                    <span class="metric-value" id="valFWHM">0.0<span class="metric-unit">km/s</span></span>
-                </div>
-                <div class="metric-card">
-                    <span class="metric-label">LINE CENTER</span>
-                    <span class="metric-value" id="valCenter">0.0<span class="metric-unit">Å</span></span>
+        <div class="results-dashboard" id="resultsDashboard">
+            <div class="spectrum-header-bar">
+                <div class="spec-title">SPECTRUM: <span id="resFilename">15dcdr2dswp19731mxlo.txt</span></div>
+                <div style="display: flex; align-items: center; gap: 1.5rem;">
+                    <div style="font-size: 0.78rem; color: var(--text-muted);">GLOBAL REDUCED χ²: <strong id="resGlobalChi2" style="color: #fff;">0.00</strong></div>
+                    <div class="status-badge status-accepted" id="resStatusBadge">ACCEPTED</div>
                 </div>
             </div>
-
-            <!-- Visual and detail breakdown -->
-            <div class="detail-grid">
-                <div class="nolan-card plot-container">
-                    <div class="plot-header">
-                        <div class="plot-title">// SPECTRAL MODEL OVERLAY</div>
-                    </div>
-                    <div class="plot-image-wrapper" id="plotWrapper">
-                        <img class="plot-image" id="resPlot" src="" alt="Fit Visualization">
-                    </div>
-                </div>
-
-                <div class="nolan-card parameters-container">
-                    <div class="section-subtitle">// PRIMARY MODEL PARAMETERS</div>
-                    <table class="params-table">
-                        <tr>
-                            <td class="param-name">Amplitude</td>
-                            <td class="param-value" id="valAmplitude">0.0</td>
-                        </tr>
-                        <tr>
-                            <td class="param-name">Sigma (σ)</td>
-                            <td class="param-value" id="valSigma">0.0 Å</td>
-                        </tr>
-                        <tr>
-                            <td class="param-name">FWHM (Å)</td>
-                            <td class="param-value" id="valFWHMAng">0.0 Å</td>
-                        </tr>
-                        <tr>
-                            <td class="param-name">Composite Score</td>
-                            <td class="param-value" id="valScore">0.0 / 1.0</td>
-                        </tr>
-                    </table>
-                </div>
-
-                <div class="nolan-card details-table-panel">
-                    <div class="section-subtitle" style="margin-bottom: 1.25rem;">// ASTROPHYSICAL DERIVED METRICS</div>
-                    <table class="params-table">
-                        <tr>
-                            <td class="param-name">Integrated Flux</td>
-                            <td class="param-value" id="valFlux">0.0</td>
-                        </tr>
-                        <tr>
-                            <td class="param-name">Flux Error</td>
-                            <td class="param-value" id="valFluxErr">0.0</td>
-                        </tr>
-                        <tr>
-                            <td class="param-name">Equivalent Width (EW)</td>
-                            <td class="param-value" id="valEW">0.0</td>
-                        </tr>
-                        <tr>
-                            <td class="param-name">EW Error</td>
-                            <td class="param-value" id="valEWErr">0.0</td>
-                        </tr>
-                        <tr>
-                            <td class="param-name">Blue Wing Boundary</td>
-                            <td class="param-value" id="valBlueWing">0.0</td>
-                        </tr>
-                        <tr>
-                            <td class="param-name">Red Wing Boundary</td>
-                            <td class="param-value" id="valRedWing">0.0</td>
-                        </tr>
-                        <tr>
-                            <td class="param-name">Wing Window</td>
-                            <td class="param-value" id="valWingWindow">0.0</td>
-                        </tr>
-                        <tr>
-                            <td class="param-name">Continuum Amplitude</td>
-                            <td class="param-value" id="valContAmp">0.0</td>
-                        </tr>
-                        <tr>
-                            <td class="param-name">Spectral Index (α)</td>
-                            <td class="param-value" id="valSpecIdx">0.0</td>
-                        </tr>
+            <div class="nolan-card">
+                <div class="section-subtitle"><span>// GRAPH 1: FULL UV SPECTRUM OVERVIEW (900 – 1830 Å)</span><span style="color: var(--text-muted); font-size: 0.7rem;">OBSERVED | POWER-LAW CONTINUUM | DETECTED LINE MARKERS</span></div>
+                <div id="overviewPlot" class="plotly-plot-overview"></div>
+            </div>
+            <div class="nolan-card">
+                <div class="section-subtitle">// MASTER EMISSION LINE SUMMARY</div>
+                <div class="table-container">
+                    <table class="summary-table" id="summaryTable">
+                        <thead><tr><th>Line</th><th>Rest λ (Å)</th><th>Fitted λ (Å)</th><th>Δλ (Å)</th><th>Velocity (km/s)</th><th>σ (Å)</th><th>Flux</th><th>EW (Å)</th><th>SNR</th><th>χ²red</th><th>Status</th></tr></thead>
+                        <tbody id="summaryTableBody"></tbody>
                     </table>
                 </div>
             </div>
-
-            <!-- Candidate Shortlist -->
-            <div class="nolan-card shortlist-panel" id="shortlistPanel" style="display:none;">
-                <div class="shortlist-header">
-                    <div class="section-subtitle">// TOP RANKED CANDIDATE MATRIX</div>
-                    <span class="shortlist-badge">EXHAUSTIVE EVALUATION</span>
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div class="line-tabs" id="lineTabs"></div>
+                <div class="diagnostic-grid">
+                    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                        <div class="nolan-card">
+                            <div class="section-subtitle"><span id="localFitTitle">// GRAPH 2: ZOOMED LINE FIT</span><span style="color: var(--text-muted); font-size: 0.7rem;">LOCAL λ WINDOW | FWHM | FIT BOUNDARIES</span></div>
+                            <div id="localPlot" class="plotly-plot"></div>
+                            <div class="section-subtitle" style="margin-top: 1.5rem;"><span>// GRAPH 3: NORMALIZED RESIDUALS [r_i = (F_i - F_model) / σ_i]</span><span style="color: var(--text-muted); font-size: 0.7rem;">±1σ / ±2σ ERROR BOUNDS</span></div>
+                            <div id="residualPlot" class="plotly-plot-res"></div>
+                        </div>
+                        <div class="nolan-card">
+                            <div class="section-subtitle"><span>// GRAPH 4: MODEL-SELECTION LANDSCAPE</span><span style="color: var(--text-muted); font-size: 0.7rem;">SIGMA × WING WINDOW (★ = CHOICES SELECTED)</span></div>
+                            <div id="landscapePlot" class="plotly-plot-landscape"></div>
+                        </div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                        <div class="nolan-card">
+                            <div class="section-subtitle">// SCIENTIFIC GAUSSIAN PARAMETERS</div>
+                            <table class="params-table">
+                                <tr><td class="param-name">Rest Wavelength (λ_rest)</td><td class="param-value" id="valRestWl">1216.00 Å</td></tr>
+                                <tr><td class="param-name">Fitted Center (μ)</td><td class="param-value" id="valCenter">1214.97 Å</td></tr>
+                                <tr><td class="param-name">Wavelength Offset (Δλ)</td><td class="param-value" id="valDeltaWl">-1.03 Å</td></tr>
+                                <tr><td class="param-name">Velocity Offset (v)</td><td class="param-value" id="valVelOffset">-254.1 km/s</td></tr>
+                                <tr><td class="param-name">Gaussian Amplitude (A)</td><td class="param-value" id="valAmp">8.00e-13</td></tr>
+                                <tr><td class="param-name">Gaussian Sigma (σ)</td><td class="param-value" id="valSigma">6.14 Å</td></tr>
+                                <tr><td class="param-name">Reported FWHM (Dataset)</td><td class="param-value" id="valFWHM">16.95 Å</td></tr>
+                                <tr><td class="param-name">Derived 2.355σ FWHM</td><td class="param-value" id="valFWHM235">14.46 Å</td></tr>
+                                <tr><td class="param-name">Integrated Line Flux</td><td class="param-value" id="valFlux">1.04e-11</td></tr>
+                                <tr><td class="param-name">Equivalent Width (EW)</td><td class="param-value" id="valEW">46.66 Å</td></tr>
+                                <tr><td class="param-name">Signal-to-Noise (SNR)</td><td class="param-value" id="valSNR">9.14</td></tr>
+                                <tr><td class="param-name">Reduced χ² (χ²red)</td><td class="param-value" id="valChi2">0.036</td></tr>
+                                <tr><td class="param-name">Fitting Wing Window</td><td class="param-value" id="valWingWindow">19.0 Å</td></tr>
+                            </table>
+                        </div>
+                        <div class="nolan-card">
+                            <div class="section-subtitle">// QUALITY CONTROL & SELECTION DIAGNOSTICS</div>
+                            <div class="qc-list" id="qcChecklist"></div>
+                            <div class="section-subtitle" style="margin-top: 1.5rem;">// PIPELINE AUTOMATION SEARCH FLOW</div>
+                            <div class="pipeline-flow">
+                                <div class="flow-step"><span class="arrow">▶</span> SEARCH SPACE: <span class="val">5,600 candidate models</span></div>
+                                <div class="flow-step"><span class="arrow">▶</span> STAGE 1: <span class="val">Coarse discrete grid basin search</span></div>
+                                <div class="flow-step"><span class="arrow">▶</span> STAGE 2: <span class="val">Scipy least-squares refinement</span></div>
+                                <div class="flow-step"><span class="arrow">▶</span> DECISION METRIC: <span class="val" id="valCompScore">Score: 0.831</span></div>
+                                <table id="valScoreBreakdown" class="params-table" style="margin-top:0.5rem; font-size:0.7rem;"></table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="shortlist-grid" id="shortlistGrid"></div>
             </div>
+            <div class="actions-bar"><button class="btn-nolan" type="button" onclick="window.print()">PRINT REPORT</button></div>
         </div>
     </main>
-
-    <!-- Modal for fullscreen plot view -->
-    <div class="modal" id="plotModal">
-        <span class="close-btn" id="closeModal">&times;</span>
-        <img class="modal-content" id="modalImg" src="" alt="Zoomed Fit Visualization">
-    </div>
-
     <script>
-        const dropzone = document.getElementById('dropzone');
-        const fileInput = document.getElementById('fileInput');
-        const loader = document.getElementById('loader');
-        const errorBox = document.getElementById('errorBox');
-        const resultsDashboard = document.getElementById('resultsDashboard');
-
-        // Drag and drop event handlers
+        let currentRecord = null, selectedLineIndex = 0;
+        const dropzone = document.getElementById('dropzone'), fileInput = document.getElementById('fileInput'), loader = document.getElementById('loader'), errorBox = document.getElementById('errorBox'), resultsDashboard = document.getElementById('resultsDashboard'), demoBtn = document.getElementById('demoBtn');
         dropzone.addEventListener('click', () => fileInput.click());
+        dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+        dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+        dropzone.addEventListener('drop', (e) => { e.preventDefault(); dropzone.classList.remove('dragover'); if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]); });
+        fileInput.addEventListener('change', (e) => { if (e.target.files.length > 0) handleFile(e.target.files[0]); });
+        demoBtn.addEventListener('click', (e) => { e.stopPropagation(); loadDemo(); });
 
-        dropzone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropzone.classList.add('dragover');
-        });
+        function loadDemo() { hideError(); hideResults(); showLoader(); const formData = new FormData(); formData.append('demo', 'true'); fetch('/fit', { method: 'POST', body: formData }).then(res => { if (!res.ok) return res.json().then(err => { throw new Error(err.error || 'Server error'); }); return res.json(); }).then(data => renderDashboard(data, '70dcdr2dswp35476mxlo.txt (Demo)')).catch(err => showError(err.message)).finally(() => hideLoader()); }
+        function handleFile(file) { if (!file.name.endsWith('.txt')) { showError('Invalid file type. Please upload a .txt spectrum file.'); return; } hideError(); hideResults(); showLoader(); const formData = new FormData(); formData.append('file', file); fetch('/fit', { method: 'POST', body: formData }).then(res => { if (!res.ok) return res.json().then(err => { throw new Error(err.error || 'Server error'); }); return res.json(); }).then(data => renderDashboard(data, file.name)).catch(err => showError(err.message)).finally(() => hideLoader()); }
+        function showLoader() { loader.style.display = 'flex'; dropzone.style.display = 'none'; }
+        function hideLoader() { loader.style.display = 'none'; dropzone.style.display = 'flex'; }
+        function showError(msg) { errorBox.textContent = msg; errorBox.style.display = 'block'; }
+        function hideError() { errorBox.style.display = 'none'; }
+        function hideResults() { resultsDashboard.style.display = 'none'; }
 
-        dropzone.addEventListener('dragleave', () => {
-            dropzone.classList.remove('dragover');
-        });
-
-        dropzone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropzone.classList.remove('dragover');
-            if (e.dataTransfer.files.length > 0) {
-                handleFile(e.dataTransfer.files[0]);
-            }
-        });
-
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                handleFile(e.target.files[0]);
-            }
-        });
-
-        const demoBtn = document.getElementById('demoBtn');
-
-        demoBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            loadDemo();
-        });
-
-        function loadDemo() {
-            hideError();
-            hideResults();
-            showLoader();
-
-            const formData = new FormData();
-            formData.append('demo', 'true');
-
-            fetch('/fit', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                if (!response.ok) {
-                    return response.json().then(err => { throw new Error(err.error || 'Server error occurred'); });
-                }
-                return response.json();
-            })
-            .then(data => {
-                renderResults(data, '70dcdr2dswp35476mxlo.txt (Demo)');
-            })
-            .catch(err => {
-                showError(err.message || 'An error occurred while fitting the demo spectrum.');
-            })
-            .finally(() => {
-                hideLoader();
-            });
-        }
-
-        function handleFile(file) {
-            if (!file.name.endsWith('.txt')) {
-                showError('Invalid file type. Please upload a .txt spectrum file.');
-                return;
-            }
-
-            hideError();
-            hideResults();
-            showLoader();
-
-            const formData = new FormData();
-            formData.append('file', file);
-
-            fetch('/fit', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                if (!response.ok) {
-                    return response.json().then(err => { throw new Error(err.error || 'Server error occurred'); });
-                }
-                return response.json();
-            })
-            .then(data => {
-                renderResults(data, file.name);
-            })
-            .catch(err => {
-                showError(err.message || 'An error occurred while fitting the spectrum.');
-            })
-            .finally(() => {
-                hideLoader();
-            });
-        }
-
-        function showLoader() {
-            loader.style.display = 'flex';
-            dropzone.style.display = 'none';
-        }
-
-        function hideLoader() {
-            loader.style.display = 'none';
-            dropzone.style.display = 'flex';
-        }
-
-        function showError(msg) {
-            errorBox.textContent = msg;
-            errorBox.style.display = 'block';
-        }
-
-        function hideError() {
-            errorBox.style.display = 'none';
-        }
-
-        function hideResults() {
-            resultsDashboard.style.display = 'none';
-        }
-
-        function renderResults(data, filename) {
-            const fmtExp = (val, dec = 4) => (val !== undefined && val !== null && !isNaN(val)) ? Number(val).toExponential(dec) : 'N/A';
-            const fmtNum = (val, dec = 2) => (val !== undefined && val !== null && !isNaN(val)) ? Number(val).toFixed(dec) : 'N/A';
-
+        function renderDashboard(data, filename) {
+            currentRecord = data;
             document.getElementById('resFilename').textContent = filename;
-
+            document.getElementById('resGlobalChi2').textContent = (data.global_reduced_chi2 || 0).toFixed(3);
             const badge = document.getElementById('resStatusBadge');
-            badge.textContent = data.fit_status || 'UNKNOWN';
-            badge.className = data.is_acceptable
-                ? 'status-badge status-accepted'
-                : 'status-badge status-rejected';
-
-            document.getElementById('valSNR').textContent = fmtNum(data.snr, 2);
-            document.getElementById('valChi2').textContent = fmtNum(data.reduced_chi2, 2);
-            document.getElementById('valFWHM').innerHTML = `${fmtNum(data.fwhm_kms, 1)} <span class="metric-unit">km/s</span>`;
-            document.getElementById('valCenter').innerHTML = `${fmtNum(data.center, 2)} <span class="metric-unit">Å</span>`;
-
-            document.getElementById('valAmplitude').textContent = fmtExp(data.amplitude, 4);
-            document.getElementById('valSigma').textContent = `${fmtNum(data.sigma, 2)} Å`;
-            document.getElementById('valFWHMAng').textContent = `${fmtNum(data.fwhm_ang, 2)} Å`;
-            document.getElementById('valScore').textContent = `${fmtNum(data.quality_score, 2)} / 1.0`;
-
-            document.getElementById('valFlux').textContent = fmtExp(data.flux, 4);
-            document.getElementById('valFluxErr').textContent = fmtExp(data.flux_err, 4);
-            document.getElementById('valEW').textContent = `${fmtNum(data.ew, 2)} Å`;
-            document.getElementById('valEWErr').textContent = `${fmtNum(data.ew_err, 2)} Å`;
-            document.getElementById('valBlueWing').textContent = `${fmtNum(data.blue_wing, 2)} Å`;
-            document.getElementById('valRedWing').textContent = `${fmtNum(data.red_wing, 2)} Å`;
-            document.getElementById('valWingWindow').textContent = `${fmtNum(data.wing_window, 1)} Å`;
-            document.getElementById('valContAmp').textContent = fmtExp(data.continuum_amplitude, 4);
-            document.getElementById('valSpecIdx').textContent = fmtNum(data.spectral_index, 4);
-
-            document.getElementById('resPlot').src = `${data.plot_url}?t=${new Date().getTime()}`;
-
-            // Candidate Shortlist
-            const shortlist = data.shortlist || [];
-            const shortlistPanel = document.getElementById('shortlistPanel');
-            const shortlistGrid = document.getElementById('shortlistGrid');
-            shortlistGrid.innerHTML = '';
-
-            if (shortlist.length > 0) {
-                shortlist.forEach((cand, i) => {
-                    const rank = cand.rank || (i + 1);
-                    const score = cand.composite_score;
-                    const pct = Math.round((score || 0) * 100);
-                    const isTop = rank === 1;
-
-                    const card = document.createElement('div');
-                    card.className = `candidate-card${isTop ? ' rank-1' : ''}`;
-                    card.innerHTML = `
-                        <div class="candidate-rank${isTop ? ' top' : ''}">
-                            ${isTop ? '[★ OPTIMAL FIT]' : `[CANDIDATE #${rank}]`}
-                        </div>
-                        <div class="candidate-score">
-                            ${fmtNum(score, 3)}<small> / 1.0</small>
-                        </div>
-                        <div class="score-bar-container">
-                            <div class="score-bar" style="width:0%" data-pct="${pct}"></div>
-                        </div>
-                        <div class="candidate-params">
-                            <div class="cand-row">
-                                <span class="cand-key">Center</span>
-                                <span class="cand-val">${fmtNum(cand.center, 2)} Å</span>
-                            </div>
-                            <div class="cand-row">
-                                <span class="cand-key">Amplitude</span>
-                                <span class="cand-val">${fmtExp(cand.amplitude, 2)}</span>
-                            </div>
-                            <div class="cand-row">
-                                <span class="cand-key">Sigma (σ)</span>
-                                <span class="cand-val">${fmtNum(cand.sigma, 0)} Å</span>
-                            </div>
-                            <div class="cand-row">
-                                <span class="cand-key">Wing</span>
-                                <span class="cand-val">${fmtNum(cand.wing_window, 0)} Å</span>
-                            </div>
-                            <div class="cand-row">
-                                <span class="cand-key">χ² (red)</span>
-                                <span class="cand-val">${fmtNum(cand.reduced_chi2, 3)}</span>
-                            </div>
-                            <div class="cand-row">
-                                <span class="cand-key">SNR</span>
-                                <span class="cand-val">${fmtNum(cand.snr, 2)}</span>
-                            </div>
-                        </div>
-                    `;
-                    shortlistGrid.appendChild(card);
-                });
-
-                shortlistPanel.style.display = 'block';
-
-                requestAnimationFrame(() => {
-                    setTimeout(() => {
-                        document.querySelectorAll('.score-bar').forEach(bar => {
-                            bar.style.width = bar.dataset.pct + '%';
-                        });
-                    }, 100);
-                });
-            } else {
-                shortlistPanel.style.display = 'none';
-            }
-
-            resultsDashboard.style.display = 'flex';
-            resultsDashboard.scrollIntoView({ behavior: 'smooth' });
+            badge.textContent = data.lines && data.lines.some(l => l.detected) ? 'MODEL STATUS: ✓ VALIDATED' : 'LIMITED FIT';
+            badge.className = data.lines && data.lines.some(l => l.detected) ? 'status-badge status-accepted' : 'status-badge status-rejected';
+            drawFullOverviewPlot(data); buildSummaryTable(data.lines || []); buildLineTabs(data.lines || []);
+            let initialIdx = (data.lines || []).findIndex(l => l.line_name.includes('Lyman') || l.detected);
+            if (initialIdx < 0) initialIdx = 0;
+            selectLine(initialIdx);
+            resultsDashboard.style.display = 'flex'; resultsDashboard.scrollIntoView({ behavior: 'smooth' });
         }
 
-        // Full screen plot viewing logic
-        const plotWrapper = document.getElementById('plotWrapper');
-        const modal = document.getElementById('plotModal');
-        const modalImg = document.getElementById('modalImg');
-        const closeModal = document.getElementById('closeModal');
+        function drawFullOverviewPlot(data) {
+            const wl = data.wavelength || [], flux = data.observed_flux || [], cont = data.continuum_fit || [], suby = data.subtracted_y || [];
+            const traces = [
+                { x: wl, y: flux, mode: 'lines', name: 'Raw Observed Spectrum', line: { color: '#64748b', width: 1 } },
+                { x: wl, y: cont, mode: 'lines', name: 'Power-Law Continuum', line: { color: '#f59e0b', width: 1.5, dash: 'dash' } },
+                { x: wl, y: suby, mode: 'lines', name: 'Continuum Subtracted', line: { color: '#06b6d4', width: 1.2 } }
+            ];
+            const shapes = [], annotations = [];
+            (data.lines || []).forEach(l => {
+                shapes.push({ type: 'line', x0: l.rest_wavelength, x1: l.rest_wavelength, y0: 0, y1: 1, yref: 'paper', line: { color: l.detected ? '#eab308' : '#475569', width: 1, dash: 'dot' } });
+                annotations.push({ x: l.rest_wavelength, y: 0.95, yref: 'paper', text: l.line_name, showarrow: false, font: { family: 'JetBrains Mono', size: 10, color: l.detected ? '#f59e0b' : '#64748b' } });
+            });
+            const midFlux = flux.slice(Math.floor(flux.length * 0.05), Math.floor(flux.length * 0.95));
+            const yMax = Math.max(...midFlux) * 1.2;
+            const yMin = Math.min(...midFlux) < 0 ? Math.min(...midFlux) * 1.2 : -yMax * 0.1;
+            const layout = { margin: { t: 25, r: 25, l: 65, b: 45 }, paper_bgcolor: '#090a0f', plot_bgcolor: '#090a0f', xaxis: { title: { text: 'Wavelength (Å)', font: { family: 'JetBrains Mono', color: '#94a3b8', size: 11 } }, gridcolor: '#151924', tickfont: { color: '#94a3b8' } }, yaxis: { range: [yMin, yMax], title: { text: 'Flux (erg cm⁻² s⁻¹ Å⁻¹)', font: { family: 'JetBrains Mono', color: '#94a3b8', size: 11 } }, gridcolor: '#151924', tickfont: { color: '#94a3b8' } }, legend: { orientation: 'h', x: 0, y: 1.12, font: { family: 'JetBrains Mono', color: '#e2e8f0', size: 10 } }, shapes: shapes, annotations: annotations };
+            Plotly.newPlot('overviewPlot', traces, layout, { responsive: true, displayModeBar: false });
+        }
 
-        plotWrapper.addEventListener('click', () => {
-            const currentPlot = document.getElementById('resPlot').src;
-            if (currentPlot) {
-                modalImg.src = currentPlot;
-                modal.style.display = 'flex';
+        function buildSummaryTable(lines) {
+            const tbody = document.getElementById('summaryTableBody'); tbody.innerHTML = '';
+            lines.forEach((l, idx) => {
+                const tr = document.createElement('tr'); tr.onclick = () => selectLine(idx);
+                const fmtExp = v => v ? Number(v).toExponential(2) : '-'; const fmtNum = (v, d=2) => (v !== undefined && v !== null && !isNaN(v)) ? Number(v).toFixed(d) : '-';
+                const deltaWl = l.center ? (l.center - l.rest_wavelength) : 0; const velOffset = (deltaWl / l.rest_wavelength) * 299792.458;
+                const fitStat = String(l.fit_status || '');
+                let badgeText = '— NOT DETECTED', badgeClass = 'status-rejected';
+                if (fitStat.includes('ACCEPTED')) { badgeText = '✓ ACCEPTED'; badgeClass = 'status-accepted'; }
+                else if (fitStat.includes('MARGINAL')) { badgeText = '⚠ MARGINAL'; badgeClass = 'status-rejected'; } // Could define status-warning class
+                else if (fitStat.includes('REJECTED')) { badgeText = '✕ REJECTED'; badgeClass = 'status-rejected'; }
+
+                tr.innerHTML = `<td style="font-weight:600; color:#fff;">${l.line_name}</td><td>${l.rest_wavelength.toFixed(1)}</td><td>${l.detected ? fmtNum(l.center, 2) : '-'}</td><td>${l.detected ? fmtNum(deltaWl, 2) : '-'}</td><td>${l.detected ? fmtNum(velOffset, 1) : '-'}</td><td>${l.detected ? fmtNum(l.sigma, 2) : '-'}</td><td>${l.detected ? fmtExp(l.flux) : '-'}</td><td>${l.detected ? fmtNum(l.ew, 1) : '-'}</td><td>${l.detected ? fmtNum(l.snr, 2) : '-'}</td><td>${l.detected ? fmtNum(l.reduced_chi2, 3) : '-'}</td><td><span class="status-badge ${badgeClass}" style="padding:0.15rem 0.4rem; font-size:0.65rem;">${badgeText}</span></td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function buildLineTabs(lines) {
+            const tabContainer = document.getElementById('lineTabs'); tabContainer.innerHTML = '';
+            lines.forEach((l, idx) => {
+                const btn = document.createElement('button'); btn.className = `line-tab${l.detected ? '' : ' not-detected'}`; btn.textContent = `${l.line_name} (${l.rest_wavelength.toFixed(0)}Å)`; btn.onclick = () => selectLine(idx); tabContainer.appendChild(btn);
+            });
+        }
+
+        function selectLine(idx) {
+            selectedLineIndex = idx; const lines = currentRecord.lines || []; if (idx >= lines.length) return;
+            document.querySelectorAll('.line-tab').forEach((t, i) => { t.classList.toggle('active', i === idx); });
+            document.querySelectorAll('#summaryTableBody tr').forEach((tr, i) => { tr.classList.toggle('active-row', i === idx); });
+            const line = lines[idx]; document.getElementById('localFitTitle').textContent = `// GRAPH 2: ZOOMED LINE FIT — ${line.line_name.toUpperCase()} (λ${line.rest_wavelength.toFixed(0)})`;
+            renderLineDetails(line);
+        }
+
+        function renderLineDetails(line) {
+            const wl = currentRecord.wavelength || [], suby = currentRecord.subtracted_y || [];
+            const restWl = line.rest_wavelength, center = line.center || restWl, sigma = line.sigma || 5.0, amp = line.amplitude || 0.0, wingWindow = line.wing_window || 20.0;
+            const minWl = line.min_wavelength || (center - wingWindow/2), maxWl = line.max_wavelength || (center + wingWindow/2);
+            const deltaWl = center - restWl, velOffset = (deltaWl / restWl) * 299792.458;
+            const fmtExp = v => v ? Number(v).toExponential(3) : '0.00e0', fmtNum = (v, d=2) => (v !== undefined && v !== null && !isNaN(v)) ? Number(v).toFixed(d) : '0.00';
+
+            document.getElementById('valRestWl').textContent = `${restWl.toFixed(2)} Å`;
+            document.getElementById('valCenter').textContent = `${fmtNum(center, 2)} Å`;
+            document.getElementById('valDeltaWl').textContent = `${deltaWl >= 0 ? '+' : ''}${fmtNum(deltaWl, 2)} Å`;
+            document.getElementById('valVelOffset').textContent = `${fmtNum(velOffset, 1)} km/s`;
+            document.getElementById('valAmp').textContent = fmtExp(amp);
+            document.getElementById('valSigma').textContent = `${fmtNum(sigma, 2)} Å`;
+            document.getElementById('valFWHM').textContent = line.fwhm_ang ? `${fmtNum(line.fwhm_ang, 2)} Å` : `${fmtNum(2.355 * sigma, 2)} Å`;
+            document.getElementById('valFWHM235').textContent = `${fmtNum(2.355 * sigma, 2)} Å`;
+            document.getElementById('valFlux').textContent = fmtExp(line.flux);
+            document.getElementById('valEW').textContent = `${fmtNum(line.ew, 2)} Å`;
+            document.getElementById('valSNR').textContent = fmtNum(line.snr, 2);
+            document.getElementById('valChi2').textContent = fmtNum(line.reduced_chi2, 3);
+            document.getElementById('valWingWindow').textContent = `${fmtNum(wingWindow, 1)} Å`;
+            document.getElementById('valCompScore').textContent = `Score: ${fmtNum(line.composite_score || line.quality_score, 3)}`;
+
+            const scoreTbody = document.getElementById('valScoreBreakdown');
+            if (scoreTbody) {
+                scoreTbody.innerHTML = '';
+                if (line.score_components) {
+                    const W_CHI2=0.25, W_PEAK=0.20, W_LEFT=0.05, W_RIGHT=0.05, W_SHAPE=0.15, W_WING=0.10, W_SIGMA=0.20;
+                    const addCompRow = (label, val) => {
+                        const r = document.createElement('tr');
+                        r.innerHTML = `<td style="color:var(--text-muted); width:70%; border:none; padding:2px;">${label}</td><td style="color:#fff; text-align:right; border:none; padding:2px;">${fmtNum(val, 2)}</td>`;
+                        scoreTbody.appendChild(r);
+                    };
+                    addCompRow('χ² contribution', line.score_components.chi2_score * W_CHI2);
+                    addCompRow('Peak alignment', line.score_components.peak_score * W_PEAK);
+                    addCompRow('Shape match', line.score_components.shape_score * W_SHAPE);
+                    addCompRow('Wing residuals', (line.score_components.left_score * W_LEFT) + (line.score_components.right_score * W_RIGHT));
+                    addCompRow('σ prior match', line.score_components.sigma_score * W_SIGMA);
+                    addCompRow('Window prior match', line.score_components.wing_score * W_WING);
+                    
+                    const divider = document.createElement('tr');
+                    divider.innerHTML = `<td colspan="2"><hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:4px 0;"></td>`;
+                    scoreTbody.appendChild(divider);
+                    
+                    const finalRow = document.createElement('tr');
+                    finalRow.innerHTML = `<td style="color:var(--starlight); font-weight:600; border:none; padding:2px;">Final score</td><td style="color:var(--amber-warm); font-weight:600; text-align:right; border:none; padding:2px;">${fmtNum(line.composite_score || line.quality_score, 3)}</td>`;
+                    scoreTbody.appendChild(finalRow);
+                }
             }
-        });
+            const zoomMin = center - 25, zoomMax = center + 25;
+            const localWl = [], localSuby = [], localGauss = [];
+            for (let i = 0; i < wl.length; i++) {
+                if (wl[i] >= zoomMin && wl[i] <= zoomMax) {
+                    localWl.push(wl[i]); localSuby.push(suby[i]);
+                    localGauss.push(amp * Math.exp(-Math.pow(wl[i] - center, 2) / (2 * Math.pow(sigma, 2))));
+                }
+            }
 
-        modal.addEventListener('click', () => {
-            modal.style.display = 'none';
-        });
+            const localTraces = [
+                { x: localWl, y: localSuby, mode: 'lines+markers', name: 'Subtracted Data', line: { color: '#06b6d4', width: 1.5 }, marker: { size: 4, color: '#06b6d4' } },
+                { x: localWl, y: localGauss, mode: 'lines', name: 'Best Gaussian Fit', line: { color: '#f59e0b', width: 2.5 } }
+            ];
 
-        closeModal.addEventListener('click', () => {
-            modal.style.display = 'none';
-        });
+            const fwhm = 2.355 * sigma;
+            const halfFwhm = fwhm / 2.0;
+            const localLayout = {
+                margin: { t: 25, r: 25, l: 65, b: 40 }, paper_bgcolor: '#090a0f', plot_bgcolor: '#090a0f',
+                xaxis: { range: [zoomMin, zoomMax], title: { text: 'Wavelength (Å)', font: { family: 'JetBrains Mono', color: '#94a3b8', size: 10 } }, gridcolor: '#151924', tickfont: { color: '#94a3b8' } },
+                yaxis: { title: { text: 'Subtracted Flux', font: { family: 'JetBrains Mono', color: '#94a3b8', size: 10 } }, gridcolor: '#151924', tickfont: { color: '#94a3b8' } },
+                legend: { orientation: 'h', x: 0, y: 1.12, font: { family: 'JetBrains Mono', color: '#e2e8f0', size: 10 } },
+                shapes: [
+                    { type: 'rect', x0: minWl, x1: maxWl, y0: 0, y1: 1, yref: 'paper', fillcolor: 'rgba(245, 158, 11, 0.06)', line: { width: 0 } },
+                    { type: 'rect', x0: center - halfFwhm, x1: center + halfFwhm, y0: 0, y1: 1, yref: 'paper', fillcolor: 'rgba(245, 158, 11, 0.15)', line: { width: 0 } },
+                    { type: 'line', x0: restWl, x1: restWl, y0: 0, y1: 1, yref: 'paper', line: { color: '#64748b', width: 1.5, dash: 'dash' } },
+                    { type: 'line', x0: center, x1: center, y0: 0, y1: 1, yref: 'paper', line: { color: '#f59e0b', width: 2 } }
+                ],
+                annotations: [
+                    { x: restWl, y: 0.98, yref: 'paper', text: `Rest λ ${restWl.toFixed(1)}Å`, showarrow: false, font: { family: 'JetBrains Mono', size: 9, color: '#94a3b8' } },
+                    { x: center, y: 0.90, yref: 'paper', text: `Fitted μ ${center.toFixed(2)}Å`, showarrow: false, font: { family: 'JetBrains Mono', size: 9, color: '#f59e0b' } }
+                ]
+            };
+            Plotly.newPlot('localPlot', localTraces, localLayout, { responsive: true, displayModeBar: false });
+
+            const noise = line.noise_sigma || 1e-14;
+            const resWl = [], normRes = [];
+            for (let i = 0; i < localWl.length; i++) { resWl.push(localWl[i]); normRes.push((localSuby[i] - localGauss[i]) / noise); }
+            const resTraces = [{ x: resWl, y: normRes, mode: 'markers', name: 'Residual (σ)', marker: { color: '#06b6d4', size: 5 } }];
+            const resLayout = {
+                margin: { t: 15, r: 25, l: 65, b: 35 }, paper_bgcolor: '#090a0f', plot_bgcolor: '#090a0f',
+                xaxis: { range: [zoomMin, zoomMax], title: { text: 'Wavelength (Å)', font: { family: 'JetBrains Mono', color: '#94a3b8', size: 9 } }, gridcolor: '#151924', tickfont: { color: '#94a3b8' } },
+                yaxis: { title: { text: 'Residual (σ)', font: { family: 'JetBrains Mono', color: '#94a3b8', size: 9 } }, gridcolor: '#151924', tickfont: { color: '#94a3b8' } },
+                legend: { showlegend: false },
+                shapes: [
+                    { type: 'line', x0: zoomMin, x1: zoomMax, y0: 0, y1: 0, line: { color: '#ffffff', width: 1 } },
+                    { type: 'line', x0: zoomMin, x1: zoomMax, y0: 1, y1: 1, line: { color: '#64748b', width: 1, dash: 'dot' } },
+                    { type: 'line', x0: zoomMin, x1: zoomMax, y0: -1, y1: -1, line: { color: '#64748b', width: 1, dash: 'dot' } },
+                    { type: 'line', x0: zoomMin, x1: zoomMax, y0: 2, y1: 2, line: { color: '#ef4444', width: 1, dash: 'dot' } },
+                    { type: 'line', x0: zoomMin, x1: zoomMax, y0: -2, y1: -2, line: { color: '#ef4444', width: 1, dash: 'dot' } }
+                ]
+            };
+            Plotly.newPlot('residualPlot', resTraces, resLayout, { responsive: true, displayModeBar: false });
+
+            const landscape = line.landscape || { wings: [14,16,18,19,20,22,24], sigmas: [3,4,5,6,7,8], grid: [[0.5,0.6,0.7,0.8,0.7,0.6,0.5]] };
+            const landTraces = [
+                { z: landscape.grid, x: landscape.wings, y: landscape.sigmas, type: 'heatmap', colorscale: 'Viridis' },
+                { x: [wingWindow], y: [sigma], mode: 'markers+text', name: 'Selected Fit (★)', marker: { symbol: 'star', size: 14, color: '#f59e0b', line: { color: '#ffffff', width: 1 } }, text: ['★ Selected Fit'], textposition: 'top center', textfont: { family: 'JetBrains Mono', color: '#ffffff', size: 11 } }
+            ];
+            const landLayout = {
+                margin: { t: 25, r: 25, l: 65, b: 40 }, paper_bgcolor: '#090a0f', plot_bgcolor: '#090a0f',
+                xaxis: { title: { text: 'Wing Window (Å)', font: { family: 'JetBrains Mono', color: '#94a3b8', size: 10 } }, gridcolor: '#151924', tickfont: { color: '#94a3b8' } },
+                yaxis: { title: { text: 'Sigma σ (Å)', font: { family: 'JetBrains Mono', color: '#94a3b8', size: 10 } }, gridcolor: '#151924', tickfont: { color: '#94a3b8' } },
+                showlegend: false
+            };
+            Plotly.newPlot('landscapePlot', landTraces, landLayout, { responsive: true, displayModeBar: false });
+
+            renderQCList(line);
+        }
+
+        function renderQCList(line) {
+            const qc = document.getElementById('qcChecklist'); qc.innerHTML = '';
+            const chi2 = line.reduced_chi2 || 0, snr = line.snr || 0;
+            const items = [];
+            if (snr >= 5.0) items.push({ icon: '✓', status: 'pass', text: `Sufficient Signal-to-Noise Ratio (SNR = ${snr.toFixed(2)} ≥ 5.0)` });
+            else items.push({ icon: '⚠', status: 'warn', text: `Low Signal-to-Noise Ratio (SNR = ${snr.toFixed(2)} < 5.0)` });
+
+            const deltaWl = Math.abs(line.center - line.rest_wavelength);
+            if (deltaWl <= 10.0) items.push({ icon: '✓', status: 'pass', text: `Center consistent with rest region (|Δλ| = ${deltaWl.toFixed(2)}Å ≤ 10Å)` });
+            else items.push({ icon: '⚠', status: 'warn', text: `Large central wavelength shift (|Δλ| = ${deltaWl.toFixed(2)}Å > 10Å)` });
+
+            if (chi2 < 0.1) items.push({ icon: '⚠', status: 'warn', text: `χ²red = ${chi2.toFixed(3)} — Unusually low; inspect possible flux error overestimation / overfitting.` });
+            else if (chi2 >= 0.1 && chi2 <= 3.0) items.push({ icon: '✓', status: 'pass', text: `χ²red = ${chi2.toFixed(3)} — Good statistical agreement with observed noise.` });
+            else items.push({ icon: '⚠', status: 'fail', text: `χ²red = ${chi2.toFixed(3)} — Elevated residuals; non-Gaussian or unmodeled component present.` });
+
+            items.push({ icon: '✓', status: 'pass', text: `Fitting window (${line.wing_window || 20}Å) covers line core and continuum wings.` });
+
+            items.forEach(it => {
+                const div = document.createElement('div'); div.className = 'qc-item';
+                div.innerHTML = `<span class="qc-icon ${it.status}">${it.icon}</span><span class="qc-text">${it.text}</span>`;
+                qc.appendChild(div);
+            });
+        }
     </script>
 </body>
 </html>

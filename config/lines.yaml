@@ -1,0 +1,78 @@
+# ===========================================================================
+# lines.yaml — Master emission-line catalog for 3C273 UV spectral fitting
+# ===========================================================================
+#
+# Each entry defines one spectral emission line to be fitted per spectrum.
+# Lines are ordered by rest wavelength (ascending).
+# The wavelength range covered by the IUE spectra is approximately 906-1832 Å.
+#
+# For each line:
+#   name            : human-readable line identifier
+#   rest_wavelength : vacuum rest wavelength (Å)
+#   config          : path to per-line fitting YAML config
+#   enabled         : set to false to skip this line without removing the entry
+#
+# ---------------------------------------------------------------------------
+lines:
+
+  - name: "Lyman Alpha"
+    rest_wavelength: 1216.0
+    config: "config/Lya.yaml"
+    model_type: "single_gaussian"
+    enabled: true
+
+  - name: "N V"
+    rest_wavelength: 1240.0
+    config: "config/NV.yaml"
+    model_type: "tied_doublet"
+    components: [1238.82, 1242.80]
+    enabled: true
+
+  - name: "O I + Si II"
+    rest_wavelength: 1305.0
+    config: "config/OI.yaml"
+    model_type: "multi_component_blend"
+    components: [1302.17, 1304.37, 1309.28]
+    enabled: true
+
+  - name: "C II"
+    rest_wavelength: 1335.0
+    config: "config/CII.yaml"
+    model_type: "single_gaussian"
+    enabled: true
+
+  - name: "Si IV + O IV]"
+    rest_wavelength: 1400.0
+    config: "config/SiIV.yaml"
+    model_type: "multi_component_blend"
+    components: [1393.76, 1399.80, 1402.77]
+    enabled: true
+
+  - name: "C IV"
+    rest_wavelength: 1549.0
+    config: "config/CIV.yaml"
+    model_type: "tied_doublet"
+    components: [1548.20, 1550.77]
+    enabled: true
+
+  - name: "He II"
+    rest_wavelength: 1640.0
+    config: "config/HeII.yaml"
+    model_type: "single_gaussian"
+    enabled: true
+
+  - name: "O III]"
+    rest_wavelength: 1665.0
+    config: "config/OIII.yaml"
+    model_type: "single_gaussian"
+    enabled: true
+
+  - name: "Al III"
+    rest_wavelength: 1857.0
+    config: "config/AlIII.yaml"
+    enabled: false       # Near edge of IUE range — enable if spectra extend far enough
+
+  - name: "C III]"
+    rest_wavelength: 1909.0
+    config: "config/CIII.yaml"
+    enabled: false       # Typically outside IUE short-wavelength range for 3C273

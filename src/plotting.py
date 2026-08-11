@@ -19,11 +19,23 @@ def save_publication_plots(record: Dict[str, Any], output_dir: str = "outputs/pl
     cont = record['continuum_fit']
     sub = record['subtracted_y']
     
-    amp = record['amplitude']
-    center = record['center']
-    sigma = record['sigma']
-    min_wl = record['min_wavelength']
-    max_wl = record['max_wavelength']
+    lines = record.get('lines', [])
+    best_line = None
+    for l in lines:
+        if l.get('detected'):
+            if l.get('rest_wavelength', 0) == 1216.0 or best_line is None:
+                best_line = l
+    if not best_line and lines:
+        best_line = lines[0]
+
+    if best_line:
+        amp = best_line.get('amplitude', 0)
+        center = best_line.get('center', 0)
+        sigma = best_line.get('sigma', 5.0)
+        min_wl = best_line.get('min_wavelength', 0)
+        max_wl = best_line.get('max_wavelength', 0)
+    else:
+        amp, center, sigma, min_wl, max_wl = 0, 0, 5.0, 0, 0
     
     # 1. Emission Fit Plot
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True, gridspec_kw={'height_ratios': [3, 1]})
@@ -55,8 +67,10 @@ def save_publication_plots(record: Dict[str, Any], output_dir: str = "outputs/pl
     ax1.legend(loc='upper right', fontsize=10)
     ax1.grid(True, alpha=0.3)
     
-    # Annotate stats
-    info_str = f"χ²_red: {float(record['reduced_chi2']):.2f}\nSNR: {float(record['snr']):.2f}\nFlux: {float(record['flux']):.3e}\nFWHM: {float(record['fwhm_kms']):.1f} km/s"
+    if best_line:
+        info_str = f"χ²_red: {float(best_line.get('reduced_chi2', 0)):.2f}\nSNR: {float(best_line.get('snr', 0)):.2f}\nFlux: {float(best_line.get('flux', 0)):.3e}\nFWHM: {float(best_line.get('fwhm_kms', 0)):.1f} km/s"
+    else:
+        info_str = "No detected lines"
     ax1.text(0.02, 0.95, info_str, transform=ax1.transAxes, fontsize=10,
              verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
              

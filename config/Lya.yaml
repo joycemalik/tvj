@@ -1,35 +1,67 @@
-line_name: "Lyman Alpha (Lyα)"
-rest_wavelength: 1216.0  # Angstrom
+line_name: "Lyman Alpha (Lya)"
+rest_wavelength: 1216.0       # Angstrom
+model: "single_gaussian"
 
-# ---- Candidate Engine Grid Search Parameters ----
-# The new engine performs exhaustive discrete search over these grids.
+# ===========================================================================
+# WING WINDOW CONVENTION
+# ===========================================================================
+# wing_window is the FULL window width (confirmed from original JS source):
+#   I = R.wingWindow / 2
+#   min = center - I
+#   max = center + I
+#
+# Approved examples:
+#   Spectrum 15:  center=1215,    wing=20, min=1205,    max=1225    (half=10)
+#   Spectrum 16:  center=1216,    wing=21, min=1205.5,  max=1226.5  (half=10.5)
+#   Spectrum 17:  center=1217,    wing=21, min=1206.5,  max=1227.5  (half=10.5)
+#   Spectrum 18:  center=1214.5,  wing=19, min=1205,    max=1224    (half=9.5)
+#   Spectrum 153: center=1213,    wing=18, min=1204,    max=1222    (half=9)
+#   Spectrum 172: center=1213.75, wing=17, min=1205.25, max=1222.25 (half=8.5)
+# ===========================================================================
 
 amplitude:
-  # Amp range is auto-computed relative to observed peak (0.4x .. 2.0x)
-  # You can override with explicit min/max in physical units (erg/s/cm2/Ang):
-  # min: 1.0e-14
-  # max: 1.0e-11
-  steps: 20           # Number of amplitude steps
+  # Auto-computed analytically via linear least squares in Stage 1.
+  # No grid steps required.
 
 center:
-  range: 5.0          # Search +/- this many Angstrom around observed peak
-  step: 0.5           # Grid step in Angstrom (expert-preferred half-Angstrom resolution)
+  range: 5.0          # Search ±5 Å around observed emission peak
+  step: 0.1           # Fine grid step for Stage-1 search (Å)
 
 sigma:
-  # Integer Angstrom values preferred by expert astronomers:
-  grid: [4, 5, 6, 7, 8, 9, 10]
+  # Stage-1 searches a fine grid. Stage-2 fixes sigma and refines center/amp.
+  # Data-driven bounds from 6 approved Lyα fits:
+  #   sigma = 4.49, 4.73, 4.86, 5.27, 5.39, 5.64  → range 4.49 to 5.64 Å
+  # Hard bounds: allow slight margin below and above approved range.
+  min: 2.5            # Hard lower bound (Å)
+  max: 6.5            # Hard upper bound (Å)
+  step: 0.1           # Fine grid step for Stage-1 search (Å)
+  #
+  # Sigma prior for scoring: soft Gaussian prior in composite score.
+  # Mean of approved: 5.06 Å, std: 0.43 Å
+  # Prior_std slightly wider (1.0) for robustness across spectra:
+  prior_center: 5.0   # Å — expected sigma for Lyα
+  prior_std:    1.0   # Å — wider prior since hard bound does primary constraining
+
+
 
 wing_window:
-  # Integer Angstrom values preferred by expert astronomers:
-  grid: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
+  # FULL window widths (Å) to evaluate.
+  # Approved examples use wings 17–21.
+  # Grid covers 14–25 to allow search above and below the approved range.
+  grid: [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
+  #
+  # Wing prior for scoring: soft Gaussian prior on the window width.
+  # Derived from approved Lyα fits:
+  #   wings = 17, 18, 19, 20, 21  → median = 19, mean = 19
+  # prior_std=2: wing=15 scores 0.29, wing=19 scores 1.0, wing=23 scores 0.29
+  prior_center: 19.0  # Å (full width) — median of approved wings
+  prior_std:    2.0   # Å — std=2 makes >4Å deviation substantially penalised
 
-# Peak search radius (Angstrom around rest_wavelength to find emission peak)
+
+# Peak search radius (Å around rest_wavelength to locate emission peak)
 peak_search_radius: 15.0
 
-# SNR target for scoring (used in snr_score component)
-snr_target: 7.0
-
-# Quality criteria for ACCEPTED / REJECTED classification
+# Quality thresholds
 snr_min: 5.0
-snr_max: 12.0
+snr_max: 15.0
 chi2_red_max: 5.0

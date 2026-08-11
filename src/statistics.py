@@ -4,23 +4,19 @@ from config import SPEED_OF_LIGHT_KMS, SIGMA_CLIP_ITERS, SIGMA_CLIP_THRESHOLD, L
 
 def estimate_noise(residuals: np.ndarray, n_iters: int = SIGMA_CLIP_ITERS, threshold: float = SIGMA_CLIP_THRESHOLD) -> float:
     """
-    Estimates noise std via iterative sigma clipping on residual points within fit window,
-    matching the JS bundle `Sp(va, mo, Xl)` implementation.
+    Estimates noise std via Median Absolute Deviation (MAD), scaled to match a normal distribution.
+    This provides a robust noise estimate that isn't heavily inflated by the line wings in the residuals.
     """
-    clipped = residuals.copy()
-    for _ in range(n_iters):
-        if len(clipped) < 6:
-            break
-        mean = np.mean(clipped)
-        std = np.std(clipped, ddof=1)
-        mask = np.abs(clipped - mean) <= threshold * std
-        if np.sum(mask) == len(clipped):
-            break
-        clipped = clipped[mask]
-        
-    if len(clipped) < 2:
+    if len(residuals) < 2:
         return 1.0e-20
-    return float(np.std(clipped, ddof=1))
+    
+    median = np.median(residuals)
+    mad = np.median(np.abs(residuals - median))
+    robust_std = float(mad * 1.4826)
+    
+    if robust_std <= 1.0e-30:
+        return 1.0e-20
+    return robust_std
 
 def compute_statistics(
     wavelength: np.ndarray,
@@ -72,9 +68,10 @@ def compute_statistics(
     dof = max(len(wl_win) - 3, 1)
     reduced_chi2 = chi2 / dof
     
-    # 3. Flux via Trapezoidal integration
+    # 3. Flux via Trapezoidal integration of the GAUSSIAN MODEL
+    # This matches the reference JS calculator which calculates flux from the fitted model.
     _trapz = getattr(np, 'trapezoid', getattr(np, 'trapz', None))
-    flux = float(_trapz(sub_win, wl_win)) if len(wl_win) > 1 else 0.0
+    flux = float(_trapz(g_model, wl_win)) if len(wl_win) > 1 else 0.0
     
     # Flux Error estimation (matching JS bundle: sqrt(N) * noise_sigma * factor * mean_cont)
     n_pts = len(wl_win)
