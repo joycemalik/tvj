@@ -148,6 +148,17 @@
                         </div>
                     </div>
                     <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                        <div class="nolan-card" style="border: 1px solid var(--starlight); background: rgba(225, 203, 115, 0.05);">
+                            <div class="section-subtitle" style="color: var(--starlight); font-size: 0.85rem; letter-spacing: 1px;">// FINAL GAUSSIAN PARAMETERS</div>
+                            <table class="params-table" style="font-size: 0.95rem; margin-top: 0.5rem;">
+                                <tr><td class="param-name" style="color: #fff;">Amplitude</td><td class="param-value" id="valOutAmp" style="color: var(--starlight); font-weight: 600;"></td></tr>
+                                <tr><td class="param-name" style="color: #fff;">Line Center (Å)</td><td class="param-value" id="valOutCenter" style="color: var(--starlight); font-weight: 600;"></td></tr>
+                                <tr><td class="param-name" style="color: #fff;">Wing Window (Å)</td><td class="param-value" id="valOutWing" style="color: var(--starlight); font-weight: 600;"></td></tr>
+                                <tr><td class="param-name" style="color: #fff;">Min Wavelength (Å)</td><td class="param-value" id="valOutMin" style="color: var(--starlight); font-weight: 600;"></td></tr>
+                                <tr><td class="param-name" style="color: #fff;">Max Wavelength (Å)</td><td class="param-value" id="valOutMax" style="color: var(--starlight); font-weight: 600;"></td></tr>
+                                <tr><td class="param-name" style="color: #fff;">Sigma (Å)</td><td class="param-value" id="valOutSigma" style="color: var(--starlight); font-weight: 600;"></td></tr>
+                            </table>
+                        </div>
                         <div class="nolan-card">
                             <div class="section-subtitle">// SCIENTIFIC GAUSSIAN PARAMETERS</div>
                             <table class="params-table">
@@ -277,6 +288,13 @@
             const minWl = line.min_wavelength || (center - wingWindow/2), maxWl = line.max_wavelength || (center + wingWindow/2);
             const deltaWl = center - restWl, velOffset = (deltaWl / restWl) * 299792.458;
             const fmtExp = v => v ? Number(v).toExponential(3) : '0.00e0', fmtNum = (v, d=2) => (v !== undefined && v !== null && !isNaN(v)) ? Number(v).toFixed(d) : '0.00';
+
+            document.getElementById('valOutAmp').textContent = fmtExp(amp);
+            document.getElementById('valOutCenter').textContent = `${fmtNum(center, 2)}`;
+            document.getElementById('valOutWing').textContent = `${fmtNum(wingWindow, 0)}`;
+            document.getElementById('valOutMin').textContent = `${fmtNum(minWl, 2)}`;
+            document.getElementById('valOutMax').textContent = `${fmtNum(maxWl, 2)}`;
+            document.getElementById('valOutSigma').textContent = `${fmtNum(sigma, 2)}`;
 
             document.getElementById('valRestWl').textContent = `${restWl.toFixed(2)} Å`;
             document.getElementById('valCenter').textContent = `${fmtNum(center, 2)} Å`;
