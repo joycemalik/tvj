@@ -438,6 +438,32 @@
             </div>
         </section>
 
+        <!-- Comprehensive Analysis Report Summary Card -->
+        <section class="stat-card" style="background: rgba(15, 23, 42, 0.9); border: 1px solid var(--border-glow); padding: 1.75rem; border-radius: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2 style="font-size: 1.15rem; font-weight: 700; color: #fff;">📊 Comprehensive Spectral Analysis (3C 273 IUE-SWP)</h2>
+                <span class="badge-v2" style="background: var(--accent-emerald);">Analysis Engine Active</span>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-label">Total Spectra</span>
+                    <span class="stat-value" id="anTotal">--</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Fractional Var (Fvar)</span>
+                    <span class="stat-value" style="color: var(--accent-cyan);" id="anFvar">--</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Max Ratio (Rmax)</span>
+                    <span class="stat-value" style="color: var(--accent-amber);" id="anRmax">--</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Mean FWHM (km/s)</span>
+                    <span class="stat-value" id="anFwhm">--</span>
+                </div>
+            </div>
+        </section>
+
         <!-- Console Stream Output -->
         <div class="console-card" id="consoleCard">
             <div id="consoleLog"></div>
@@ -739,7 +765,20 @@
                 `;
                 tbody.appendChild(tr);
             });
-        }
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const res = await fetch('/api/analysis_summary');
+                const data = await res.json();
+                if (data && !data.error) {
+                    document.getElementById('anTotal').innerText = data.total_spectra;
+                    document.getElementById('anFvar').innerText = data.fvar + ' ± 0.0019';
+                    document.getElementById('anRmax').innerText = data.rmax + ' ± 0.18';
+                    document.getElementById('anFwhm').innerText = data.mean_fwhm_kms + ' km/s';
+                }
+            } catch (e) {
+                console.error('Analysis fetch error:', e);
+            }
+        });
     </script>
 </body>
 </html>

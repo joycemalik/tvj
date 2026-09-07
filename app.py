@@ -53,6 +53,49 @@ def index_v2():
     return render_template('index_v2.html')
 
 
+@app.route('/api/analysis_summary')
+def analysis_summary():
+    try:
+        import pandas as pd
+        excel_file = os.path.join(os.path.dirname(__file__), 'Approved_From_Jasil_ALL_COLUMNS.xlsx')
+        if not os.path.exists(excel_file):
+            excel_file = os.path.join(os.path.dirname(__file__), 'Ly.xlsx')
+        df_raw = pd.read_excel(excel_file)
+        df = df_raw.dropna(subset=['Spectrum']).copy()
+        df['Emission Line'] = df['Emission Line'].astype(str).str.strip().str.upper()
+        ly_df = df[df['Emission Line'] == 'LYMAN ALPHA'].copy()
+
+        F = ly_df['Flux'].values
+        E = ly_df['Flux Error'].values
+        mask = np.isfinite(F) & np.isfinite(E)
+        F, E = F[mask], E[mask]
+        n = len(F)
+
+        xbar = float(np.mean(F))
+        xe = float(np.mean(E))
+        S2 = float(np.sum((F - xbar)**2) / (n - 1))
+        H = float(np.sum(E**2) / n)
+        E_val = S2 - H
+        N_val = float(np.sqrt(abs(E_val)))
+        Fvar = float(N_val / xbar) if xbar != 0 else 0.0
+
+        Fmax = float(np.max(F))
+        Fmin = float(np.min(F))
+        Rmax = float(Fmax / Fmin) if Fmin != 0 else 0.0
+
+        return jsonify({
+            'total_spectra': int(len(ly_df)),
+            'fvar': round(Fvar, 4),
+            'rmax': round(Rmax, 4),
+            'mean_flux': round(xbar * 1e13, 3),
+            'mean_snr': round(float(np.nanmean(ly_df['SNR'])), 2),
+            'mean_ew': round(float(np.nanmean(ly_df['EW'])), 2),
+            'mean_fwhm_kms': round(float(np.nanmean(ly_df['FWHM (km/s)'])), 1)
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 tasks = {}
 
 class QueueWriter:
