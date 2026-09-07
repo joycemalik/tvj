@@ -599,43 +599,24 @@
             }
 
             try {
-                const resp = await fetch('/upload_fit', {
+                // First try direct POST fit for immediate JSON response (works on Vercel & serverless)
+                logConsole('Uploading file for spectrum diagnostic processing...');
+                const fitResp = await fetch('/fit', {
                     method: 'POST',
                     body: formData
                 });
-                const data = await resp.json();
+                const fitData = await fitResp.json();
 
-                if (data.error) {
-                    logConsole(`ERROR: ${data.error}`);
+                if (fitData.error) {
+                    logConsole(`ERROR: ${fitData.error}`);
                     return;
                 }
 
-                const taskId = data.task_id;
-                logConsole(`Task created ID: ${taskId}. Opening EventStream...`);
-
-                const eventSource = new EventSource(`/stream/${taskId}`);
-                eventSource.onmessage = (event) => {
-                    const msg = JSON.parse(event.data);
-                    if (msg.type === 'log') {
-                        logConsole(msg.message);
-                    } else if (msg.type === 'result') {
-                        eventSource.close();
-                        logConsole('Processing successfully finished! Rendering V2 dashboard...');
-                        currentRecordV2 = msg.data;
-                        renderV2Results(msg.data);
-                    } else if (msg.type === 'error') {
-                        eventSource.close();
-                        logConsole(`FAILURE: ${msg.message}`);
-                    }
-                };
-
-                eventSource.onerror = () => {
-                    eventSource.close();
-                    logConsole('Stream connection closed.');
-                };
-
+                logConsole('Spectrum fit completed successfully! Rendering V2 dashboard...');
+                currentRecordV2 = fitData;
+                renderV2Results(fitData);
             } catch (err) {
-                logConsole(`Network Error: ${err.message}`);
+                logConsole(`Processing error: ${err.message}`);
             }
         }
 
