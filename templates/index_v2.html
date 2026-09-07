@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UV Spectrum Analyzer | V2 Diagnostic Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        :root {
+            --bg-main: #060913;
+            --panel-bg: rgba(15, 23, 42, 0.75);
+            --card-bg: #0f172a;
+            --accent-cyan: #38bdf8;
+            --accent-violet: #818cf8;
+            --accent-emerald: #34d399;
+            --accent-rose: #fb7185;
+            --accent-amber: #fbbf24;
+            --border-glow: rgba(56, 189, 248, 0.2);
+            --border-dim: rgba(255, 255, 255, 0.08);
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+            --text-muted: #64748b;
+            --font-sans: 'Plus Jakarta Sans', sans-serif;
+            --font-mono: 'Space Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.12) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(129, 140, 248, 0.1) 0px, transparent 50%),
+                radial-gradient(at 50% 50%, rgba(15, 23, 42, 0.5) 0px, transparent 100%);
+            color: var(--text-main);
+            font-family: var(--font-sans);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Glassmorphism Header */
+        header {
+            width: 100%;
+            padding: 1.25rem 2.5rem;
+            background: rgba(10, 15, 30, 0.8);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border-glow);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .brand-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .badge-v2 {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-violet));
+            color: #000;
+            font-weight: 800;
+            font-size: 0.7rem;
+            padding: 0.25rem 0.6rem;
+            border-radius: 6px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .brand-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(to right, #fff, var(--text-sub));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .v1-legacy-btn {
+            border: 1px solid var(--border-dim);
+            padding: 0.4rem 0.9rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: var(--text-sub);
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .v1-legacy-btn:hover {
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+            background: rgba(56, 189, 248, 0.05);
+        }
+
+        main {
+            max-width: 1440px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 2rem;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        /* Hero Upload Card */
+        .hero-card {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glow);
+            border-radius: 16px;
+            padding: 3rem;
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.05) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .hero-title {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 0.75rem;
+            letter-spacing: -0.5px;
+        }
+
+        .hero-subtitle {
+            color: var(--text-sub);
+            max-width: 600px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+        }
+
+        .dropzone-v2 {
+            width: 100%;
+            max-width: 680px;
+            border: 2px dashed rgba(56, 189, 248, 0.3);
+            border-radius: 12px;
+            padding: 2.5rem 1.5rem;
+            background: rgba(6, 9, 19, 0.4);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .dropzone-v2:hover {
+            border-color: var(--accent-cyan);
+            background: rgba(56, 189, 248, 0.04);
+            transform: translateY(-2px);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-violet));
+            color: #000;
+            font-weight: 700;
+            padding: 0.75rem 1.75rem;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: opacity 0.2s, transform 0.2s;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.95;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            font-weight: 600;
+            padding: 0.75rem 1.75rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-dim);
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--text-sub);
+        }
+
+        /* Console Stream */
+        .console-card {
+            display: none;
+            background: #04060d;
+            border: 1px solid var(--border-dim);
+            border-radius: 12px;
+            padding: 1.25rem;
+            font-family: var(--font-mono);
+            font-size: 0.82rem;
+            max-height: 180px;
+            overflow-y: auto;
+            color: var(--accent-cyan);
+        }
+
+        .console-line {
+            margin-bottom: 0.35rem;
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .console-timestamp {
+            color: var(--text-muted);
+        }
+
+        /* Results Dashboard */
+        .results-container {
+            display: none;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .stat-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-dim);
+            border-radius: 12px;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .plot-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-dim);
+            border-radius: 14px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-dim);
+            padding-bottom: 0.75rem;
+        }
+
+        .panel-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .tab-group {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .tab-btn {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-dim);
+            color: var(--text-sub);
+            padding: 0.4rem 0.85rem;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: var(--accent-cyan);
+            color: #000;
+            font-weight: 700;
+            border-color: var(--accent-cyan);
+        }
+
+        .plot-box {
+            width: 100%;
+            height: 420px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .table-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-dim);
+            border-radius: 14px;
+            padding: 1.5rem;
+            overflow-x: auto;
+        }
+
+        table.v2-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            text-align: left;
+        }
+
+        table.v2-table th {
+            padding: 0.75rem 1rem;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border-dim);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            letter-spacing: 0.5px;
+        }
+
+        table.v2-table td {
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid var(--border-dim);
+            color: var(--text-main);
+        }
+
+        table.v2-table tr:hover {
+            background: rgba(255, 255, 255, 0.03);
+            cursor: pointer;
+        }
+
+        .badge-status {
+            display: inline-block;
+            padding: 0.25rem 0.6rem;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+
+        .badge-status.pass {
+            background: rgba(52, 211, 153, 0.15);
+            color: var(--accent-emerald);
+            border: 1px solid var(--accent-emerald);
+        }
+
+        .badge-status.fail {
+            background: rgba(251, 113, 133, 0.15);
+            color: var(--accent-rose);
+            border: 1px solid var(--accent-rose);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand-container">
+            <span class="brand-title">UV Spectrum Diagnostic Workbench</span>
+            <span class="badge-v2">V2 Studio</span>
+        </div>
+        <div class="nav-links">
+            <a href="/" class="v1-legacy-btn">← Switch to Classic V1 View</a>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero-card">
+            <h1 class="hero-title">Next-Gen Spectrum Diagnostics</h1>
+            <p class="hero-subtitle">High-fidelity line fitting, automated doublet analysis, and scientific quality control powered by V2 diagnostic pipeline engines.</p>
+            
+            <div class="dropzone-v2" id="dropzoneV2">
+                <div style="font-size: 2.5rem; opacity: 0.8;">📊</div>
+                <div style="font-weight: 600; font-size: 1.05rem;">Drag & drop your spectrum file here</div>
+                <div style="color: var(--text-muted); font-size: 0.85rem;">Supports clean `.txt` spectral energy distributions</div>
+                
+                <input type="file" id="fileInputV2" style="display: none;" accept=".txt">
+                
+                <div class="btn-group">
+                    <button class="btn-primary" onclick="document.getElementById('fileInputV2').click()">Browse Files</button>
+                    <button class="btn-secondary" id="btnDemoV2">Run Demo Dataset</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Console Stream Output -->
+        <div class="console-card" id="consoleCard">
+            <div id="consoleLog"></div>
+        </div>
+
+        <!-- Results Studio Section -->
+        <section class="results-container" id="resultsV2">
+            <!-- Stat Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-label">Spectrum Target</span>
+                    <span class="stat-value" id="statObject">--</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Global Status</span>
+                    <span class="stat-value" id="statStatus">--</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Overall Chi² / dof</span>
+                    <span class="stat-value" id="statChi2">--</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Identified Lines</span>
+                    <span class="stat-value" id="statLinesCount">--</span>
+                </div>
+            </div>
+
+            <!-- Visualization Dashboard -->
+            <div class="dashboard-grid">
+                <div class="plot-panel">
+                    <div class="panel-header">
+                        <span class="panel-title">Diagnostic Fitting Analysis</span>
+                        <div class="tab-group" id="lineTabsV2">
+                            <!-- Dynamic line tabs -->
+                        </div>
+                    </div>
+                    <div id="plotlyLineV2" class="plot-box"></div>
+                    <div id="plotlyResV2" class="plot-box" style="height: 180px;"></div>
+                </div>
+
+                <div class="plot-panel">
+                    <div class="panel-header">
+                        <span class="panel-title">Fitted Components & QC</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 1rem;" id="qcDetailsV2">
+                        <!-- Dynamic QC and parameter list -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Table -->
+            <div class="table-panel">
+                <div class="panel-header" style="margin-bottom: 1rem;">
+                    <span class="panel-title">Line Fits Summary Table</span>
+                </div>
+                <table class="v2-table">
+                    <thead>
+                        <tr>
+                            <th>Line / Component</th>
+                            <th>Central λ (Å)</th>
+                            <th>FWHM (km/s)</th>
+                            <th>Flux (erg/s/cm²)</th>
+                            <th>Eq Width (Å)</th>
+                            <th>Chi² / dof</th>
+                            <th>QC Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="summaryTableBodyV2">
+                        <!-- Dynamic Rows -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        let currentRecordV2 = null;
+
+        const dropzone = document.getElementById('dropzoneV2');
+        const fileInput = document.getElementById('fileInputV2');
+        const btnDemo = document.getElementById('btnDemoV2');
+        const consoleCard = document.getElementById('consoleCard');
+        const consoleLog = document.getElementById('consoleLog');
+        const resultsV2 = document.getElementById('resultsV2');
+
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.style.borderColor = 'var(--accent-cyan)';
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.style.borderColor = 'rgba(56, 189, 248, 0.3)';
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.style.borderColor = 'rgba(56, 189, 248, 0.3)';
+            if (e.dataTransfer.files.length > 0) {
+                uploadAndProcessV2(e.dataTransfer.files[0], false);
+            }
+        });
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                uploadAndProcessV2(fileInput.files[0], false);
+            }
+        });
+
+        btnDemo.addEventListener('click', () => {
+            uploadAndProcessV2(null, true);
+        });
+
+        function logConsole(msg) {
+            const line = document.createElement('div');
+            line.className = 'console-line';
+            const time = new Date().toLocaleTimeString();
+            line.innerHTML = `<span class="console-timestamp">[${time}]</span> <span>${msg}</span>`;
+            consoleLog.appendChild(line);
+            consoleCard.scrollTop = consoleCard.scrollHeight;
+        }
+
+        async function uploadAndProcessV2(file, isDemo) {
+            consoleCard.style.display = 'block';
+            consoleLog.innerHTML = '';
+            resultsV2.style.display = 'none';
+            logConsole('Initiating V2 spectrum analysis task...');
+
+            const formData = new FormData();
+            if (isDemo) {
+                formData.append('demo', 'true');
+            } else {
+                formData.append('file', file);
+            }
+
+            try {
+                const resp = await fetch('/upload_fit', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await resp.json();
+
+                if (data.error) {
+                    logConsole(`ERROR: ${data.error}`);
+                    return;
+                }
+
+                const taskId = data.task_id;
+                logConsole(`Task created ID: ${taskId}. Opening EventStream...`);
+
+                const eventSource = new EventSource(`/stream/${taskId}`);
+                eventSource.onmessage = (event) => {
+                    const msg = JSON.parse(event.data);
+                    if (msg.type === 'log') {
+                        logConsole(msg.message);
+                    } else if (msg.type === 'result') {
+                        eventSource.close();
+                        logConsole('Processing successfully finished! Rendering V2 dashboard...');
+                        currentRecordV2 = msg.data;
+                        renderV2Results(msg.data);
+                    } else if (msg.type === 'error') {
+                        eventSource.close();
+                        logConsole(`FAILURE: ${msg.message}`);
+                    }
+                };
+
+                eventSource.onerror = () => {
+                    eventSource.close();
+                    logConsole('Stream connection closed.');
+                };
+
+            } catch (err) {
+                logConsole(`Network Error: ${err.message}`);
+            }
+        }
+
+        function renderV2Results(rec) {
+            resultsV2.style.display = 'flex';
+            
+            document.getElementById('statObject').innerText = rec.object_id || 'Spectrum 70';
+            const accepted = rec.accepted !== false;
+            document.getElementById('statStatus').innerHTML = accepted 
+                ? `<span class="badge-status pass">ACCEPTED</span>` 
+                : `<span class="badge-status fail">REJECTED</span>`;
+            
+            document.getElementById('statChi2').innerText = rec.reduced_chi2 ? rec.reduced_chi2.toFixed(3) : 'N/A';
+            document.getElementById('statLinesCount').innerText = rec.lines ? rec.lines.length : 0;
+
+            // Tabs
+            const tabsContainer = document.getElementById('lineTabsV2');
+            tabsContainer.innerHTML = '';
+            
+            if (rec.lines && rec.lines.length > 0) {
+                rec.lines.forEach((line, idx) => {
+                    const btn = document.createElement('button');
+                    btn.className = `tab-btn ${idx === 0 ? 'active' : ''}`;
+                    btn.innerText = line.line_name || `Line ${idx+1}`;
+                    btn.onclick = () => selectLineV2(idx);
+                    tabsContainer.appendChild(btn);
+                });
+                selectLineV2(0);
+                populateTableV2(rec.lines);
+            }
+        }
+
+        function selectLineV2(idx) {
+            const buttons = document.querySelectorAll('#lineTabsV2 .tab-btn');
+            buttons.forEach((b, i) => b.classList.toggle('active', i === idx));
+
+            const line = currentRecordV2.lines[idx];
+            plotLineDataV2(line);
+            renderLineQCV2(line);
+        }
+
+        function plotLineDataV2(line) {
+            if (!line.wave || !line.flux) return;
+
+            const traceData = {
+                x: line.wave,
+                y: line.flux,
+                mode: 'lines',
+                name: 'Observed Data',
+                line: { color: '#94a3b8', width: 1.5 }
+            };
+
+            const traceModel = {
+                x: line.wave,
+                y: line.model_flux || line.fit_flux,
+                mode: 'lines',
+                name: 'Best Fit Model',
+                line: { color: '#38bdf8', width: 2.5 }
+            };
+
+            const layoutMain = {
+                paper_bgcolor: 'transparent',
+                plot_bgcolor: 'transparent',
+                margin: { t: 20, r: 20, l: 50, b: 40 },
+                xaxis: { title: 'Wavelength (Å)', gridcolor: 'rgba(255,255,255,0.05)', color: '#94a3b8' },
+                yaxis: { title: 'Flux', gridcolor: 'rgba(255,255,255,0.05)', color: '#94a3b8' },
+                legend: { x: 0, y: 1, font: { color: '#f8fafc' } }
+            };
+
+            Plotly.newPlot('plotlyLineV2', [traceData, traceModel], layoutMain, { responsive: true });
+
+            // Residual plot
+            if (line.residuals) {
+                const traceRes = {
+                    x: line.wave,
+                    y: line.residuals,
+                    mode: 'lines',
+                    name: 'Residuals',
+                    line: { color: '#fb7185', width: 1 }
+                };
+
+                const layoutRes = {
+                    paper_bgcolor: 'transparent',
+                    plot_bgcolor: 'transparent',
+                    margin: { t: 10, r: 20, l: 50, b: 30 },
+                    xaxis: { title: 'Wavelength (Å)', gridcolor: 'rgba(255,255,255,0.05)', color: '#94a3b8' },
+                    yaxis: { title: 'Res', gridcolor: 'rgba(255,255,255,0.05)', color: '#94a3b8' }
+                };
+
+                Plotly.newPlot('plotlyResV2', [traceRes], layoutRes, { responsive: true });
+            }
+        }
+
+        function renderLineQCV2(line) {
+            const container = document.getElementById('qcDetailsV2');
+            container.innerHTML = `
+                <div style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-dim);">
+                    <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Line Name</div>
+                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--accent-cyan);">${line.line_name || 'N/A'}</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-dim);">
+                    <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">FWHM</div>
+                    <div style="font-size: 1.1rem; font-weight: 700;">${line.fwhm_kms ? line.fwhm_kms.toFixed(2) + ' km/s' : (line.fwhm ? line.fwhm.toFixed(2) + ' Å' : 'N/A')}</div>
+                </div>
+                <div style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-dim);">
+                    <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Equivalent Width</div>
+                    <div style="font-size: 1.1rem; font-weight: 700;">${line.ew_A ? line.ew_A.toFixed(2) + ' Å' : 'N/A'}</div>
+                </div>
+            `;
+        }
+
+        function populateTableV2(lines) {
+            const tbody = document.getElementById('summaryTableBodyV2');
+            tbody.innerHTML = '';
+
+            lines.forEach((line, idx) => {
+                const tr = document.createElement('tr');
+                tr.onclick = () => selectLineV2(idx);
+                tr.innerHTML = `
+                    <td style="font-weight: 700; color: var(--accent-cyan);">${line.line_name || 'Line'}</td>
+                    <td>${line.center_wave ? line.center_wave.toFixed(2) : (line.lambda0 ? line.lambda0.toFixed(2) : 'N/A')}</td>
+                    <td>${line.fwhm_kms ? line.fwhm_kms.toFixed(1) : (line.fwhm ? line.fwhm.toFixed(2) : 'N/A')}</td>
+                    <td>${line.total_flux ? line.total_flux.toExponential(3) : (line.flux_val ? line.flux_val.toExponential(3) : 'N/A')}</td>
+                    <td>${line.ew_A ? line.ew_A.toFixed(2) : 'N/A'}</td>
+                    <td>${line.chi2_dof ? line.chi2_dof.toFixed(3) : (line.chi2 ? line.chi2.toFixed(3) : 'N/A')}</td>
+                    <td>${line.accepted !== false ? '<span class="badge-status pass">PASS</span>' : '<span class="badge-status fail">FAIL</span>'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    </script>
+</body>
+</html>
