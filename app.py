@@ -49,6 +49,7 @@ def index():
 
 
 @app.route('/v2')
+@app.route('/v2/')
 def index_v2():
     return render_template('index_v2.html')
 
