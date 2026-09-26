@@ -22,12 +22,37 @@
 }
 html{font-size:14px;}
 body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.5;min-height:100vh;}
+/* TOPBAR */
+.topbar{background:var(--paper2);border-bottom:2px solid var(--ink);}
+.topbar-inner{max-width:1440px;margin:0 auto;padding:8px 28px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.topbar-brand{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--accent);letter-spacing:.08em;}
+.topbar-nav{display:flex;gap:5px;flex-wrap:wrap;}
+.nav-pill{display:inline-block;padding:5px 12px;font-size:11px;font-family:var(--mono);font-weight:500;color:var(--ink2);border:1px solid var(--rule2);text-decoration:none;border-radius:2px;}
+.nav-pill:hover{border-color:var(--accent);color:var(--accent);}
+.nav-pill.active{background:var(--accent);color:#fff;border-color:var(--accent);}
 /* MASTHEAD */
-.masthead{border-bottom:2px solid var(--ink);padding:16px 28px 12px;display:grid;grid-template-columns:1fr auto;align-items:end;gap:12px;}
+.masthead{border-bottom:1px solid var(--rule);padding:14px 28px 12px;}
 .journal-tag{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px;}
 .masthead h1{font-family:var(--serif);font-size:19px;font-weight:500;line-height:1.2;}
 .masthead h1 em{font-style:italic;color:var(--ink2);}
 .masthead-meta{font-size:11px;color:var(--ink3);margin-top:4px;}
+/* ── FOOTER (editorial, minimal) ── */
+.site-footer{background:var(--paper3);border-top:2px solid var(--ink);margin-top:3rem;}
+.footer-body{max-width:1440px;margin:0 auto;padding:2.2rem 28px 1.8rem;display:grid;grid-template-columns:2fr 1fr 1fr;gap:2.5rem;align-items:start;}
+@media(max-width:860px){.footer-body{grid-template-columns:1fr;gap:1.8rem;}}
+.footer-brand-name{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--ink);letter-spacing:.08em;display:block;margin-bottom:8px;}
+.footer-brand-desc{font-size:11px;color:var(--ink3);line-height:1.75;}
+.footer-section-label{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);display:block;margin-bottom:10px;padding-bottom:5px;border-bottom:1px solid var(--rule);}
+.footer-links{display:flex;flex-direction:column;gap:2px;}
+.footer-links a{font-family:var(--mono);font-size:11px;color:var(--ink2);text-decoration:none;padding:4px 0 4px 8px;border-left:2px solid transparent;transition:border-color .12s,color .12s;}
+.footer-links a:hover{color:var(--accent);border-left-color:var(--accent);}
+.footer-links a.here{color:var(--accent);border-left-color:var(--accent);font-weight:600;}
+.footer-meta-list{display:flex;flex-direction:column;gap:4px;}
+.footer-meta-list span{font-family:var(--mono);font-size:10px;color:var(--ink3);padding:2px 0;}
+.footer-meta-list span::before{content:"→ ";color:var(--accent);font-size:9px;}
+.footer-bar{max-width:1440px;margin:0 auto;padding:10px 28px;border-top:1px solid var(--rule);font-family:var(--mono);font-size:10px;color:var(--ink3);letter-spacing:.05em;display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
+.footer-bar strong{color:var(--ink);font-weight:600;}
+.footer-dot{color:var(--rule2);}
 .masthead-right{display:flex;align-items:center;gap:10px;}
 .upload-btn{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;border:none;padding:6px 13px;font-size:12px;font-family:var(--sans);font-weight:500;cursor:pointer;border-radius:2px;white-space:nowrap;}
 .upload-btn:hover{background:#142e4a;}
@@ -164,10 +189,23 @@ select{background:var(--paper);color:var(--ink);border:1px solid var(--rule2);bo
 </head>
 <body>
 
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-inner">
+    <span class="topbar-brand">3C273 · Lyman Alpha Pipeline</span>
+    <nav class="topbar-nav">
+      <a href="/"     class="nav-pill">V1 — Workbench</a>
+      <a href="/v2"   class="nav-pill">V2 — Studio</a>
+      <a href="/v3"   class="nav-pill active">V3 — Campaign</a>
+      <a href="/about" class="nav-pill">About</a>
+    </nav>
+  </div>
+</div>
+
 <!-- MASTHEAD -->
 <div class="masthead">
   <div>
-    <div class="journal-tag">IUE Spectral Analysis &mdash; 3C273 Quasar</div>
+    <div class="journal-tag">V3 — Campaign Viewer &middot; IUE Spectral Analysis &mdash; 3C273 Quasar</div>
     <h1>Lyman Alpha Emission Line &mdash; <em>Time Series &amp; Individual Spectra</em></h1>
     <div class="masthead-meta">215 IUE SWP observations &bull; Ly&alpha; &lambda;1216 &Aring; &bull; Wavelength region 1100&ndash;2000 &Aring;</div>
   </div>
@@ -391,7 +429,40 @@ select{background:var(--paper);color:var(--ink);border:1px solid var(--rule2);bo
   </div><!-- /viewer -->
 </div>
 
-<div class="page-footer">3C273 IUE SWP &bull; Ly&alpha; &lambda;1216 &Aring; &bull; Verified spectral fitting outputs from Final Data.xlsx</div>
+<footer class="site-footer">
+  <div class="footer-body">
+    <div>
+      <span class="footer-brand-name">3C273 · Lyman Alpha Pipeline</span>
+      <p class="footer-brand-desc">Automated spectroscopic fitting pipeline for 215 archival IUE SWP ultraviolet observations of the quasar 3C273. Power-law continuum modeling, single-Gaussian emission-line decomposition over 5,600 candidate models, and quality-controlled flux, EW, SNR, FWHM measurements.</p>
+    </div>
+    <div>
+      <span class="footer-section-label">Navigate</span>
+      <nav class="footer-links">
+        <a href="/">V1 — Spectrum Fit Workbench</a>
+        <a href="/v2">V2 — Diagnostic Studio</a>
+        <a href="/v3" class="here">V3 — Campaign Viewer</a>
+        <a href="/about">About &amp; Documentation</a>
+      </nav>
+    </div>
+    <div>
+      <span class="footer-section-label">Pipeline</span>
+      <div class="footer-meta-list">
+        <span>IUE SWP · 900–1830 Å</span>
+        <span>215 archival spectra</span>
+        <span>Lyα λ1216 Å</span>
+        <span>Flux · EW · FWHM · SNR · χ²</span>
+        <span>F<sub>var</sub> · R<sub>max</sub></span>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bar">
+    <strong>3C273 Lyman Alpha Spectral Pipeline</strong>
+    <span class="footer-dot">·</span>
+    <span>IUE archive data courtesy of NASA/ESA MAST</span>
+    <span class="footer-dot">·</span>
+    <span>Python 3 / Flask · Plotly.js</span>
+  </div>
+</footer>
 
 <!-- ═══════════════════ SCRIPTS ═══════════════════ -->
 <script>

@@ -373,19 +373,23 @@ sup.cite {
 }
 .callout strong { color: var(--ink); }
 
-/* ── Footer ───────────────────────────────────────────────────── */
-.site-footer {
-  background: var(--paper3);
-  border-top: 2px solid var(--ink);
-  padding: 2rem;
-  text-align: center;
-  font-family: var(--mono);
-  font-size: 0.68rem;
-  color: var(--ink3);
-  letter-spacing: 0.06em;
-}
-.site-footer a { color: var(--accent); text-decoration: none; }
-.site-footer a:hover { text-decoration: underline; }
+/* ── Footer (editorial, minimal) ─────────────────────────────── */
+.site-footer { background: var(--paper3); border-top: 2px solid var(--ink); }
+.footer-body { max-width: 900px; margin: 0 auto; padding: 2.2rem 2rem 1.8rem; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 2.5rem; align-items: start; }
+@media (max-width: 700px) { .footer-body { grid-template-columns: 1fr; gap: 1.8rem; } }
+.footer-brand-name { font-family: var(--mono); font-size: 0.72rem; font-weight: 700; color: var(--ink); letter-spacing: 0.08em; display: block; margin-bottom: 0.5rem; }
+.footer-brand-desc { font-size: 0.72rem; color: var(--ink3); line-height: 1.75; }
+.footer-section-label { font-family: var(--mono); font-size: 0.58rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink3); display: block; margin-bottom: 0.65rem; padding-bottom: 5px; border-bottom: 1px solid var(--rule); }
+.footer-links { display: flex; flex-direction: column; gap: 2px; }
+.footer-links a { font-family: var(--mono); font-size: 0.72rem; color: var(--ink2); text-decoration: none; padding: 4px 0 4px 8px; border-left: 2px solid transparent; transition: border-color .12s, color .12s; }
+.footer-links a:hover { color: var(--accent); border-left-color: var(--accent); }
+.footer-links a.here { color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
+.footer-meta-list { display: flex; flex-direction: column; gap: 4px; }
+.footer-meta-list span { font-family: var(--mono); font-size: 0.65rem; color: var(--ink3); padding: 2px 0; }
+.footer-meta-list span::before { content: "→ "; color: var(--accent); }
+.footer-bar { max-width: 900px; margin: 0 auto; padding: 0.65rem 2rem; border-top: 1px solid var(--rule); font-family: var(--mono); font-size: 0.65rem; color: var(--ink3); letter-spacing: 0.05em; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+.footer-bar strong { color: var(--ink); font-weight: 600; }
+.footer-dot { color: var(--rule2); }
 
 @media (max-width: 600px) {
   .journal { padding: 2rem 1rem 4rem; }
@@ -396,14 +400,14 @@ sup.cite {
 </head>
 <body>
 
-<!-- Masthead nav -->
+<!-- Topbar nav -->
 <header class="masthead">
   <div class="nav-inner">
-    <a href="/" class="nav-brand">3C273 · UV Spectral Pipeline</a>
+    <span class="nav-brand">3C273 · Lyman Alpha Pipeline</span>
     <nav class="nav-pills">
-      <a href="/"   class="nav-pill">V1 — Classic</a>
-      <a href="/v2" class="nav-pill">V2 — Studio</a>
-      <a href="/v3" class="nav-pill">V3 — Campaign</a>
+      <a href="/"      class="nav-pill">V1 — Workbench</a>
+      <a href="/v2"    class="nav-pill">V2 — Studio</a>
+      <a href="/v3"    class="nav-pill">V3 — Campaign</a>
       <a href="/about" class="nav-pill active">About</a>
     </nav>
   </div>
@@ -1464,15 +1468,37 @@ sup.cite {
 
 <!-- Footer -->
 <footer class="site-footer">
-  <div>
-    3C 273 IUE SWP Lyman-Alpha Pipeline &nbsp;·&nbsp;
-    <a href="/">V1</a> &nbsp;·&nbsp;
-    <a href="/v2">V2 Studio</a> &nbsp;·&nbsp;
-    <a href="/v3">V3 Campaign</a> &nbsp;·&nbsp;
-    <a href="/about">About</a>
+  <div class="footer-body">
+    <div>
+      <span class="footer-brand-name">3C273 · Lyman Alpha Pipeline</span>
+      <p class="footer-brand-desc">Automated spectroscopic fitting pipeline for 215 archival IUE SWP ultraviolet observations of the quasar 3C273. Power-law continuum modeling, single-Gaussian emission-line decomposition over 5,600 candidate models, and quality-controlled flux, EW, SNR, FWHM measurements.</p>
+    </div>
+    <div>
+      <span class="footer-section-label">Navigate</span>
+      <nav class="footer-links">
+        <a href="/">V1 — Spectrum Fit Workbench</a>
+        <a href="/v2">V2 — Diagnostic Studio</a>
+        <a href="/v3">V3 — Campaign Viewer</a>
+        <a href="/about" class="here">About &amp; Documentation</a>
+      </nav>
+    </div>
+    <div>
+      <span class="footer-section-label">Pipeline</span>
+      <div class="footer-meta-list">
+        <span>IUE SWP · 900–1830 Å</span>
+        <span>215 archival spectra</span>
+        <span>Lyα λ1216 Å</span>
+        <span>Flux · EW · FWHM · SNR · χ²</span>
+        <span>F<sub>var</sub> · R<sub>max</sub></span>
+      </div>
+    </div>
   </div>
-  <div style="margin-top:0.5rem; color: var(--rule2);">
-    IUE archive data courtesy of NASA/ESA MAST · Pipeline: Python 3 / Flask · Plots: Plotly.js
+  <div class="footer-bar">
+    <strong>3C273 Lyman Alpha Spectral Pipeline</strong>
+    <span class="footer-dot">·</span>
+    <span>IUE archive data courtesy of NASA/ESA MAST</span>
+    <span class="footer-dot">·</span>
+    <span>Python 3 / Flask · Plotly.js</span>
   </div>
 </footer>
 
