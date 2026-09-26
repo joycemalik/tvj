@@ -1,765 +1,774 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UV Spectrum Analyzer | V2 Diagnostic Studio</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-    <style>
-        :root {
-            --bg-main: #060913;
-            --panel-bg: rgba(15, 23, 42, 0.75);
-            --card-bg: #0f172a;
-            --accent-cyan: #38bdf8;
-            --accent-violet: #818cf8;
-            --accent-emerald: #34d399;
-            --accent-rose: #fb7185;
-            --accent-amber: #fbbf24;
-            --border-glow: rgba(56, 189, 248, 0.2);
-            --border-dim: rgba(255, 255, 255, 0.08);
-            --text-main: #f8fafc;
-            --text-sub: #94a3b8;
-            --text-muted: #64748b;
-            --font-sans: 'Plus Jakarta Sans', sans-serif;
-            --font-mono: 'Space Mono', monospace;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UV Spectrum Diagnostic Studio — V2 | 3C273</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap">
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --paper:#f7f5f0;--paper2:#f0ede6;--paper3:#e8e4db;
+  --ink:#1a1814;--ink2:#4a4640;--ink3:#7a756e;
+  --rule:#d4cfc6;--rule2:#c4bfb6;
+  --accent:#1a3a5c;--accent2:#7a2020;
+  --green:#2a5a2a;
+  --mono:'IBM Plex Mono','Courier New',monospace;
+  --serif:'EB Garamond',Georgia,serif;
+  --sans:'Inter',system-ui,sans-serif;
+}
+html{font-size:14px;}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.5;min-height:100vh;}
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+/* ── MASTHEAD ── */
+.masthead{border-bottom:2px solid var(--ink);padding:16px 28px 12px;display:grid;grid-template-columns:1fr auto;align-items:end;gap:12px;}
+.journal-tag{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px;}
+.masthead h1{font-family:var(--serif);font-size:19px;font-weight:500;line-height:1.2;}
+.masthead h1 em{font-style:italic;color:var(--ink2);}
+.masthead-meta{font-size:11px;color:var(--ink3);margin-top:4px;}
+.masthead-right{display:flex;align-items:center;gap:8px;}
+.nav-pill{display:inline-block;padding:5px 12px;font-size:11px;font-family:var(--sans);font-weight:500;color:var(--ink2);border:1px solid var(--rule2);text-decoration:none;border-radius:2px;}
+.nav-pill:hover{border-color:var(--accent);color:var(--accent);}
+.nav-pill.active{background:var(--accent);color:#fff;border-color:var(--accent);}
 
-        body {
-            background-color: var(--bg-main);
-            background-image: 
-                radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.12) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(129, 140, 248, 0.1) 0px, transparent 50%),
-                radial-gradient(at 50% 50%, rgba(15, 23, 42, 0.5) 0px, transparent 100%);
-            color: var(--text-main);
-            font-family: var(--font-sans);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
+/* ── UPLOAD BAR ── */
+.upload-bar{display:flex;align-items:center;gap:10px;padding:8px 28px;background:var(--paper2);border-bottom:1px solid var(--rule);flex-wrap:wrap;}
+.upload-btn{display:inline-flex;align-items:center;gap:5px;background:var(--accent);color:#fff;border:none;padding:5px 12px;font-size:12px;font-family:var(--sans);font-weight:500;cursor:pointer;border-radius:2px;}
+.upload-btn:hover{background:#142e4a;}
+.demo-btn{display:inline-flex;align-items:center;background:var(--paper);color:var(--ink2);border:1px solid var(--rule2);padding:5px 12px;font-size:12px;font-family:var(--sans);cursor:pointer;border-radius:2px;}
+.demo-btn:hover{border-color:var(--accent);color:var(--accent);}
+#upload-status{font-size:11px;color:var(--ink3);}
+#upload-status.ok{color:var(--green);font-weight:500;}
+#upload-status.err{color:var(--accent2);font-weight:500;}
 
-        /* Glassmorphism Header */
-        header {
-            width: 100%;
-            padding: 1.25rem 2.5rem;
-            background: rgba(10, 15, 30, 0.8);
-            backdrop-filter: blur(16px);
-            border-bottom: 1px solid var(--border-glow);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
+/* ── CONSOLE STRIP ── */
+.console-strip{display:none;padding:10px 28px;background:#f0ede6;border-bottom:1px solid var(--rule);max-height:160px;overflow-y:auto;}
+.console-inner{font-family:var(--mono);font-size:11px;color:var(--ink2);}
+.console-line{display:flex;gap:10px;margin-bottom:3px;}
+.console-ts{color:var(--ink3);}
+.console-msg{color:var(--ink);}
 
-        .brand-container {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
+/* ── ANALYSIS SUMMARY ── */
+.analysis-summary{padding:18px 28px;border-bottom:1px solid var(--rule);}
+.section-head{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);border-bottom:1px solid var(--rule);padding-bottom:5px;margin-bottom:12px;}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));border:1px solid var(--rule);}
+.stat-cell{padding:10px 12px;border-right:1px solid var(--rule);}
+.stat-cell .sl{font-size:10px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);margin-bottom:3px;}
+.stat-cell .sv{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--accent);}
+.stat-cell .se{font-family:var(--mono);font-size:10px;color:var(--ink3);margin-top:2px;}
 
-        .badge-v2 {
-            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-violet));
-            color: #000;
-            font-weight: 800;
-            font-size: 0.7rem;
-            padding: 0.25rem 0.6rem;
-            border-radius: 6px;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-        }
+/* ── MAIN CONTENT ── */
+#main-content{padding:18px 28px 40px;}
 
-        .brand-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-            background: linear-gradient(to right, #fff, var(--text-sub));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+/* Upload prompt (shown before results) */
+#upload-prompt{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:38vh;gap:14px;color:var(--ink3);text-align:center;}
+.prompt-box{width:52px;height:52px;border:1.5px solid var(--rule2);display:flex;align-items:center;justify-content:center;}
+#upload-prompt p{font-size:14px;font-family:var(--serif);font-style:italic;}
 
-        .nav-links {
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-        }
+/* ── RESULTS DASHBOARD ── */
+#results-dashboard{display:none;flex-direction:column;gap:18px;}
 
-        .v1-legacy-btn {
-            border: 1px solid var(--border-dim);
-            padding: 0.4rem 0.9rem;
-            border-radius: 8px;
-            font-size: 0.8rem;
-            color: var(--text-sub);
-            text-decoration: none;
-            transition: all 0.2s ease;
-        }
+/* Spectrum header */
+.spec-header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--paper2);border:1px solid var(--rule);}
+.spec-title{font-family:var(--mono);font-size:12px;color:var(--ink);}
+.spec-title span{color:var(--accent);font-weight:500;}
+.spec-meta{display:flex;align-items:center;gap:14px;}
+.spec-chi2{font-family:var(--mono);font-size:11px;color:var(--ink3);}
+.status-badge{font-family:var(--mono);font-size:10px;padding:3px 9px;border:1px solid;}
+.status-ok{color:var(--green);border-color:var(--green);background:rgba(42,90,42,.06);}
+.status-fail{color:var(--accent2);border-color:var(--accent2);background:rgba(122,32,32,.06);}
 
-        .v1-legacy-btn:hover {
-            border-color: var(--accent-cyan);
-            color: var(--accent-cyan);
-            background: rgba(56, 189, 248, 0.05);
-        }
+/* Toolbar */
+.dash-toolbar{display:flex;align-items:center;gap:18px;padding:7px 14px;background:var(--paper2);border:1px solid var(--rule);border-bottom:none;flex-wrap:wrap;}
+.tb-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);}
 
-        main {
-            max-width: 1440px;
-            width: 100%;
-            margin: 0 auto;
-            padding: 2rem;
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 2rem;
-        }
+/* Line tabs */
+.line-tabs{display:flex;gap:0;overflow-x:auto;border:1px solid var(--rule);border-bottom:none;}
+.line-tab{padding:7px 14px;font-size:11px;font-family:var(--mono);font-weight:500;border:none;border-right:1px solid var(--rule);background:var(--paper2);color:var(--ink3);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;}
+.line-tab:last-child{border-right:none;}
+.line-tab.active{background:var(--paper);color:var(--ink);border-bottom-color:var(--accent);}
+.line-tab:hover:not(.active){color:var(--ink2);}
 
-        /* Hero Upload Card */
-        .hero-card {
-            background: var(--panel-bg);
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--border-glow);
-            border-radius: 16px;
-            padding: 3rem;
-            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-        }
+/* Chart panels */
+.chart-panel{border:1px solid var(--rule);background:var(--paper);}
+.chart-header{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:var(--paper2);border-bottom:1px solid var(--rule);}
+.chart-label{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);}
+.chart-sub{font-family:var(--mono);font-size:10px;color:var(--ink3);}
+.chart-wrap{background:var(--paper);}
 
-        .hero-card::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(56, 189, 248, 0.05) 0%, transparent 60%);
-            pointer-events: none;
-        }
+/* Diagnostic grid */
+.diag-grid{display:grid;grid-template-columns:2fr 1fr;gap:14px;}
+@media(max-width:1024px){.diag-grid{grid-template-columns:1fr;}}
 
-        .hero-title {
-            font-size: 2rem;
-            font-weight: 800;
-            margin-bottom: 0.75rem;
-            letter-spacing: -0.5px;
-        }
+/* Params table */
+.params-tbl{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;}
+.params-tbl td{padding:6px 8px;border-bottom:1px solid var(--rule);}
+.params-tbl td:first-child{color:var(--ink3);width:55%;}
+.params-tbl td:last-child{color:var(--ink);font-weight:500;text-align:right;}
+.params-section{border:1px solid var(--rule);padding:0;}
+.params-section-head{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);padding:6px 10px;background:var(--paper2);border-bottom:1px solid var(--rule);}
+.params-body{padding:4px 8px;}
 
-        .hero-subtitle {
-            color: var(--text-sub);
-            max-width: 600px;
-            font-size: 0.95rem;
-            line-height: 1.6;
-            margin-bottom: 2rem;
-        }
+/* QC list */
+.qc-list{display:flex;flex-direction:column;gap:5px;padding:8px;}
+.qc-item{display:flex;align-items:flex-start;gap:8px;padding:5px 8px;background:var(--paper2);border:1px solid var(--rule);font-size:11px;}
+.qc-icon{font-size:12px;line-height:1.4;flex-shrink:0;}
+.qc-icon.pass{color:var(--green);}
+.qc-icon.warn{color:#7a5a00;}
+.qc-icon.fail{color:var(--accent2);}
+.qc-text{color:var(--ink2);line-height:1.45;font-family:var(--mono);font-size:10px;}
 
-        .dropzone-v2 {
-            width: 100%;
-            max-width: 680px;
-            border: 2px dashed rgba(56, 189, 248, 0.3);
-            border-radius: 12px;
-            padding: 2.5rem 1.5rem;
-            background: rgba(6, 9, 19, 0.4);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 1rem;
-        }
+/* Summary table */
+.summary-tbl{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;}
+.summary-tbl th{text-align:left;padding:7px 10px;background:var(--paper2);border-bottom:1px solid var(--rule2);color:var(--ink3);font-weight:500;}
+.summary-tbl td{padding:7px 10px;border-bottom:1px solid var(--rule);color:var(--ink);}
+.summary-tbl tr:hover{background:var(--paper2);cursor:pointer;}
+.summary-tbl tr.active-row td{background:rgba(26,58,92,.05);border-left:2px solid var(--accent);}
+.badge-ok{font-family:var(--mono);font-size:9px;padding:2px 6px;border:1px solid var(--green);color:var(--green);}
+.badge-fail{font-family:var(--mono);font-size:9px;padding:2px 6px;border:1px solid var(--accent2);color:var(--accent2);}
 
-        .dropzone-v2:hover {
-            border-color: var(--accent-cyan);
-            background: rgba(56, 189, 248, 0.04);
-            transform: translateY(-2px);
-        }
+/* Pipeline flow */
+.pipeline-flow{font-family:var(--mono);font-size:10px;color:var(--ink3);display:flex;flex-direction:column;gap:4px;padding:8px;}
+.pipeline-flow .arrow{color:var(--accent);margin-right:4px;}
+.pipeline-flow .val{color:var(--ink);font-weight:500;}
 
-        .btn-group {
-            display: flex;
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-violet));
-            color: #000;
-            font-weight: 700;
-            padding: 0.75rem 1.75rem;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: opacity 0.2s, transform 0.2s;
-        }
-
-        .btn-primary:hover {
-            opacity: 0.95;
-            transform: translateY(-1px);
-        }
-
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--text-main);
-            font-weight: 600;
-            padding: 0.75rem 1.75rem;
-            border-radius: 8px;
-            border: 1px solid var(--border-dim);
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: all 0.2s;
-        }
-
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: var(--text-sub);
-        }
-
-        /* Console Stream */
-        .console-card {
-            display: none;
-            background: #04060d;
-            border: 1px solid var(--border-dim);
-            border-radius: 12px;
-            padding: 1.25rem;
-            font-family: var(--font-mono);
-            font-size: 0.82rem;
-            max-height: 180px;
-            overflow-y: auto;
-            color: var(--accent-cyan);
-        }
-
-        .console-line {
-            margin-bottom: 0.35rem;
-            display: flex;
-            gap: 0.75rem;
-        }
-
-        .console-timestamp {
-            color: var(--text-muted);
-        }
-
-        /* Results Dashboard */
-        .results-container {
-            display: none;
-            flex-direction: column;
-            gap: 2rem;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 1.25rem;
-        }
-
-        .stat-card {
-            background: var(--panel-bg);
-            border: 1px solid var(--border-dim);
-            border-radius: 12px;
-            padding: 1.25rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .stat-label {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--text-muted);
-            font-weight: 700;
-        }
-
-        .stat-value {
-            font-size: 1.5rem;
-            font-weight: 800;
-            color: #fff;
-        }
-
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 1.5rem;
-        }
-
-        @media (max-width: 1024px) {
-            .dashboard-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .plot-panel {
-            background: var(--panel-bg);
-            border: 1px solid var(--border-dim);
-            border-radius: 14px;
-            padding: 1.5rem;
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .panel-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--border-dim);
-            padding-bottom: 0.75rem;
-        }
-
-        .panel-title {
-            font-size: 1rem;
-            font-weight: 700;
-            color: var(--text-main);
-        }
-
-        .tab-group {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .tab-btn {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid var(--border-dim);
-            color: var(--text-sub);
-            padding: 0.4rem 0.85rem;
-            border-radius: 6px;
-            font-size: 0.78rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .tab-btn.active {
-            background: var(--accent-cyan);
-            color: #000;
-            font-weight: 700;
-            border-color: var(--accent-cyan);
-        }
-
-        .plot-box {
-            width: 100%;
-            height: 420px;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .table-panel {
-            background: var(--panel-bg);
-            border: 1px solid var(--border-dim);
-            border-radius: 14px;
-            padding: 1.5rem;
-            overflow-x: auto;
-        }
-
-        table.v2-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.85rem;
-            text-align: left;
-        }
-
-        table.v2-table th {
-            padding: 0.75rem 1rem;
-            color: var(--text-muted);
-            border-bottom: 1px solid var(--border-dim);
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.7rem;
-            letter-spacing: 0.5px;
-        }
-
-        table.v2-table td {
-            padding: 0.85rem 1rem;
-            border-bottom: 1px solid var(--border-dim);
-            color: var(--text-main);
-        }
-
-        table.v2-table tr:hover {
-            background: rgba(255, 255, 255, 0.03);
-            cursor: pointer;
-        }
-
-        .badge-status {
-            display: inline-block;
-            padding: 0.25rem 0.6rem;
-            border-radius: 20px;
-            font-size: 0.72rem;
-            font-weight: 700;
-        }
-
-        .badge-status.pass {
-            background: rgba(52, 211, 153, 0.15);
-            color: var(--accent-emerald);
-            border: 1px solid var(--accent-emerald);
-        }
-
-        .badge-status.fail {
-            background: rgba(251, 113, 133, 0.15);
-            color: var(--accent-rose);
-            border: 1px solid var(--accent-rose);
-        }
-    </style>
+/* ── FOOTER ── */
+.site-footer{width:100%;background:var(--paper2);border-top:2px solid var(--ink);margin-top:4rem;}
+.footer-inner{max-width:1440px;margin:0 auto;padding:3rem 28px 2.5rem;display:grid;grid-template-columns:2fr 2fr 1fr;gap:3rem;}
+@media(max-width:900px){.footer-inner{grid-template-columns:1fr;gap:2rem;}}
+.footer-col-head{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);border-bottom:1px solid var(--rule);padding-bottom:5px;margin-bottom:12px;}
+.footer-about-text p{font-size:12px;color:var(--ink2);line-height:1.75;margin-bottom:8px;}
+.footer-nav-link{display:flex;flex-direction:column;gap:3px;padding:10px 12px;border:1px solid var(--rule);margin-bottom:7px;text-decoration:none;background:var(--paper);}
+.footer-nav-link:hover{border-color:var(--accent);background:rgba(26,58,92,.03);}
+.fnl-label{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--ink);}
+.fnl-desc{font-size:11px;color:var(--ink3);line-height:1.5;}
+.footer-pipeline-list{font-family:var(--mono);font-size:10px;display:flex;flex-direction:column;gap:5px;padding:10px;background:var(--paper);border:1px solid var(--rule);}
+.footer-pipeline-list div{color:var(--ink2);}
+.footer-pipeline-list div .arr{color:var(--accent);margin-right:4px;}
+.footer-bottom{max-width:1440px;margin:0 auto;padding:12px 28px;border-top:1px solid var(--rule);font-family:var(--mono);font-size:10px;letter-spacing:1px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+</style>
 </head>
 <body>
 
-    <header>
-        <div class="brand-container">
-            <span class="brand-title">UV Spectrum Diagnostic Workbench</span>
-            <span class="badge-v2">V2 Studio</span>
+<!-- MASTHEAD -->
+<div class="masthead">
+  <div>
+    <div class="journal-tag">UV Spectrum Diagnostic Studio · V2</div>
+    <h1>Spectrum Fit Workbench <em>— Interactive Diagnostic Pipeline</em></h1>
+    <div class="masthead-meta">IUE SWP · 3C273 Quasar · Power-law continuum · Gaussian emission-line decomposition · 900–1830 Å</div>
+  </div>
+  <div class="masthead-right">
+    <a href="/" class="nav-pill">V1 Classic</a>
+    <a href="/v2" class="nav-pill active">V2 Studio</a>
+    <a href="/v3" class="nav-pill">V3 Analysis</a>
+  </div>
+</div>
+
+<!-- UPLOAD BAR -->
+<div class="upload-bar">
+  <span style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);">Load Spectrum:</span>
+  <button class="upload-btn" id="uploadBtn">Upload .txt File</button>
+  <button class="demo-btn" id="btnDemoV2">Demo: Spectrum 70</button>
+  <input type="file" id="fileInputV2" accept=".txt" style="display:none;">
+  <span id="upload-status"></span>
+</div>
+
+<!-- CONSOLE STRIP -->
+<div class="console-strip" id="consoleStrip">
+  <div class="console-inner" id="consoleLog"></div>
+</div>
+
+<!-- ANALYSIS SUMMARY (always visible, loaded from API) -->
+<div class="analysis-summary">
+  <div class="section-head">3C273 Lyman Alpha — Campaign Overview</div>
+  <div class="stats-row">
+    <div class="stat-cell"><div class="sl">Total Spectra</div><div class="sv" id="anTotal">—</div></div>
+    <div class="stat-cell"><div class="sl">Mean Flux (×10⁻¹³)</div><div class="sv" id="anFlux">—</div></div>
+    <div class="stat-cell"><div class="sl">Fvar</div><div class="sv" id="anFvar">—</div><div class="se" id="anFvarE">fractional variability</div></div>
+    <div class="stat-cell"><div class="sl">Rmax</div><div class="sv" id="anRmax">—</div><div class="se">flux ratio max/min</div></div>
+    <div class="stat-cell"><div class="sl">Mean SNR</div><div class="sv" id="anSnr">—</div></div>
+    <div class="stat-cell"><div class="sl">Mean EW (Å)</div><div class="sv" id="anEw">—</div></div>
+    <div class="stat-cell"><div class="sl">Mean FWHM (km/s)</div><div class="sv" id="anFwhm">—</div></div>
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div id="main-content">
+
+  <!-- Upload prompt state -->
+  <div id="upload-prompt">
+    <div class="prompt-box">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    </div>
+    <p>Upload an IUE SWP spectrum (.txt) or load the demo to run the diagnostic fitting pipeline.</p>
+    <p style="font-size:12px;">Supported format: two-column wavelength · flux text file.</p>
+  </div>
+
+  <!-- Results dashboard (hidden until pipeline returns data) -->
+  <div id="results-dashboard">
+
+    <!-- Spectrum identification bar -->
+    <div class="spec-header">
+      <div class="spec-title">Spectrum: <span id="resFilename">—</span></div>
+      <div class="spec-meta">
+        <div class="spec-chi2">Global χ²<sub>red</sub>: <strong id="resGlobalChi2">—</strong></div>
+        <div class="status-badge status-ok" id="resStatusBadge">ACCEPTED</div>
+      </div>
+    </div>
+
+    <!-- Graph 1: Full UV Overview -->
+    <div class="chart-panel">
+      <div class="chart-header">
+        <span class="chart-label">Graph 1 — Full UV Spectrum Overview (900–1830 Å)</span>
+        <span class="chart-sub">Observed · Power-Law Continuum · Continuum-Subtracted</span>
+      </div>
+      <div class="chart-wrap"><div id="overviewPlot" style="width:100%;height:320px;"></div></div>
+    </div>
+
+    <!-- Summary table -->
+    <div class="chart-panel">
+      <div class="chart-header">
+        <span class="chart-label">Emission Line Summary</span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="summary-tbl">
+          <thead>
+            <tr>
+              <th>Line</th><th>Rest λ (Å)</th><th>Fitted λ (Å)</th><th>Δλ (Å)</th>
+              <th>Velocity (km/s)</th><th>σ (Å)</th><th>Flux</th><th>EW (Å)</th>
+              <th>SNR</th><th>χ²<sub>red</sub></th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="summaryTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Line tabs + diagnostic grid -->
+    <div>
+      <div class="line-tabs" id="lineTabs"></div>
+
+      <div class="diag-grid" style="margin-top:0;">
+        <!-- Left: plots -->
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div class="chart-panel">
+            <div class="chart-header">
+              <span class="chart-label" id="localFitTitle">Graph 2 — Zoomed Line Fit</span>
+              <span class="chart-sub">Line window · Gaussian model · FWHM bar</span>
+            </div>
+            <div class="chart-wrap"><div id="localPlot" style="width:100%;height:360px;"></div></div>
+            <div class="chart-header" style="margin-top:0;">
+              <span class="chart-label">Graph 3 — Normalised Residuals [r = (F − F̂) / σ]</span>
+              <span class="chart-sub">±1σ · ±2σ bounds</span>
+            </div>
+            <div class="chart-wrap"><div id="residualPlot" style="width:100%;height:200px;"></div></div>
+          </div>
+          <div class="chart-panel">
+            <div class="chart-header">
+              <span class="chart-label">Graph 4 — Model-Selection Landscape</span>
+              <span class="chart-sub">σ × Wing Window · ★ = selected model</span>
+            </div>
+            <div class="chart-wrap"><div id="landscapePlot" style="width:100%;height:280px;"></div></div>
+          </div>
         </div>
-        <div class="nav-links">
-            <a href="/" class="v1-legacy-btn">← Switch to Classic V1 View</a>
+
+        <!-- Right: params + QC -->
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <!-- Final Gaussian params -->
+          <div class="params-section">
+            <div class="params-section-head">Final Gaussian Parameters</div>
+            <div class="params-body">
+              <table class="params-tbl">
+                <tr><td>Amplitude</td><td id="valOutAmp">—</td></tr>
+                <tr><td>Line Centre (Å)</td><td id="valOutCenter">—</td></tr>
+                <tr><td>Wing Window (Å)</td><td id="valOutWing">—</td></tr>
+                <tr><td>Min λ (Å)</td><td id="valOutMin">—</td></tr>
+                <tr><td>Max λ (Å)</td><td id="valOutMax">—</td></tr>
+                <tr><td>Sigma (Å)</td><td id="valOutSigma">—</td></tr>
+              </table>
+            </div>
+          </div>
+
+          <!-- Scientific parameters -->
+          <div class="params-section">
+            <div class="params-section-head">Scientific Gaussian Parameters</div>
+            <div class="params-body">
+              <table class="params-tbl">
+                <tr><td>Rest λ (λ<sub>rest</sub>)</td><td id="valRestWl">—</td></tr>
+                <tr><td>Fitted Centre (μ)</td><td id="valCenter">—</td></tr>
+                <tr><td>Wavelength Offset (Δλ)</td><td id="valDeltaWl">—</td></tr>
+                <tr><td>Velocity Offset (v)</td><td id="valVelOffset">—</td></tr>
+                <tr><td>Amplitude (A)</td><td id="valAmp">—</td></tr>
+                <tr><td>Gaussian σ</td><td id="valSigma">—</td></tr>
+                <tr><td>Reported FWHM</td><td id="valFWHM">—</td></tr>
+                <tr><td>Derived 2.355σ FWHM</td><td id="valFWHM235">—</td></tr>
+                <tr><td>Integrated Flux</td><td id="valFlux">—</td></tr>
+                <tr><td>Equivalent Width (EW)</td><td id="valEW">—</td></tr>
+                <tr><td>SNR</td><td id="valSNR">—</td></tr>
+                <tr><td>Reduced χ²</td><td id="valChi2">—</td></tr>
+                <tr><td>Wing Window</td><td id="valWingWindow">—</td></tr>
+              </table>
+            </div>
+          </div>
+
+          <!-- QC -->
+          <div class="params-section">
+            <div class="params-section-head">Quality Control</div>
+            <div class="qc-list" id="qcChecklist"></div>
+            <div class="params-section-head" style="margin-top:0;">Pipeline Search Flow</div>
+            <div class="pipeline-flow">
+              <div><span class="arrow">▶</span>Search space: <span class="val">5,600 candidate models</span></div>
+              <div><span class="arrow">▶</span>Stage 1: <span class="val">Coarse discrete grid</span></div>
+              <div><span class="arrow">▶</span>Stage 2: <span class="val">Scipy least-squares refinement</span></div>
+              <div><span class="arrow">▶</span>Composite score: <span class="val" id="valCompScore">—</span></div>
+            </div>
+            <table class="params-tbl" id="valScoreBreakdown" style="padding:0 8px 8px;"></table>
+          </div>
         </div>
-    </header>
+      </div>
+    </div>
 
-    <main>
-        <section class="hero-card">
-            <h1 class="hero-title">Next-Gen Spectrum Diagnostics</h1>
-            <p class="hero-subtitle">High-fidelity line fitting, automated doublet analysis, and scientific quality control powered by V2 diagnostic pipeline engines.</p>
-            
-            <div class="dropzone-v2" id="dropzoneV2">
-                <div style="font-size: 2.5rem; opacity: 0.8;">📊</div>
-                <div style="font-weight: 600; font-size: 1.05rem;">Drag & drop your spectrum file here</div>
-                <div style="color: var(--text-muted); font-size: 0.85rem;">Supports clean `.txt` spectral energy distributions</div>
-                
-                <input type="file" id="fileInputV2" style="display: none;" accept=".txt">
-                
-                <div class="btn-group">
-                    <button class="btn-primary" onclick="document.getElementById('fileInputV2').click()">Browse Files</button>
-                    <button class="btn-secondary" id="btnDemoV2">Run Demo Dataset</button>
-                </div>
-            </div>
-        </section>
+    <!-- Print action -->
+    <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+      <button class="demo-btn" onclick="window.print()">Print Report</button>
+    </div>
 
-        <!-- Comprehensive Analysis Report Summary Card -->
-        <section class="stat-card" style="background: rgba(15, 23, 42, 0.9); border: 1px solid var(--border-glow); padding: 1.75rem; border-radius: 16px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h2 style="font-size: 1.15rem; font-weight: 700; color: #fff;">📊 Comprehensive Spectral Analysis (3C 273 IUE-SWP)</h2>
-                <span class="badge-v2" style="background: var(--accent-emerald);">Analysis Engine Active</span>
-            </div>
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <span class="stat-label">Total Spectra</span>
-                    <span class="stat-value" id="anTotal">--</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-label">Fractional Var (Fvar)</span>
-                    <span class="stat-value" style="color: var(--accent-cyan);" id="anFvar">--</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-label">Max Ratio (Rmax)</span>
-                    <span class="stat-value" style="color: var(--accent-amber);" id="anRmax">--</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-label">Mean FWHM (km/s)</span>
-                    <span class="stat-value" id="anFwhm">--</span>
-                </div>
-            </div>
-        </section>
+  </div><!-- end results-dashboard -->
+</div><!-- end main-content -->
 
-        <!-- Console Stream Output -->
-        <div class="console-card" id="consoleCard">
-            <div id="consoleLog"></div>
-        </div>
+<!-- FOOTER -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>
+      <div class="footer-col-head">About This System</div>
+      <div class="footer-about-text">
+        <p>An automated spectroscopic fitting and analysis pipeline for archival IUE SWP ultraviolet observations of the quasar <strong>3C273</strong>, targeting Lyman Alpha λ1216 Å and adjacent UV emission lines.</p>
+        <p>Fits a power-law continuum, performs Gaussian emission-line decomposition across <strong>5,600 candidate models</strong>, refines with scipy least-squares, and produces quality-controlled measurements across <strong>215 archival spectra</strong> spanning 900–1830 Å.</p>
+      </div>
+    </div>
+    <div>
+      <div class="footer-col-head">Tools</div>
+      <a href="/" class="footer-nav-link">
+        <span class="fnl-label">Spectrum Fit Workbench — V1</span>
+        <span class="fnl-desc">Upload IUE SWP spectra and run the fitting pipeline. QC diagnostics and model-selection landscape.</span>
+      </a>
+      <a href="/v2" class="footer-nav-link">
+        <span class="fnl-label">V2 Diagnostic Studio ← you are here</span>
+        <span class="fnl-desc">Enhanced fitting studio. Console log streaming, campaign overview stats, full diagnostic grid.</span>
+      </a>
+      <a href="/v3" class="footer-nav-link">
+        <span class="fnl-label">Spectrum Analysis — V3</span>
+        <span class="fnl-desc">Client-side time-series viewer for all 215 observations. Load Excel results, variability stats, individual spectra.</span>
+      </a>
+    </div>
+    <div>
+      <div class="footer-col-head">Pipeline</div>
+      <div class="footer-pipeline-list">
+        <div><span class="arr">▶</span>IUE SWP Archive · 900–1830 Å</div>
+        <div><span class="arr">▶</span>Power-Law Continuum Fit</div>
+        <div><span class="arr">▶</span>Gaussian Decomposition</div>
+        <div><span class="arr">▶</span>5,600 Candidate Model Grid</div>
+        <div><span class="arr">▶</span>Scipy Least-Squares Refinement</div>
+        <div><span class="arr">▶</span>QC: SNR · χ² · Δλ</div>
+        <div><span class="arr">▶</span>Variability: Fvar, Rmax</div>
+        <div><span class="arr">▶</span>215 Archival Spectra</div>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span style="font-weight:600;color:var(--accent);">3C273 Lyman Alpha Spectral Pipeline</span>
+    <span style="color:var(--rule2);">·</span>
+    <span style="color:var(--ink3);">IUE SWP Archival Data · 215 Spectra · Lyα λ1216 Å</span>
+  </div>
+</footer>
 
-        <!-- Results Studio Section -->
-        <section class="results-container" id="resultsV2">
-            <!-- Stat Cards -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <span class="stat-label">Spectrum Target</span>
-                    <span class="stat-value" id="statObject">--</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-label">Global Status</span>
-                    <span class="stat-value" id="statStatus">--</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-label">Overall Chi² / dof</span>
-                    <span class="stat-value" id="statChi2">--</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-label">Identified Lines</span>
-                    <span class="stat-value" id="statLinesCount">--</span>
-                </div>
-            </div>
+<script>
+let currentRecord = null, selectedLineIndex = 0;
 
-            <!-- Visualization Dashboard -->
-            <div class="dashboard-grid">
-                <div class="plot-panel">
-                    <div class="panel-header">
-                        <span class="panel-title">Diagnostic Fitting Analysis</span>
-                        <div class="tab-group" id="lineTabsV2">
-                            <!-- Dynamic line tabs -->
-                        </div>
-                    </div>
-                    <div id="plotlyLineV2" class="plot-box"></div>
-                    <div id="plotlyResV2" class="plot-box" style="height: 180px;"></div>
-                </div>
+/* ── DOM refs ── */
+const fileInput   = document.getElementById('fileInputV2');
+const uploadBtn   = document.getElementById('uploadBtn');
+const demoBtn     = document.getElementById('btnDemoV2');
+const consoleStrip = document.getElementById('consoleStrip');
+const consoleLog  = document.getElementById('consoleLog');
+const uploadStatus = document.getElementById('upload-status');
+const uploadPrompt = document.getElementById('upload-prompt');
+const resultsDash  = document.getElementById('results-dashboard');
 
-                <div class="plot-panel">
-                    <div class="panel-header">
-                        <span class="panel-title">Fitted Components & QC</span>
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 1rem;" id="qcDetailsV2">
-                        <!-- Dynamic QC and parameter list -->
-                    </div>
-                </div>
-            </div>
+/* ── Plotly light-theme layout base ── */
+const MONO = "'IBM Plex Mono', monospace";
+const LIGHT = {
+  paper_bgcolor: '#f7f5f0',
+  plot_bgcolor:  '#f7f5f0',
+  font: { family: MONO, color: '#4a4640', size: 10 },
+  xaxis: { gridcolor: '#d4cfc6', tickfont: { color: '#7a756e' }, linecolor: '#c4bfb6', zerolinecolor: '#c4bfb6' },
+  yaxis: { gridcolor: '#d4cfc6', tickfont: { color: '#7a756e' }, linecolor: '#c4bfb6', zerolinecolor: '#c4bfb6' },
+  legend: { font: { family: MONO, color: '#1a1814', size: 10 } }
+};
+function mkLayout(overrides) {
+  return Object.assign({}, LIGHT, overrides,
+    { xaxis: Object.assign({}, LIGHT.xaxis, overrides.xaxis || {}),
+      yaxis: Object.assign({}, LIGHT.yaxis, overrides.yaxis || {}) });
+}
 
-            <!-- Summary Table -->
-            <div class="table-panel">
-                <div class="panel-header" style="margin-bottom: 1rem;">
-                    <span class="panel-title">Line Fits Summary Table</span>
-                </div>
-                <table class="v2-table">
-                    <thead>
-                        <tr>
-                            <th>Line / Component</th>
-                            <th>Central λ (Å)</th>
-                            <th>FWHM (km/s)</th>
-                            <th>Flux (erg/s/cm²)</th>
-                            <th>Eq Width (Å)</th>
-                            <th>Chi² / dof</th>
-                            <th>QC Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="summaryTableBodyV2">
-                        <!-- Dynamic Rows -->
-                    </tbody>
-                </table>
-            </div>
-        </section>
-    </main>
+/* ── Upload / Demo ── */
+uploadBtn.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length > 0) handleFile(fileInput.files[0]);
+});
+demoBtn.addEventListener('click', () => loadDemo());
 
-    <script>
-        let currentRecordV2 = null;
+function setStatus(msg, cls) {
+  uploadStatus.textContent = msg;
+  uploadStatus.className = cls || '';
+}
 
-        const dropzone = document.getElementById('dropzoneV2');
-        const fileInput = document.getElementById('fileInputV2');
-        const btnDemo = document.getElementById('btnDemoV2');
-        const consoleCard = document.getElementById('consoleCard');
-        const consoleLog = document.getElementById('consoleLog');
-        const resultsV2 = document.getElementById('resultsV2');
+function logLine(msg) {
+  const d = document.createElement('div');
+  d.className = 'console-line';
+  const t = new Date().toLocaleTimeString();
+  d.innerHTML = `<span class="console-ts">[${t}]</span><span class="console-msg">${msg}</span>`;
+  consoleLog.appendChild(d);
+  consoleStrip.scrollTop = consoleStrip.scrollHeight;
+}
 
-        dropzone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropzone.style.borderColor = 'var(--accent-cyan)';
-        });
+function showConsole() { consoleStrip.style.display = 'block'; consoleLog.innerHTML = ''; }
+function hideResults()  { resultsDash.style.display = 'none'; uploadPrompt.style.display = 'flex'; }
+function showResults()  { resultsDash.style.display = 'flex'; uploadPrompt.style.display = 'none'; }
 
-        dropzone.addEventListener('dragleave', () => {
-            dropzone.style.borderColor = 'rgba(56, 189, 248, 0.3)';
-        });
+function loadDemo() {
+  showConsole();
+  logLine('Loading demo spectrum (Spectrum 70)…');
+  setStatus('Running pipeline…');
+  hideResults();
+  const fd = new FormData();
+  fd.append('demo', 'true');
+  fetch('/fit', { method: 'POST', body: fd })
+    .then(r => r.ok ? r.json() : r.json().then(e => { throw new Error(e.error || 'Server error'); }))
+    .then(data => {
+      logLine('Pipeline complete. Rendering results…');
+      setStatus('Done — demo loaded.', 'ok');
+      renderDashboard(data, '70dcdr2dswp35476mxlo.txt (Demo)');
+    })
+    .catch(err => { logLine('ERROR: ' + err.message); setStatus('Error: ' + err.message, 'err'); });
+}
 
-        dropzone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropzone.style.borderColor = 'rgba(56, 189, 248, 0.3)';
-            if (e.dataTransfer.files.length > 0) {
-                uploadAndProcessV2(e.dataTransfer.files[0], false);
-            }
-        });
+function handleFile(file) {
+  if (!file.name.endsWith('.txt')) { setStatus('Error: upload a .txt spectrum file.', 'err'); return; }
+  showConsole();
+  logLine(`Uploading ${file.name}…`);
+  setStatus('Running pipeline…');
+  hideResults();
+  const fd = new FormData();
+  fd.append('file', file);
+  fetch('/fit', { method: 'POST', body: fd })
+    .then(r => r.ok ? r.json() : r.json().then(e => { throw new Error(e.error || 'Server error'); }))
+    .then(data => {
+      logLine('Pipeline complete. Rendering results…');
+      setStatus(`Done — ${file.name}`, 'ok');
+      renderDashboard(data, file.name);
+    })
+    .catch(err => { logLine('ERROR: ' + err.message); setStatus('Error: ' + err.message, 'err'); });
+}
 
-        fileInput.addEventListener('change', () => {
-            if (fileInput.files.length > 0) {
-                uploadAndProcessV2(fileInput.files[0], false);
-            }
-        });
+/* ── Main render ── */
+function renderDashboard(data, filename) {
+  currentRecord = data;
+  document.getElementById('resFilename').textContent = filename;
+  document.getElementById('resGlobalChi2').textContent = (data.global_reduced_chi2 || 0).toFixed(3);
 
-        btnDemo.addEventListener('click', () => {
-            uploadAndProcessV2(null, true);
-        });
+  const badge = document.getElementById('resStatusBadge');
+  const ok = data.lines && data.lines.some(l => l.detected);
+  badge.textContent = ok ? '✓ VALIDATED' : 'LIMITED FIT';
+  badge.className = 'status-badge ' + (ok ? 'status-ok' : 'status-fail');
 
-        function logConsole(msg) {
-            const line = document.createElement('div');
-            line.className = 'console-line';
-            const time = new Date().toLocaleTimeString();
-            line.innerHTML = `<span class="console-timestamp">[${time}]</span> <span>${msg}</span>`;
-            consoleLog.appendChild(line);
-            consoleCard.scrollTop = consoleCard.scrollHeight;
-        }
+  drawOverview(data);
+  buildSummaryTable(data.lines || []);
+  buildLineTabs(data.lines || []);
 
-        async function uploadAndProcessV2(file, isDemo) {
-            consoleCard.style.display = 'block';
-            consoleLog.innerHTML = '';
-            resultsV2.style.display = 'none';
-            logConsole('Initiating V2 spectrum analysis task...');
+  let first = (data.lines || []).findIndex(l => l.line_name.includes('Lyman') || l.detected);
+  if (first < 0) first = 0;
+  selectLine(first);
+  showResults();
+}
 
-            const formData = new FormData();
-            if (isDemo) {
-                formData.append('demo', 'true');
-            } else {
-                formData.append('file', file);
-            }
+/* ── Overview plot ── */
+function drawOverview(data) {
+  const wl = data.wavelength || [], flux = data.observed_flux || [],
+        cont = data.continuum_fit || [], suby = data.subtracted_y || [];
 
-            try {
-                // First try direct POST fit for immediate JSON response (works on Vercel & serverless)
-                logConsole('Uploading file for spectrum diagnostic processing...');
-                const fitResp = await fetch('/fit', {
-                    method: 'POST',
-                    body: formData
-                });
-                const fitData = await fitResp.json();
+  const traces = [
+    { x: wl, y: flux,  mode: 'lines', name: 'Raw Observed',       line: { color: '#7a756e', width: 1 } },
+    { x: wl, y: cont,  mode: 'lines', name: 'Power-Law Continuum', line: { color: '#1a3a5c', width: 1.5, dash: 'dash' } },
+    { x: wl, y: suby,  mode: 'lines', name: 'Continuum-Subtracted', line: { color: '#4a6885', width: 1.2 } }
+  ];
+  const shapes = [], anns = [];
+  (data.lines || []).forEach(l => {
+    const col = l.detected ? '#1a3a5c' : '#c4bfb6';
+    shapes.push({ type:'line', x0:l.rest_wavelength, x1:l.rest_wavelength, y0:0, y1:1, yref:'paper', line:{color:col, width:1, dash:'dot'} });
+    anns.push({ x:l.rest_wavelength, y:0.96, yref:'paper', text:l.line_name, showarrow:false, font:{family:MONO, size:9, color:col} });
+  });
+  const mid = flux.slice(Math.floor(flux.length*0.05), Math.floor(flux.length*0.95));
+  const yMax = mid.length ? Math.max(...mid)*1.2 : 1;
+  const yMin = mid.length && Math.min(...mid) < 0 ? Math.min(...mid)*1.2 : -yMax*0.08;
 
-                if (fitData.error) {
-                    logConsole(`ERROR: ${fitData.error}`);
-                    return;
-                }
+  const layout = mkLayout({
+    margin: { t:25, r:20, l:65, b:45 },
+    xaxis: { title:{ text:'Wavelength (Å)', font:{family:MONO,size:10,color:'#4a4640'} } },
+    yaxis: { range:[yMin,yMax], title:{ text:'Flux (erg cm⁻² s⁻¹ Å⁻¹)', font:{family:MONO,size:10,color:'#4a4640'} } },
+    legend: { orientation:'h', x:0, y:1.12, font:{family:MONO,size:9,color:'#1a1814'} },
+    shapes, annotations:anns
+  });
+  Plotly.newPlot('overviewPlot', traces, layout, { responsive:true, displayModeBar:false });
+}
 
-                logConsole('Spectrum fit completed successfully! Rendering V2 dashboard...');
-                currentRecordV2 = fitData;
-                renderV2Results(fitData);
-            } catch (err) {
-                logConsole(`Processing error: ${err.message}`);
-            }
-        }
+/* ── Summary table ── */
+function buildSummaryTable(lines) {
+  const tbody = document.getElementById('summaryTableBody');
+  tbody.innerHTML = '';
+  const fmtX = v => v ? Number(v).toExponential(2) : '—';
+  const fmtN = (v,d=2) => (v !== undefined && v !== null && !isNaN(v)) ? Number(v).toFixed(d) : '—';
 
-        function renderV2Results(rec) {
-            resultsV2.style.display = 'flex';
-            
-            document.getElementById('statObject').innerText = rec.object_id || 'Spectrum 70';
-            const accepted = rec.accepted !== false;
-            document.getElementById('statStatus').innerHTML = accepted 
-                ? `<span class="badge-status pass">ACCEPTED</span>` 
-                : `<span class="badge-status fail">REJECTED</span>`;
-            
-            document.getElementById('statChi2').innerText = rec.reduced_chi2 ? rec.reduced_chi2.toFixed(3) : 'N/A';
-            document.getElementById('statLinesCount').innerText = rec.lines ? rec.lines.length : 0;
+  lines.forEach((l, idx) => {
+    const tr = document.createElement('tr');
+    tr.onclick = () => selectLine(idx);
+    const dWl = l.center ? l.center - l.rest_wavelength : 0;
+    const vel = (dWl / l.rest_wavelength) * 299792.458;
+    const fs = String(l.fit_status || '').toUpperCase();
+    let bTxt = '— NOT DETECTED', bCls = 'badge-fail';
+    if (fs.includes('ACCEPTED'))  { bTxt = '✓ ACCEPTED';     bCls = 'badge-ok'; }
+    else if (fs.includes('REJECTED')) { bTxt = '✕ REJECTED'; }
+    else if (fs.includes('MARGINAL')) { bTxt = '⚠ MARGINAL'; }
 
-            // Tabs
-            const tabsContainer = document.getElementById('lineTabsV2');
-            tabsContainer.innerHTML = '';
-            
-            if (rec.lines && rec.lines.length > 0) {
-                rec.lines.forEach((line, idx) => {
-                    const btn = document.createElement('button');
-                    btn.className = `tab-btn ${idx === 0 ? 'active' : ''}`;
-                    btn.innerText = line.line_name || `Line ${idx+1}`;
-                    btn.onclick = () => selectLineV2(idx);
-                    tabsContainer.appendChild(btn);
-                });
-                selectLineV2(0);
-                populateTableV2(rec.lines);
-            }
-        }
+    tr.innerHTML = `
+      <td style="font-weight:600;">${l.line_name}</td>
+      <td>${l.rest_wavelength.toFixed(1)}</td>
+      <td>${l.detected ? fmtN(l.center,2) : '—'}</td>
+      <td>${l.detected ? fmtN(dWl,2) : '—'}</td>
+      <td>${l.detected ? fmtN(vel,1) : '—'}</td>
+      <td>${l.detected ? fmtN(l.sigma,2) : '—'}</td>
+      <td>${l.detected ? fmtX(l.flux) : '—'}</td>
+      <td>${l.detected ? fmtN(l.ew,1) : '—'}</td>
+      <td>${l.detected ? fmtN(l.snr,2) : '—'}</td>
+      <td>${l.detected ? fmtN(l.reduced_chi2,3) : '—'}</td>
+      <td><span class="${bCls}">${bTxt}</span></td>`;
+    tbody.appendChild(tr);
+  });
+}
 
-        function selectLineV2(idx) {
-            const buttons = document.querySelectorAll('#lineTabsV2 .tab-btn');
-            buttons.forEach((b, i) => b.classList.toggle('active', i === idx));
+/* ── Line tabs ── */
+function buildLineTabs(lines) {
+  const c = document.getElementById('lineTabs');
+  c.innerHTML = '';
+  lines.forEach((l, idx) => {
+    const b = document.createElement('button');
+    b.className = 'line-tab';
+    b.textContent = `${l.line_name} (${l.rest_wavelength.toFixed(0)} Å)`;
+    b.onclick = () => selectLine(idx);
+    c.appendChild(b);
+  });
+}
 
-            const line = currentRecordV2.lines[idx];
-            plotLineDataV2(line);
-            renderLineQCV2(line);
-        }
+function selectLine(idx) {
+  selectedLineIndex = idx;
+  const lines = currentRecord.lines || [];
+  if (idx >= lines.length) return;
+  document.querySelectorAll('.line-tab').forEach((t,i) => t.classList.toggle('active', i===idx));
+  document.querySelectorAll('#summaryTableBody tr').forEach((tr,i) => tr.classList.toggle('active-row', i===idx));
+  const line = lines[idx];
+  document.getElementById('localFitTitle').textContent =
+    `Graph 2 — Zoomed Line Fit — ${line.line_name} (λ${line.rest_wavelength.toFixed(0)} Å)`;
+  renderLineDetails(line);
+}
 
-        function plotLineDataV2(line) {
-            if (!line.wave || !line.flux) return;
+/* ── Line detail plots + params ── */
+function gaussY(x, amp, mu, sig) { return amp * Math.exp(-0.5 * ((x - mu) / sig) ** 2); }
 
-            const traceData = {
-                x: line.wave,
-                y: line.flux,
-                mode: 'lines',
-                name: 'Observed Data',
-                line: { color: '#94a3b8', width: 1.5 }
-            };
+function renderLineDetails(line) {
+  const wl   = currentRecord.wavelength   || [];
+  const suby = currentRecord.subtracted_y || [];
+  const noise = currentRecord.noise_level  || [];
 
-            const traceModel = {
-                x: line.wave,
-                y: line.model_flux || line.fit_flux,
-                mode: 'lines',
-                name: 'Best Fit Model',
-                line: { color: '#38bdf8', width: 2.5 }
-            };
+  const fmtX = v => v ? Number(v).toExponential(3) : '—';
+  const fmtN = (v,d=2) => (v!==undefined&&v!==null&&!isNaN(v)) ? Number(v).toFixed(d) : '—';
 
-            const layoutMain = {
-                paper_bgcolor: 'transparent',
-                plot_bgcolor: 'transparent',
-                margin: { t: 20, r: 20, l: 50, b: 40 },
-                xaxis: { title: 'Wavelength (Å)', gridcolor: 'rgba(255,255,255,0.05)', color: '#94a3b8' },
-                yaxis: { title: 'Flux', gridcolor: 'rgba(255,255,255,0.05)', color: '#94a3b8' },
-                legend: { x: 0, y: 1, font: { color: '#f8fafc' } }
-            };
+  const center = line.center || line.rest_wavelength;
+  const sigma  = line.sigma  || 5;
+  const amp    = line.amplitude || 0;
+  const wing   = line.wing_window || 20;
+  const minWl  = line.min_wavelength || (center - wing/2);
+  const maxWl  = line.max_wavelength || (center + wing/2);
+  const dWl    = center - line.rest_wavelength;
+  const vel    = (dWl / line.rest_wavelength) * 299792.458;
 
-            Plotly.newPlot('plotlyLineV2', [traceData, traceModel], layoutMain, { responsive: true });
+  /* Param cards */
+  document.getElementById('valOutAmp').textContent    = fmtX(amp);
+  document.getElementById('valOutCenter').textContent = fmtN(center,2);
+  document.getElementById('valOutWing').textContent   = fmtN(wing,0);
+  document.getElementById('valOutMin').textContent    = fmtN(minWl,2);
+  document.getElementById('valOutMax').textContent    = fmtN(maxWl,2);
+  document.getElementById('valOutSigma').textContent  = fmtN(sigma,2);
 
-            // Residual plot
-            if (line.residuals) {
-                const traceRes = {
-                    x: line.wave,
-                    y: line.residuals,
-                    mode: 'lines',
-                    name: 'Residuals',
-                    line: { color: '#fb7185', width: 1 }
-                };
+  document.getElementById('valRestWl').textContent    = `${line.rest_wavelength.toFixed(2)} Å`;
+  document.getElementById('valCenter').textContent    = `${fmtN(center,2)} Å`;
+  document.getElementById('valDeltaWl').textContent   = `${dWl>=0?'+':''}${fmtN(dWl,2)} Å`;
+  document.getElementById('valVelOffset').textContent = `${fmtN(vel,1)} km/s`;
+  document.getElementById('valAmp').textContent       = fmtX(amp);
+  document.getElementById('valSigma').textContent     = `${fmtN(sigma,2)} Å`;
+  document.getElementById('valFWHM').textContent      = line.fwhm_ang ? `${fmtN(line.fwhm_ang,2)} Å` : `${fmtN(2.355*sigma,2)} Å`;
+  document.getElementById('valFWHM235').textContent   = `${fmtN(2.355*sigma,2)} Å`;
+  document.getElementById('valFlux').textContent      = fmtX(line.flux);
+  document.getElementById('valEW').textContent        = `${fmtN(line.ew,2)} Å`;
+  document.getElementById('valSNR').textContent       = fmtN(line.snr,2);
+  document.getElementById('valChi2').textContent      = fmtN(line.reduced_chi2,3);
+  document.getElementById('valWingWindow').textContent= `${fmtN(wing,1)} Å`;
+  document.getElementById('valCompScore').textContent = fmtN(line.composite_score||line.quality_score,3);
 
-                const layoutRes = {
-                    paper_bgcolor: 'transparent',
-                    plot_bgcolor: 'transparent',
-                    margin: { t: 10, r: 20, l: 50, b: 30 },
-                    xaxis: { title: 'Wavelength (Å)', gridcolor: 'rgba(255,255,255,0.05)', color: '#94a3b8' },
-                    yaxis: { title: 'Res', gridcolor: 'rgba(255,255,255,0.05)', color: '#94a3b8' }
-                };
+  /* Score breakdown */
+  const sb = document.getElementById('valScoreBreakdown');
+  sb.innerHTML = '';
+  if (line.score_components) {
+    const W = {chi2:0.25,peak:0.20,left:0.05,right:0.05,shape:0.15,wing:0.10,sigma:0.20};
+    const sc = line.score_components;
+    [
+      ['χ² contribution',   sc.chi2_score  * W.chi2 ],
+      ['Peak alignment',    sc.peak_score  * W.peak ],
+      ['Shape match',       sc.shape_score * W.shape],
+      ['Wing residuals',    sc.left_score  * W.left + sc.right_score * W.right],
+      ['σ prior',           sc.sigma_score * W.sigma],
+      ['Window prior',      sc.wing_score  * W.wing ]
+    ].forEach(([label, val]) => {
+      const r = document.createElement('tr');
+      r.innerHTML = `<td style="color:var(--ink3);width:65%;border:none;padding:2px 8px;">${label}</td><td style="color:var(--ink);text-align:right;border:none;padding:2px 8px;">${fmtN(val,3)}</td>`;
+      sb.appendChild(r);
+    });
+  }
 
-                Plotly.newPlot('plotlyResV2', [traceRes], layoutRes, { responsive: true });
-            }
-        }
+  /* ─ Local (zoomed) fit plot ─ */
+  const mask = wl.map((w,i) => w >= minWl && w <= maxWl ? i : -1).filter(i => i>=0);
+  const lwl  = mask.map(i => wl[i]);
+  const lsub = mask.map(i => suby[i]);
+  const lmod = lwl.map(w => gaussY(w, amp, center, sigma));
 
-        function renderLineQCV2(line) {
-            const container = document.getElementById('qcDetailsV2');
-            container.innerHTML = `
-                <div style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-dim);">
-                    <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Line Name</div>
-                    <div style="font-size: 1.1rem; font-weight: 700; color: var(--accent-cyan);">${line.line_name || 'N/A'}</div>
-                </div>
-                <div style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-dim);">
-                    <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">FWHM</div>
-                    <div style="font-size: 1.1rem; font-weight: 700;">${line.fwhm_kms ? line.fwhm_kms.toFixed(2) + ' km/s' : (line.fwhm ? line.fwhm.toFixed(2) + ' Å' : 'N/A')}</div>
-                </div>
-                <div style="background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-dim);">
-                    <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Equivalent Width</div>
-                    <div style="font-size: 1.1rem; font-weight: 700;">${line.ew_A ? line.ew_A.toFixed(2) + ' Å' : 'N/A'}</div>
-                </div>
-            `;
-        }
+  const fwhm = 2.355 * sigma;
+  const localTraces = [
+    { x:lwl, y:lsub, mode:'lines', name:'Continuum-Subtracted', line:{color:'#7a756e',width:1.2} },
+    { x:lwl, y:lmod, mode:'lines', name:'Gaussian Model',       line:{color:'#7a2020',width:2} }
+  ];
+  const localShapes = [
+    { type:'line', x0:center-fwhm/2, x1:center+fwhm/2, y0:amp/2, y1:amp/2, line:{color:'#2a5a2a',width:1.5} },
+    { type:'line', x0:minWl, x1:minWl, y0:0, y1:1, yref:'paper', line:{color:'#c4bfb6',width:1,dash:'dot'} },
+    { type:'line', x0:maxWl, x1:maxWl, y0:0, y1:1, yref:'paper', line:{color:'#c4bfb6',width:1,dash:'dot'} },
+    { type:'line', x0:center, x1:center, y0:0, y1:1, yref:'paper', line:{color:'#1a3a5c',width:1,dash:'dot'} }
+  ];
+  const localAnns = [
+    { x:center, y:0.95, yref:'paper', text:`λ ${center.toFixed(2)} Å`, showarrow:false, font:{family:MONO,size:9,color:'#1a3a5c'} },
+    { x:center, y:0.05, yref:'paper', text:`FWHM ${fmtN(fwhm,2)} Å`, showarrow:false, font:{family:MONO,size:9,color:'#2a5a2a'} }
+  ];
 
-        function populateTableV2(lines) {
-            const tbody = document.getElementById('summaryTableBodyV2');
-            tbody.innerHTML = '';
+  Plotly.newPlot('localPlot', localTraces,
+    mkLayout({ margin:{t:25,r:20,l:60,b:40}, shapes:localShapes, annotations:localAnns,
+      xaxis:{ title:{text:'Wavelength (Å)',font:{family:MONO,size:10}} },
+      yaxis:{ title:{text:'Continuum-Subtracted Flux',font:{family:MONO,size:10}} },
+      legend:{ font:{family:MONO,size:9} }
+    }), { responsive:true, displayModeBar:false });
 
-            lines.forEach((line, idx) => {
-                const tr = document.createElement('tr');
-                tr.onclick = () => selectLineV2(idx);
-                tr.innerHTML = `
-                    <td style="font-weight: 700; color: var(--accent-cyan);">${line.line_name || 'Line'}</td>
-                    <td>${line.center_wave ? line.center_wave.toFixed(2) : (line.lambda0 ? line.lambda0.toFixed(2) : 'N/A')}</td>
-                    <td>${line.fwhm_kms ? line.fwhm_kms.toFixed(1) : (line.fwhm ? line.fwhm.toFixed(2) : 'N/A')}</td>
-                    <td>${line.total_flux ? line.total_flux.toExponential(3) : (line.flux_val ? line.flux_val.toExponential(3) : 'N/A')}</td>
-                    <td>${line.ew_A ? line.ew_A.toFixed(2) : 'N/A'}</td>
-                    <td>${line.chi2_dof ? line.chi2_dof.toFixed(3) : (line.chi2 ? line.chi2.toFixed(3) : 'N/A')}</td>
-                    <td>${line.accepted !== false ? '<span class="badge-status pass">PASS</span>' : '<span class="badge-status fail">FAIL</span>'}</td>
-                `;
-                tbody.appendChild(tr);
-            });
-        window.addEventListener('DOMContentLoaded', async () => {
-            try {
-                const res = await fetch('/api/analysis_summary');
-                const data = await res.json();
-                if (data && !data.error) {
-                    document.getElementById('anTotal').innerText = data.total_spectra;
-                    document.getElementById('anFvar').innerText = data.fvar + ' ± 0.0019';
-                    document.getElementById('anRmax').innerText = data.rmax + ' ± 0.18';
-                    document.getElementById('anFwhm').innerText = data.mean_fwhm_kms + ' km/s';
-                }
-            } catch (e) {
-                console.error('Analysis fetch error:', e);
-            }
-        });
-    </script>
+  /* ─ Residuals ─ */
+  const lnoise = mask.map(i => (noise[i] || 0));
+  const medNoise = lnoise.filter(v=>v>0).sort((a,b)=>a-b)[Math.floor(lnoise.length/2)] || 1e-15;
+  const lres = lsub.map((f,j) => {
+    const n = lnoise[j] > 0 ? lnoise[j] : medNoise;
+    return (f - lmod[j]) / n;
+  });
+
+  const nY = lres.length ? Math.max(Math.abs(Math.max(...lres)), Math.abs(Math.min(...lres))) * 1.3 : 3;
+
+  Plotly.newPlot('residualPlot', [
+    { x:lwl, y:lres, mode:'lines', name:'Residuals', line:{color:'#7a756e',width:1} },
+    { x:[lwl[0],lwl[lwl.length-1]], y:[1,1],   mode:'lines', name:'±1σ', line:{color:'#1a3a5c',width:1,dash:'dot'} },
+    { x:[lwl[0],lwl[lwl.length-1]], y:[-1,-1],  mode:'lines', showlegend:false, line:{color:'#1a3a5c',width:1,dash:'dot'} },
+    { x:[lwl[0],lwl[lwl.length-1]], y:[2,2],   mode:'lines', name:'±2σ', line:{color:'#7a2020',width:1,dash:'dash'} },
+    { x:[lwl[0],lwl[lwl.length-1]], y:[-2,-2],  mode:'lines', showlegend:false, line:{color:'#7a2020',width:1,dash:'dash'} }
+  ], mkLayout({ margin:{t:15,r:20,l:60,b:40},
+    xaxis:{ title:{text:'Wavelength (Å)',font:{family:MONO,size:10}} },
+    yaxis:{ range:[-nY,nY], title:{text:'(F − F̂) / σ',font:{family:MONO,size:10}} },
+    legend:{ font:{family:MONO,size:9} }
+  }), { responsive:true, displayModeBar:false });
+
+  /* ─ Model-selection landscape ─ */
+  const wings  = line.landscape_wing_windows || [];
+  const sigmas = line.landscape_sigmas       || [];
+  const chi2s  = line.landscape_chi2s        || [];
+
+  const landTraces = [];
+  if (wings.length && sigmas.length && chi2s.length) {
+    landTraces.push({ x:wings, y:sigmas, mode:'markers', marker:{
+      size:6, color:chi2s,
+      colorscale:[['0','#1a3a5c'],['0.5','#d4cfc6'],['1','#7a2020']],
+      showscale:true, colorbar:{title:{text:'χ²',font:{family:MONO,size:9}}, thickness:10, tickfont:{family:MONO,size:8}}
+    }, name:'Candidate models' });
+    landTraces.push({ x:[wing], y:[sigma], mode:'markers', marker:{size:14, color:'#1a3a5c', symbol:'star'}, name:'Selected' });
+  }
+
+  Plotly.newPlot('landscapePlot', landTraces,
+    mkLayout({ margin:{t:20,r:60,l:60,b:40},
+      xaxis:{ title:{text:'Wing Window (Å)',font:{family:MONO,size:10}} },
+      yaxis:{ title:{text:'Sigma σ (Å)',font:{family:MONO,size:10}} },
+      legend:{ font:{family:MONO,size:9} }
+    }), { responsive:true, displayModeBar:false });
+
+  /* ─ QC list ─ */
+  renderQC(line);
+}
+
+function renderQC(line) {
+  const el = document.getElementById('qcChecklist');
+  el.innerHTML = '';
+  const snr  = line.snr || 0;
+  const chi2 = line.reduced_chi2 || 0;
+  const dWl  = Math.abs((line.center||line.rest_wavelength) - line.rest_wavelength);
+  const items = [];
+
+  if (snr >= 5)   items.push({s:'pass', i:'✓', t:`SNR = ${snr.toFixed(2)} ≥ 5.0`});
+  else            items.push({s:'warn', i:'⚠', t:`Low SNR = ${snr.toFixed(2)} < 5.0`});
+
+  if (dWl <= 10)  items.push({s:'pass', i:'✓', t:`|Δλ| = ${dWl.toFixed(2)} Å ≤ 10 Å`});
+  else            items.push({s:'warn', i:'⚠', t:`Large shift |Δλ| = ${dWl.toFixed(2)} Å > 10 Å`});
+
+  if (chi2 < 0.1)       items.push({s:'warn', i:'⚠', t:`χ²red = ${chi2.toFixed(3)} — unusually low, check noise`});
+  else if (chi2 <= 3.0) items.push({s:'pass', i:'✓', t:`χ²red = ${chi2.toFixed(3)} — good statistical agreement`});
+  else                  items.push({s:'fail', i:'⚠', t:`χ²red = ${chi2.toFixed(3)} — elevated residuals`});
+
+  items.push({s:'pass', i:'✓', t:`Window ${line.wing_window||20} Å covers core & wings`});
+
+  items.forEach(it => {
+    const d = document.createElement('div');
+    d.className = 'qc-item';
+    d.innerHTML = `<span class="qc-icon ${it.s}">${it.i}</span><span class="qc-text">${it.t}</span>`;
+    el.appendChild(d);
+  });
+}
+
+/* ── Campaign-level analysis summary (from API) ── */
+window.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const res  = await fetch('/api/analysis_summary');
+    const data = await res.json();
+    if (data && !data.error) {
+      document.getElementById('anTotal').textContent = data.total_spectra;
+      document.getElementById('anFlux').textContent  = data.mean_flux;
+      document.getElementById('anFvar').textContent  = data.fvar;
+      document.getElementById('anRmax').textContent  = data.rmax;
+      document.getElementById('anSnr').textContent   = data.mean_snr;
+      document.getElementById('anEw').textContent    = data.mean_ew;
+      document.getElementById('anFwhm').textContent  = data.mean_fwhm_kms;
+    }
+  } catch (e) {
+    console.warn('Analysis summary fetch failed:', e);
+  }
+});
+</script>
 </body>
 </html>

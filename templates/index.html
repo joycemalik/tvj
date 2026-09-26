@@ -83,6 +83,21 @@
         .pipeline-flow { display: flex; flex-direction: column; gap: 0.4rem; font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); background: rgba(0,0,0,0.3); padding: 1rem; border: 1px solid var(--border-dim); }
         .flow-step span.arrow { color: var(--amber-warm); } .flow-step span.val { color: #fff; font-weight: 600; }
         .actions-bar { display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1rem; }
+
+        /* ── SITE FOOTER ── */
+        .site-footer { width: 100%; background: var(--surface-dark); border-top: 1px solid var(--border-dim); margin-top: 4rem; }
+        .footer-inner { max-width: 1380px; margin: 0 auto; padding: 3rem 2rem 2.5rem; display: grid; grid-template-columns: 2fr 2fr 1fr; gap: 3rem; }
+        @media (max-width: 960px) { .footer-inner { grid-template-columns: 1fr; gap: 2rem; } }
+        .footer-about-text p { font-size: 0.8rem; color: var(--text-light); line-height: 1.75; margin-bottom: 0.75rem; }
+        .footer-col-heading { font-family: var(--font-mono); font-size: 0.65rem; color: var(--amber-warm); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-dim); padding-bottom: 0.6rem; }
+        .footer-nav-link { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.8rem 1rem; border: 1px solid var(--border-dim); margin-bottom: 0.6rem; text-decoration: none; background: rgba(0,0,0,0.2); transition: border-color 0.18s, background 0.18s; }
+        .footer-nav-link:hover { border-color: var(--amber-warm); background: rgba(245,158,11,0.04); }
+        .fnl-label { font-family: var(--font-mono); font-size: 0.72rem; font-weight: 700; color: #fff; letter-spacing: 1.5px; }
+        .fnl-desc { font-size: 0.74rem; color: var(--text-muted); line-height: 1.5; margin-top: 0.15rem; }
+        .footer-pipeline-list { font-family: var(--font-mono); font-size: 0.7rem; display: flex; flex-direction: column; gap: 0.45rem; padding: 1rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-dim); }
+        .footer-pipeline-list div { color: var(--text-light); }
+        .footer-pipeline-list div .arrow { color: var(--amber-warm); margin-right: 0.4rem; }
+        .footer-bottom { max-width: 1380px; margin: 0 auto; padding: 1.1rem 2rem; border-top: 1px solid var(--border-dim); font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 1px; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
     </style>
 </head>
 <body>
@@ -195,6 +210,58 @@
             <div class="actions-bar"><button class="btn-nolan" type="button" onclick="window.print()">PRINT REPORT</button></div>
         </div>
     </main>
+
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <!-- About -->
+            <div>
+                <div class="footer-col-heading">// ABOUT THIS SYSTEM</div>
+                <div class="footer-about-text">
+                    <p>An automated spectroscopic fitting and analysis pipeline for archival IUE SWP ultraviolet observations of the quasar <strong style="color:#fff;">3C273</strong>, targeting Lyman Alpha λ1216 Å and adjacent UV emission lines.</p>
+                    <p>The pipeline fits a power-law continuum, performs single-Gaussian emission-line decomposition over a search space of <strong style="color:var(--amber-warm);">5,600 candidate models</strong>, refines with scipy least-squares, and produces quality-controlled measurements across <strong style="color:#fff;">215 archival spectra</strong> spanning wavelengths 900–1830 Å.</p>
+                    <p>Output parameters include integrated flux, equivalent width (EW), FWHM, line-centre velocity, signal-to-noise ratio, and reduced χ² — used to compute long-baseline variability statistics (F<sub>var</sub>, R<sub>max</sub>).</p>
+                </div>
+            </div>
+            <!-- Nav links -->
+            <div>
+                <div class="footer-col-heading">// TOOLS</div>
+                <a href="/" class="footer-nav-link">
+                    <span class="fnl-label">SPECTRUM FIT WORKBENCH</span>
+                    <span class="fnl-desc">Upload any IUE SWP .txt spectrum and run the full fitting pipeline. Real-time Gaussian decomposition with QC diagnostics and model-selection landscape.</span>
+                </a>
+                <a href="/v2" class="footer-nav-link">
+                    <span class="fnl-label">V2 DIAGNOSTIC STUDIO</span>
+                    <span class="fnl-desc">Enhanced fitting studio with glassmorphism UI. SSE log streaming, extended diagnostic panels, and vibrant accent palette.</span>
+                </a>
+                <a href="/v3" class="footer-nav-link">
+                    <span class="fnl-label">SPECTRUM ANALYSIS — V3</span>
+                    <span class="fnl-desc">Client-side time-series viewer for all 215 observations. Load the Excel results dataset, explore variability statistics, and overlay individual .txt spectra with continuum fits.</span>
+                </a>
+            </div>
+            <!-- Pipeline summary -->
+            <div>
+                <div class="footer-col-heading">// PIPELINE</div>
+                <div class="footer-pipeline-list">
+                    <div><span class="arrow">▶</span>IUE SWP Archive · 900–1830 Å</div>
+                    <div><span class="arrow">▶</span>Power-Law Continuum Fit</div>
+                    <div><span class="arrow">▶</span>Gaussian Line Decomposition</div>
+                    <div><span class="arrow">▶</span>5,600 Candidate Model Grid</div>
+                    <div><span class="arrow">▶</span>Scipy Least-Squares Refinement</div>
+                    <div><span class="arrow">▶</span>QC Diagnostics (SNR · χ² · Δλ)</div>
+                    <div><span class="arrow">▶</span>Variability: F<sub>var</sub>, R<sub>max</sub></div>
+                    <div><span class="arrow">▶</span>215 Archival Spectra Processed</div>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <span style="color:var(--amber-warm); font-weight:700;">3C273 Lyman Alpha Spectral Pipeline</span>
+            <span style="color:var(--border-dim);">·</span>
+            <span style="color:var(--text-muted);">IUE SWP Archival Data</span>
+            <span style="color:var(--border-dim);">·</span>
+            <span style="color:var(--text-muted);">215 Spectra · Lyα λ1216 Å · 900–1830 Å</span>
+        </div>
+    </footer>
+
     <script>
         let currentRecord = null, selectedLineIndex = 0;
         const dropzone = document.getElementById('dropzone'), fileInput = document.getElementById('fileInput'), loader = document.getElementById('loader'), errorBox = document.getElementById('errorBox'), resultsDashboard = document.getElementById('resultsDashboard'), demoBtn = document.getElementById('demoBtn');

@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3C273 — IUE Lyman Alpha Spectral Analysis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.26.0/plotly.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --paper:#f7f5f0;--paper2:#f0ede6;--paper3:#e8e4db;
+  --ink:#1a1814;--ink2:#4a4640;--ink3:#7a756e;
+  --rule:#d4cfc6;--rule2:#c4bfb6;
+  --accent:#1a3a5c;--accent2:#7a2020;
+  --green:#2a5a2a;
+  --mono:'IBM Plex Mono','Courier New',monospace;
+  --serif:'EB Garamond',Georgia,serif;
+  --sans:'Inter',system-ui,sans-serif;
+}
+html{font-size:14px;}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.5;min-height:100vh;}
+/* MASTHEAD */
+.masthead{border-bottom:2px solid var(--ink);padding:16px 28px 12px;display:grid;grid-template-columns:1fr auto;align-items:end;gap:12px;}
+.journal-tag{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px;}
+.masthead h1{font-family:var(--serif);font-size:19px;font-weight:500;line-height:1.2;}
+.masthead h1 em{font-style:italic;color:var(--ink2);}
+.masthead-meta{font-size:11px;color:var(--ink3);margin-top:4px;}
+.masthead-right{display:flex;align-items:center;gap:10px;}
+.upload-btn{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;border:none;padding:6px 13px;font-size:12px;font-family:var(--sans);font-weight:500;cursor:pointer;border-radius:2px;white-space:nowrap;}
+.upload-btn:hover{background:#142e4a;}
+#file-status{font-size:11px;color:var(--ink3);}
+#file-status.ok{color:var(--green);font-weight:500;}
+#file-status.err{color:var(--accent2);font-weight:500;}
+/* TABS */
+.tabs{border-bottom:1px solid var(--rule);display:flex;background:var(--paper2);}
+.tab-btn{padding:9px 18px;font-size:12px;font-weight:500;letter-spacing:.04em;border:none;background:transparent;color:var(--ink3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;}
+.tab-btn.active{color:var(--ink);border-bottom-color:var(--ink);}
+.tab-btn:hover:not(.active){color:var(--ink2);}
+#warnings{display:none;background:#fdf8ec;border-left:3px solid #b8860b;margin:8px 28px 0;padding:7px 12px;font-size:12px;color:#5a4010;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+/* SHARED */
+select{background:var(--paper);color:var(--ink);border:1px solid var(--rule2);border-radius:2px;padding:4px 8px;font-size:12px;font-family:var(--sans);cursor:pointer;}
+.export-btn{background:transparent;border:1px solid var(--rule2);color:var(--ink3);border-radius:2px;padding:2px 8px;font-size:10px;cursor:pointer;}
+.export-btn:hover{border-color:var(--accent);color:var(--accent);}
+/* UPLOAD PROMPT */
+#upload-prompt{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:48vh;gap:12px;color:var(--ink3);text-align:center;}
+.prompt-icon{width:48px;height:48px;border:1.5px solid var(--rule2);display:flex;align-items:center;justify-content:center;}
+#upload-prompt p{font-size:14px;font-family:var(--serif);font-style:italic;}
+/* SUMMARY DASHBOARD */
+#main{padding:18px 28px 36px;}
+.dash-toolbar{border-bottom:1px solid var(--rule);margin:0 -28px 18px;padding:8px 28px;display:flex;align-items:center;gap:18px;background:var(--paper2);flex-wrap:wrap;}
+.tb-label{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);white-space:nowrap;}
+.tb-group{display:flex;align-items:center;gap:7px;}
+.section-head{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);border-bottom:1px solid var(--rule);padding-bottom:5px;margin-bottom:12px;display:flex;align-items:baseline;gap:8px;}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));border:1px solid var(--rule);margin-bottom:20px;}
+.stat-item{padding:10px 12px;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);}
+.stat-item .sl{font-size:10px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);margin-bottom:3px;}
+.stat-item .sv{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--accent);}
+.stat-item .se{font-family:var(--mono);font-size:10px;color:var(--ink3);margin-top:2px;}
+.panel-grid{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--rule);margin-bottom:20px;}
+.panel{border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);}
+.panel:nth-child(2n){border-right:none;}
+.panel.panel-full{grid-column:1/-1;border-right:none;}
+.panel-header{display:flex;align-items:center;justify-content:space-between;padding:6px 11px;border-bottom:1px solid var(--rule);background:var(--paper2);}
+.panel-title{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);}
+.panel-title .unit{font-size:10px;font-weight:400;letter-spacing:0;color:var(--ink3);margin-left:4px;text-transform:none;}
+.chart-wrap{height:255px;background:var(--paper);}
+.panel-full .chart-wrap{height:240px;}
+#detail-panel{border:1px solid var(--rule);margin-bottom:20px;display:none;}
+.detail-head{display:flex;align-items:center;justify-content:space-between;padding:7px 13px;background:var(--paper2);border-bottom:1px solid var(--rule);}
+.detail-head-title{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);}
+.nav-btns{display:flex;gap:5px;}
+.nav-btn{background:transparent;border:1px solid var(--rule2);color:var(--ink2);border-radius:2px;padding:2px 9px;font-size:11px;cursor:pointer;}
+.nav-btn:hover{border-color:var(--accent);color:var(--accent);}
+.nav-btn.danger{border-color:#c09090;color:var(--accent2);}
+.detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));}
+.detail-item{padding:7px 10px;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);}
+.detail-item .dl{font-size:10px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);margin-bottom:2px;}
+.detail-item .dv{font-family:var(--mono);font-size:12px;color:var(--ink);}
+.detail-item .dv.null{color:var(--ink3);font-style:italic;}
+/* ════ INDIVIDUAL VIEWER ════ */
+#viewer{display:flex;flex-direction:column;height:calc(100vh - 118px);overflow:hidden;}
+/* Top nav bar */
+.viewer-nav{display:flex;align-items:center;gap:8px;padding:7px 16px;background:var(--paper2);border-bottom:1px solid var(--rule);flex-wrap:wrap;flex-shrink:0;}
+.v-nav-btn{background:var(--paper);border:1px solid var(--rule2);color:var(--ink2);padding:3px 10px;font-size:12px;cursor:pointer;border-radius:2px;}
+.v-nav-btn:hover{border-color:var(--accent);color:var(--accent);}
+#v-spec-sel{font-size:12px;padding:3px 7px;min-width:200px;}
+.v-sep{width:1px;height:18px;background:var(--rule);margin:0 4px;}
+/* txt loader strip */
+.txt-loader-bar{display:flex;align-items:center;gap:8px;padding:5px 16px;background:var(--paper3);border-bottom:1px solid var(--rule);font-size:11px;flex-shrink:0;}
+.txt-load-btn{display:inline-flex;align-items:center;gap:5px;background:var(--paper);border:1px solid var(--rule2);color:var(--ink2);padding:3px 10px;font-size:11px;cursor:pointer;border-radius:2px;white-space:nowrap;}
+.txt-load-btn:hover{border-color:var(--accent);color:var(--accent);}
+#txt-status{color:var(--ink3);}
+#txt-status.ok{color:var(--green);font-weight:500;}
+/* Continuum windows bar */
+.cont-bar{display:flex;align-items:center;gap:8px;padding:5px 16px;background:var(--paper2);border-bottom:1px solid var(--rule);font-size:11px;flex-shrink:0;flex-wrap:wrap;}
+.cont-bar label{color:var(--ink3);font-weight:600;letter-spacing:.06em;text-transform:uppercase;font-size:10px;white-space:nowrap;}
+#cont-windows{font-size:11px;font-family:var(--mono);border:1px solid var(--rule2);background:var(--paper);padding:3px 8px;border-radius:2px;flex:1;min-width:260px;max-width:500px;}
+.fit-btn{background:var(--accent);color:#fff;border:none;border-radius:2px;padding:4px 12px;font-size:11px;cursor:pointer;white-space:nowrap;}
+.fit-btn:hover{background:#142e4a;}
+.fit-btn.secondary{background:transparent;border:1px solid var(--rule2);color:var(--ink2);}
+.fit-btn.secondary:hover{border-color:var(--accent);color:var(--accent);}
+/* Viewer body */
+.viewer-body{display:grid;grid-template-columns:1fr 280px;flex:1;overflow:hidden;}
+.viewer-charts-col{display:flex;flex-direction:column;overflow-y:auto;border-right:1px solid var(--rule);}
+/* chart panels */
+.v-panel{border-bottom:1px solid var(--rule);}
+.v-panel-head{display:flex;align-items:center;justify-content:space-between;padding:5px 11px;background:var(--paper2);border-bottom:1px solid var(--rule);}
+.v-panel-title{font-size:10px;font-weight:600;letter-spacing:.10em;text-transform:uppercase;color:var(--ink2);}
+.v-panel-note{font-size:10px;color:var(--ink3);font-family:var(--mono);}
+.v-exp-btn{background:transparent;border:1px solid var(--rule2);color:var(--ink3);border-radius:2px;padding:2px 8px;font-size:9.5px;cursor:pointer;}
+.v-exp-btn:hover{border-color:var(--accent);color:var(--accent);}
+.v-chart-lg{height:320px;background:var(--paper);}
+.v-panel-row{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--rule);}
+.v-panel-row .v-panel{border-right:1px solid var(--rule);border-bottom:none;}
+.v-panel-row .v-panel:last-child{border-right:none;}
+.v-chart-sm{height:280px;background:var(--paper);}
+/* Results table */
+.results-table-wrap{padding:10px 12px 12px;}
+.results-table{width:100%;border-collapse:collapse;font-size:10.5px;}
+.results-table th{font-size:9.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink3);padding:5px 7px;border-bottom:1px solid var(--rule);text-align:left;background:var(--paper2);}
+.results-table td{font-family:var(--mono);font-size:10.5px;padding:4px 7px;border-bottom:1px solid var(--rule);color:var(--ink);}
+.results-table tr:last-child td{border-bottom:none;}
+/* Params column */
+.viewer-params-col{overflow-y:auto;display:flex;flex-direction:column;}
+.ps-head{font-size:9px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--ink3);padding:6px 11px 4px;background:var(--paper2);border-bottom:1px solid var(--rule);}
+.ps-section{border-bottom:1px solid var(--rule);}
+.pr{display:flex;justify-content:space-between;align-items:baseline;gap:6px;padding:4px 11px;border-bottom:1px solid var(--rule);}
+.pr:last-child{border-bottom:none;}
+.pr .pk{font-size:10px;color:var(--ink3);white-space:nowrap;}
+.pr .pv{font-family:var(--mono);font-size:11px;color:var(--ink);text-align:right;}
+.pr .pv.hi{color:var(--accent);font-weight:500;}
+.pr .pv.hi2{color:var(--accent2);font-weight:500;}
+.pr .pv.null{color:var(--ink3);font-style:italic;}
+/* Wing calculator */
+.wing-calc{padding:8px 11px;}
+.wing-calc-title{font-size:9.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink3);margin-bottom:7px;}
+.wing-input-row{display:flex;align-items:center;gap:5px;margin-bottom:5px;}
+.wing-input-row label{font-size:10px;color:var(--ink3);min-width:64px;}
+.wing-input-row input{border:1px solid var(--rule2);background:var(--paper);border-radius:2px;padding:3px 6px;font-size:11px;font-family:var(--mono);width:90px;}
+.wing-result{font-size:10px;font-family:var(--mono);margin-top:6px;padding:6px 8px;background:var(--paper3);border:1px solid var(--rule);}
+.wing-result .wr-label{color:var(--ink3);}
+.wing-result .wr-val{color:var(--accent2);font-weight:500;}
+/* Placeholder */
+.v-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;min-height:240px;color:var(--ink3);font-style:italic;font-size:12px;gap:6px;font-family:var(--serif);}
+.v-placeholder small{font-size:10.5px;font-family:var(--sans);font-style:normal;}
+/* No-data page */
+#viewer-no-data{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:46vh;gap:12px;color:var(--ink3);text-align:center;padding:40px;}
+#viewer-no-data p{font-family:var(--serif);font-style:italic;font-size:14px;}
+/* FOOTER */
+.page-footer{border-top:1px solid var(--rule);padding:8px 28px;font-size:10px;color:var(--ink3);background:var(--paper2);}
+@media(max-width:900px){
+  .masthead{grid-template-columns:1fr;}
+  .panel-grid{grid-template-columns:1fr;}
+  .viewer-body{grid-template-columns:1fr;}
+  .v-panel-row{grid-template-columns:1fr;}
+  #viewer{height:auto;}
+}
+</style>
+</head>
+<body>
+
+<!-- MASTHEAD -->
+<div class="masthead">
+  <div>
+    <div class="journal-tag">IUE Spectral Analysis &mdash; 3C273 Quasar</div>
+    <h1>Lyman Alpha Emission Line &mdash; <em>Time Series &amp; Individual Spectra</em></h1>
+    <div class="masthead-meta">215 IUE SWP observations &bull; Ly&alpha; &lambda;1216 &Aring; &bull; Wavelength region 1100&ndash;2000 &Aring;</div>
+  </div>
+  <div class="masthead-right">
+    <span id="file-status">No dataset loaded</span>
+    <label class="upload-btn">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Load Final Data.xlsx
+      <input type="file" accept=".xlsx,.xls" id="file-input" style="display:none">
+    </label>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab-btn active" data-tab="summary">Summary Dashboard</button>
+  <button class="tab-btn" data-tab="viewer">Individual Spectrum</button>
+</div>
+<div id="warnings"></div>
+
+<!-- ══ TAB: SUMMARY ══ -->
+<div class="tab-panel active" id="tab-summary">
+  <div id="upload-prompt">
+    <div class="prompt-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+    <p>Load <strong style="font-family:var(--mono);font-style:normal;font-size:12px">Final Data.xlsx</strong> to begin</p>
+  </div>
+  <div id="main" style="display:none">
+    <div class="dash-toolbar">
+      <div class="tb-group"><span class="tb-label">Emission Line</span><select id="line-sel"><option value="">&#8212;</option></select></div>
+      <div class="tb-group"><span class="tb-label">Highlight</span><select id="spec-sel"><option value="">None</option></select></div>
+    </div>
+    <div class="section-head">Variability Statistics <span id="stats-n"></span></div>
+    <div class="stats-grid" id="stats-grid"></div>
+    <div class="section-head">Spectral Parameters vs. Spectrum Number</div>
+    <div class="panel-grid" id="panel-grid"></div>
+    <div id="detail-panel">
+      <div class="detail-head">
+        <span class="detail-head-title" id="detail-title">Spectrum Parameters</span>
+        <div class="nav-btns">
+          <button class="nav-btn" id="btn-prev">&#9664; Prev</button>
+          <button class="nav-btn" id="btn-next">Next &#9654;</button>
+          <button class="nav-btn danger" id="btn-clear">&#215; Clear</button>
+        </div>
+      </div>
+      <div class="detail-grid" id="detail-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TAB: INDIVIDUAL VIEWER ══ -->
+<div class="tab-panel" id="tab-viewer">
+  <div id="viewer">
+    <div id="viewer-no-data">
+      <div class="prompt-icon" style="margin:0 auto"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+      <p>Load <strong style="font-family:var(--mono);font-style:normal">Final Data.xlsx</strong> first</p>
+    </div>
+
+    <div id="viewer-content" style="display:none;flex-direction:column;height:100%">
+
+      <!-- 1. Spectrum selector -->
+      <div class="viewer-nav">
+        <span class="tb-label" style="font-size:10px">Spectrum</span>
+        <button class="v-nav-btn" id="v-btn-prev">&#9664;</button>
+        <select id="v-spec-sel"></select>
+        <button class="v-nav-btn" id="v-btn-next">&#9654;</button>
+        <div class="v-sep"></div>
+        <span id="v-meta" style="font-size:10.5px;color:var(--ink3);font-family:var(--mono);"></span>
+        <div style="margin-left:auto;display:flex;gap:6px">
+          <button class="v-exp-btn" id="v-exp-full">&#8659; Full Spectrum</button>
+          <button class="v-exp-btn" id="v-exp-emission">&#8659; Emission Line</button>
+          <button class="v-exp-btn" id="v-exp-residual">&#8659; Residuals</button>
+        </div>
+      </div>
+
+      <!-- 2. .txt files loader -->
+      <div class="txt-loader-bar">
+        <label class="txt-load-btn">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          Load Spectra Folder (.txt files)
+          <input type="file" id="txt-folder-input" webkitdirectory multiple accept=".txt" style="display:none">
+        </label>
+        <span id="txt-status">No .txt files loaded &mdash; full spectrum plots unavailable</span>
+        <span style="color:var(--ink3);font-size:10px;margin-left:auto">Folder must contain all IUE SWP .txt files</span>
+      </div>
+
+      <!-- 3. Continuum windows -->
+      <div class="cont-bar">
+        <label>Continuum Windows (&Aring;)</label>
+        <input id="cont-windows" type="text" value="1100:1150, 1325:1370, 1425:1475, 1590:1620, 1660:1700" spellcheck="false">
+        <button class="fit-btn secondary" id="btn-reset-windows">Reset</button>
+        <span style="color:var(--ink3);font-size:10px">Comma-separated lo:hi pairs (avoid emission line region)</span>
+      </div>
+
+      <!-- 4. Charts + params -->
+      <div class="viewer-body" style="flex:1">
+        <!-- Charts -->
+        <div class="viewer-charts-col">
+
+          <!-- A: Full spectrum continuum subtraction -->
+          <div class="v-panel">
+            <div class="v-panel-head">
+              <span class="v-panel-title">Full Spectrum &mdash; Continuum Subtraction</span>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="v-panel-note" id="va-note"></span>
+                <button class="v-exp-btn" onclick="exportV('v-chart-full','full_spectrum')">PNG</button>
+              </div>
+            </div>
+            <div class="v-chart-lg" id="v-chart-full"></div>
+          </div>
+
+          <!-- B + C: Emission line | Residuals -->
+          <div class="v-panel-row">
+            <div class="v-panel">
+              <div class="v-panel-head">
+                <span class="v-panel-title">Emission Line Fit</span>
+                <div style="display:flex;gap:6px">
+                  <span class="v-panel-note" id="vb-note"></span>
+                  <button class="v-exp-btn" onclick="exportV('v-chart-emission','emission_line')">PNG</button>
+                </div>
+              </div>
+              <div class="v-chart-sm" id="v-chart-emission"></div>
+            </div>
+            <div class="v-panel">
+              <div class="v-panel-head">
+                <span class="v-panel-title">Residuals</span>
+                <div style="display:flex;gap:6px">
+                  <span class="v-panel-note" id="vc-note"></span>
+                  <button class="v-exp-btn" onclick="exportV('v-chart-residual','residuals')">PNG</button>
+                </div>
+              </div>
+              <div class="v-chart-sm" id="v-chart-residual"></div>
+            </div>
+          </div>
+
+          <!-- Results table -->
+          <div class="v-panel">
+            <div class="v-panel-head"><span class="v-panel-title">Emission Line Results</span></div>
+            <div class="results-table-wrap">
+              <table class="results-table" id="v-results-table">
+                <thead><tr>
+                  <th>File</th><th>Line</th><th>Centre (&Aring;)</th>
+                  <th>Flux</th><th>Flux Err</th><th>SNR</th>
+                  <th>EW (&Aring;)</th><th>EW Err</th>
+                  <th>FWHM (&Aring;)</th><th>FWHM km/s</th>
+                  <th>Wing (&Aring;)</th><th>Min &lambda;</th><th>Max &lambda;</th>
+                  <th>&chi;&sup2;<sub>&nu;</sub></th>
+                </tr></thead>
+                <tbody id="v-results-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+        </div><!-- /charts col -->
+
+        <!-- Params column -->
+        <div class="viewer-params-col">
+
+          <div class="ps-section">
+            <div class="ps-head">Identification</div>
+            <div class="pr"><span class="pk">Spectrum</span><span class="pv hi" id="vp-num">&mdash;</span></div>
+            <div class="pr"><span class="pk">Components</span><span class="pv" id="vp-ncomp">&mdash;</span></div>
+          </div>
+
+          <div class="ps-section" id="vp-comp-section">
+            <div class="ps-head">Gaussian Fit (from Excel)</div>
+            <div id="vp-comp-body"></div>
+          </div>
+
+          <div class="ps-section">
+            <div class="ps-head">Line Measurements</div>
+            <div class="pr"><span class="pk">Flux</span><span class="pv" id="vp-flux">&mdash;</span></div>
+            <div class="pr"><span class="pk">Flux Error</span><span class="pv" id="vp-fluxerr">&mdash;</span></div>
+            <div class="pr"><span class="pk">SNR</span><span class="pv hi" id="vp-snr">&mdash;</span></div>
+            <div class="pr"><span class="pk">EW (&Aring;)</span><span class="pv" id="vp-ew">&mdash;</span></div>
+            <div class="pr"><span class="pk">EW Err</span><span class="pv" id="vp-ewerr">&mdash;</span></div>
+          </div>
+
+          <div class="ps-section">
+            <div class="ps-head">Continuum Fit</div>
+            <div class="pr"><span class="pk">Spectral Index</span><span class="pv hi2" id="vp-si">&mdash;</span></div>
+            <div class="pr"><span class="pk">Amplitude</span><span class="pv hi2" id="vp-amp">&mdash;</span></div>
+            <div class="pr"><span class="pk">F<sub>cont</sub>(&lambda;<sub>0</sub>)</span><span class="pv" id="vp-fcont">&mdash;</span></div>
+            <div class="pr"><span class="pk">Cont. pts</span><span class="pv" id="vp-cpts">&mdash;</span></div>
+          </div>
+
+          <div class="ps-section">
+            <div class="ps-head">Wing Window</div>
+            <div class="pr"><span class="pk">Wing Window (&Aring;)</span><span class="pv" id="vp-wing">&mdash;</span></div>
+            <div class="pr"><span class="pk">Wing &lambda;<sub>lo</sub></span><span class="pv hi2" id="vp-wlo">&mdash;</span></div>
+            <div class="pr"><span class="pk">Wing &lambda;<sub>hi</sub></span><span class="pv hi2" id="vp-whi">&mdash;</span></div>
+            <div class="pr"><span class="pk">Min &lambda; (&Aring;)</span><span class="pv" id="vp-minl">&mdash;</span></div>
+            <div class="pr"><span class="pk">Max &lambda; (&Aring;)</span><span class="pv" id="vp-maxl">&mdash;</span></div>
+            <div class="pr"><span class="pk">Reduced &chi;&sup2;</span><span class="pv" id="vp-chi2">&mdash;</span></div>
+          </div>
+
+          <!-- Wing wavelength calculator -->
+          <div class="ps-section">
+            <div class="ps-head">Wing Wavelength Calculator</div>
+            <div class="wing-calc">
+              <div class="wing-input-row">
+                <label>Rest &lambda; (&Aring;)</label>
+                <input id="wc-restlam" type="number" value="1216" step="0.1">
+              </div>
+              <div class="wing-input-row">
+                <label>Rest FWHM (km/s)</label>
+                <input id="wc-fwhm" type="number" value="" placeholder="from Excel" step="1">
+              </div>
+              <button class="fit-btn" onclick="calcWingWavelength()" style="width:100%;margin-top:4px">Calculate</button>
+              <div class="wing-result" id="wc-result" style="display:none">
+                <div><span class="wr-label">Wing &lambda;: </span><span class="wr-val" id="wc-wing-lambda">&mdash;</span></div>
+                <div><span class="wr-label">Blue Wing &lambda;: </span><span class="wr-val" id="wc-blue">&mdash;</span></div>
+                <div><span class="wr-label">Red Wing &lambda;: </span><span class="wr-val" id="wc-red">&mdash;</span></div>
+                <div style="margin-top:4px;font-size:9.5px;color:var(--ink3)" id="wc-vel"></div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /params col -->
+      </div><!-- /viewer-body -->
+    </div><!-- /viewer-content -->
+  </div><!-- /viewer -->
+</div>
+
+<div class="page-footer">3C273 IUE SWP &bull; Ly&alpha; &lambda;1216 &Aring; &bull; Verified spectral fitting outputs from Final Data.xlsx</div>
+
+<!-- ═══════════════════ SCRIPTS ═══════════════════ -->
+<script>
+/* ── TABS ── */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tab = btn.getAttribute('data-tab');
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+tab).classList.add('active');
+  });
+});
+</script>
+<script>
+/* ── EXCEL PARSER ── */
+function cleanStr(s){if(s==null)return'';return String(s).replace(/ /g,' ').trim();}
+function parseWorkbook(buf){
+  let wb;try{wb=XLSX.read(buf,{type:'array'});}catch(e){throw new Error('Cannot read file.');}
+  const sheet=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:null});
+  let headerIdx=-1,colMap={};
+  for(let ri=0;ri<rows.length;ri++){
+    const row=rows[ri];
+    for(let ci=0;ci<row.length;ci++){
+      if(cleanStr(row[ci]).toLowerCase()==='spectrum'){
+        headerIdx=ri;
+        for(let k=0;k<row.length;k++){const h=cleanStr(row[k]);if(h)colMap[h]=k;}
+        break;
+      }
+    }
+    if(headerIdx>=0)break;
+  }
+  if(headerIdx<0)throw new Error('No "Spectrum" header found.');
+  const specCol=colMap['Spectrum'],rawRows=[];
+  for(let ri=headerIdx+1;ri<rows.length;ri++){
+    const row=rows[ri];
+    if(row.every(c=>c==null))continue;
+    if(row[specCol]==null||cleanStr(String(row[specCol]))==='')continue;
+    const obj={};for(const[hdr,ci]of Object.entries(colMap))obj[hdr]=row[ci]!==undefined?row[ci]:null;
+    rawRows.push(obj);
+  }
+  return rawRows;
+}
+function parseNum(v){if(v==null)return null;if(typeof v==='number')return isNaN(v)?null:v;const n=parseFloat(String(v));return isNaN(n)?null:n;}
+function makeLookup(rawRow){
+  const norm=s=>String(s||'').replace(/ /g,' ').replace(/\s+/g,' ').trim().toLowerCase();
+  const entries=Object.entries(rawRow).map(([k,v])=>[norm(k),v]);
+  return(...keys)=>{for(const key of keys){const hit=entries.find(([k])=>k===norm(key));if(hit)return hit[1];}return null;};
+}
+function normalizeRows(rawRows){
+  return rawRows.map((raw,i)=>{
+    const get=makeLookup(raw);
+    const spectrum=cleanStr(String(get('Spectrum')||''));
+    const m=spectrum.match(/3c273\s+(\d+)/i);
+    return{
+      _idx:i,spectrum,spectrumNum:m?parseInt(m[1],10):null,
+      emissionLine:cleanStr(String(get('Emission Line')||'')).toUpperCase(),
+      lineCenter:  parseNum(get('Line Center (Å)','Line Center')),
+      flux:        parseNum(get('Flux')),
+      fluxError:   parseNum(get('Flux Error')),
+      snr:         parseNum(get('SNR')),
+      ew:          parseNum(get('EW')),
+      ewError:     parseNum(get('EW Error')),
+      fwhmAngstrom:parseNum(get('FWHM (Å)','FWHM')),
+      fwhmKmS:     parseNum(get('FWHM (km/s)')),
+      wingWindow:  parseNum(get('Wing Window')),
+      minLambda:   parseNum(get('Min λ','Min','min lambda')),
+      maxLambda:   parseNum(get('Max λ','Max','max lambda')),
+      reducedChiSq:parseNum(get('Reduced χ²','Reduced chi2','Reduced chi squared')),
+    };
+  });
+}
+</script>
+<script>
+/* ── VARIABILITY STATS ── */
+function computeVariabilityStats(obs){
+  const pairs=obs.filter(o=>o.flux!=null&&o.fluxError!=null);
+  if(pairs.length<2)return null;
+  const F=pairs.map(o=>o.flux),sigma=pairs.map(o=>o.fluxError),n=F.length;
+  const xbar=F.reduce((a,b)=>a+b,0)/n,xe=sigma.reduce((a,b)=>a+b,0)/n;
+  const S=F.reduce((acc,f)=>acc+(f-xbar)**2,0)/(n-1),H=sigma.reduce((acc,e)=>acc+e*e,0)/n;
+  const Fvar=Math.sqrt(Math.abs(S-H))/xbar;
+  const L=sigma.reduce((acc,e)=>acc+(e-xe)**2,0)/(n-1);
+  const ErrorFvar=(S===L)?Math.sqrt(1/(2*n))*(L/(xbar**2*Fvar)):Math.sqrt(L/n)*(1/xbar);
+  const Fmax=Math.max(...F),Fmin=Math.min(...F),idxMax=F.indexOf(Fmax),idxMin=F.indexOf(Fmin);
+  const Rmax=Fmax/Fmin,RmaxErr=Math.sqrt((sigma[idxMin]/Fmin)**2+(sigma[idxMax]/Fmax)**2);
+  return{xbar,xe,Fvar,ErrorFvar,Fmax,Fmin,Rmax,RmaxErr,n};
+}
+function renderStats(obs){
+  const s=computeVariabilityStats(obs);
+  document.getElementById('stats-n').textContent=s?'— N = '+s.n+' spectra':'';
+  const grid=document.getElementById('stats-grid');
+  if(!s){grid.innerHTML='<div style="padding:12px;font-size:12px;color:var(--ink3)">Insufficient data.</div>';return;}
+  const fmtSci=v=>v==null?'—':v.toExponential(4),fmtF4=v=>v==null?'—':v.toFixed(4),fmtF3=v=>v==null?'—':v.toFixed(3);
+  const u='erg cm⁻² s⁻¹ Å⁻¹';
+  grid.innerHTML=[
+    {label:'Mean Flux (F̅)',value:fmtSci(s.xbar),note:u},
+    {label:'Mean Flux Error',value:fmtSci(s.xe),note:u},
+    {label:'Fₛₐʳ',value:fmtF4(s.Fvar),note:'σ(Fₛₐʳ) = '+fmtF4(s.ErrorFvar)},
+    {label:'Rmax',value:fmtF3(s.Rmax),note:'σ(Rmax) = '+fmtF3(s.RmaxErr)},
+    {label:'Fmax',value:fmtSci(s.Fmax),note:u},
+    {label:'Fmin',value:fmtSci(s.Fmin),note:u},
+  ].map(it=>`<div class="stat-item"><div class="sl">${it.label}</div><div class="sv">${it.value}</div>${it.note?`<div class="se">${it.note}</div>`:''}</div>`).join('');
+}
+</script>
+<script>
+/* ── SUMMARY PANELS ── */
+const BASE_LAYOUT={
+  paper_bgcolor:'#f7f5f0',plot_bgcolor:'#faf9f6',
+  font:{color:'#7a756e',family:'Inter, system-ui, sans-serif',size:11},
+  xaxis:{gridcolor:'#e4e0d8',zerolinecolor:'#ccc8c0',linecolor:'#d4cfc6',tickcolor:'#d4cfc6',tickfont:{family:'IBM Plex Mono, monospace',size:10}},
+  yaxis:{gridcolor:'#e4e0d8',zerolinecolor:'#ccc8c0',linecolor:'#d4cfc6',tickcolor:'#d4cfc6',tickfont:{family:'IBM Plex Mono, monospace',size:10}},
+  margin:{l:60,r:14,t:12,b:46},hovermode:'closest',showlegend:false,
+  hoverlabel:{bgcolor:'#1a1814',bordercolor:'#1a1814',font:{color:'#f7f5f0',family:'IBM Plex Mono, monospace',size:11}},
+};
+const PLT_CFG={scrollZoom:true,displayModeBar:true,displaylogo:false,modeBarButtonsToRemove:['select2d','lasso2d'],toImageButtonOptions:{format:'png',width:1400,height:700,scale:2}};
+function makeTrace(obs,yKey,errKey,selNum){
+  const pts=obs.filter(o=>o.spectrumNum!=null&&o[yKey]!=null);
+  if(!pts.length)return null;
+  const isSel=o=>selNum!=null&&o.spectrumNum===selNum;
+  const tr={type:'scatter',mode:'markers',x:pts.map(o=>o.spectrumNum),y:pts.map(o=>o[yKey]),customdata:pts.map(o=>o.spectrumNum),hovertemplate:'<b>#%{x}</b><br>%{y}<extra></extra>',marker:{color:pts.map(o=>isSel(o)?'#7a2020':'#1a3a5c'),size:pts.map(o=>isSel(o)?9:5),opacity:pts.map(o=>(selNum!=null&&!isSel(o))?0.2:0.75),line:{width:0}}};
+  if(errKey&&pts.some(o=>o[errKey]!=null))tr.error_y={type:'data',visible:true,thickness:1,width:3,array:pts.map(o=>o[errKey]!=null?Math.abs(o[errKey]):null),color:pts.map(o=>isSel(o)?'#7a2020':'#1a3a5c')};
+  return tr;
+}
+function makeLambdaTraces(obs,selNum){
+  const isSel=o=>selNum!=null&&o.spectrumNum===selNum,dim=o=>(selNum!=null&&!isSel(o))?0.2:0.75;
+  const mn=obs.filter(o=>o.spectrumNum!=null&&o.minLambda!=null),mx=obs.filter(o=>o.spectrumNum!=null&&o.maxLambda!=null);
+  return[
+    {type:'scatter',mode:'markers',name:'Min λ',showlegend:true,x:mn.map(o=>o.spectrumNum),y:mn.map(o=>o.minLambda),customdata:mn.map(o=>o.spectrumNum),hovertemplate:'<b>#%{x}</b><br>Minλ=%{y}Å<extra></extra>',marker:{color:mn.map(o=>isSel(o)?'#7a2020':'#1a3a5c'),size:mn.map(o=>isSel(o)?9:5),opacity:mn.map(o=>dim(o)),line:{width:0}}},
+    {type:'scatter',mode:'markers',name:'Max λ',showlegend:true,x:mx.map(o=>o.spectrumNum),y:mx.map(o=>o.maxLambda),customdata:mx.map(o=>o.spectrumNum),hovertemplate:'<b>#%{x}</b><br>Maxλ=%{y}Å<extra></extra>',marker:{color:mx.map(o=>isSel(o)?'#7a2020':'#8a6a20'),size:mx.map(o=>isSel(o)?9:5),symbol:'diamond',opacity:mx.map(o=>dim(o)),line:{width:0}}},
+  ];
+}
+const PANEL_DEFS=[
+  {id:'flux',title:'Flux',unit:'erg cm⁻² s⁻¹ Å⁻¹',yKey:'flux',errKey:'fluxError',yFmt:'.3e'},
+  {id:'snr',title:'SNR',unit:'',yKey:'snr',errKey:null,yFmt:'.2f'},
+  {id:'ew',title:'Equiv. Width',unit:'Å',yKey:'ew',errKey:'ewError',yFmt:'.3f'},
+  {id:'fwhm-a',title:'FWHM',unit:'Å',yKey:'fwhmAngstrom',errKey:null,yFmt:'.2f'},
+  {id:'fwhm-k',title:'FWHM',unit:'km s⁻¹',yKey:'fwhmKmS',errKey:null,yFmt:'.1f'},
+  {id:'chi2',title:'Reduced χ²',unit:'',yKey:'reducedChiSq',errKey:null,yFmt:'.3f'},
+  {id:'wing',title:'Wing Window',unit:'Å',yKey:'wingWindow',errKey:null,yFmt:'.1f'},
+  {id:'lc',title:'Line Centre',unit:'Å',yKey:'lineCenter',errKey:null,yFmt:'.2f'},
+];
+function renderPanelGrid(){
+  const grid=document.getElementById('panel-grid');
+  let html=PANEL_DEFS.map(d=>{
+    const u=d.unit?`<span class="unit">(${d.unit})</span>`:'';
+    return`<div class="panel" id="panel-${d.id}"><div class="panel-header"><span class="panel-title">${d.title}${u}</span><button class="export-btn" data-export="${d.id}">Export</button></div><div class="chart-wrap" id="chart-${d.id}"></div></div>`;
+  }).join('');
+  html+=`<div class="panel panel-full"><div class="panel-header"><span class="panel-title">Fitting Window &mdash; Min &amp; Max λ <span class="unit">(Å)</span></span><button class="export-btn" data-export="lambda">Export</button></div><div class="chart-wrap" id="chart-lambda"></div></div>`;
+  grid.innerHTML=html;
+  attachExportButtons();
+}
+let allObs=[],filteredObs=[],selectedNum=null;
+function getFiltered(){const line=document.getElementById('line-sel').value;return allObs.filter(o=>!line||o.emissionLine===line);}
+function plotPanel(def,obs,selNum){
+  const el=document.getElementById('chart-'+def.id);if(!el)return;
+  const tr=makeTrace(obs,def.yKey,def.errKey,selNum);
+  if(!tr){Plotly.purge(el);el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--ink3);font-size:12px;font-style:italic">No data</div>';return;}
+  const layout=JSON.parse(JSON.stringify(BASE_LAYOUT));
+  layout.xaxis.title={text:'Spectrum Number',standoff:5,font:{size:11}};
+  layout.yaxis.title={text:def.unit?`${def.title} (${def.unit})`:def.title,standoff:5,font:{size:11}};
+  layout.yaxis.tickformat=def.yFmt;
+  Plotly.react(el,[tr],layout,PLT_CFG);
+  el.removeAllListeners&&el.removeAllListeners('plotly_click');
+  el.on('plotly_click',d=>onPointClick(d.points[0].customdata));
+}
+function plotLambdaPanel(obs,selNum){
+  const el=document.getElementById('chart-lambda');if(!el)return;
+  const traces=makeLambdaTraces(obs,selNum);
+  if(!traces[0].x.length&&!traces[1].x.length){el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--ink3);font-size:12px;font-style:italic">No data</div>';return;}
+  const layout=JSON.parse(JSON.stringify(BASE_LAYOUT));
+  layout.showlegend=true;layout.legend={orientation:'h',x:0.5,xanchor:'center',y:1.1,font:{size:11}};
+  layout.xaxis.title={text:'Spectrum Number',standoff:5,font:{size:11}};
+  layout.yaxis.title={text:'Wavelength (Å)',standoff:5,font:{size:11}};
+  Plotly.react(el,traces,layout,PLT_CFG);
+  el.removeAllListeners&&el.removeAllListeners('plotly_click');
+  el.on('plotly_click',d=>onPointClick(d.points[0].customdata));
+}
+function renderAllPanels(){filteredObs=getFiltered();PANEL_DEFS.forEach(def=>plotPanel(def,filteredObs,selectedNum));plotLambdaPanel(filteredObs,selectedNum);renderStats(filteredObs);renderDetailPanel();}
+function onPointClick(specNum){selectedNum=(selectedNum===specNum)?null:specNum;document.getElementById('spec-sel').value=selectedNum!=null?String(selectedNum):'';renderAllPanels();}
+const DETAIL_FIELDS=[
+  {key:'spectrum',label:'File'},{key:'spectrumNum',label:'No.'},
+  {key:'lineCenter',label:'Centre (Å)'},{key:'flux',label:'Flux'},{key:'fluxError',label:'Flux Error'},
+  {key:'snr',label:'SNR'},{key:'ew',label:'EW (Å)'},{key:'ewError',label:'EW Err'},
+  {key:'fwhmAngstrom',label:'FWHM (Å)'},{key:'fwhmKmS',label:'FWHM km/s'},
+  {key:'wingWindow',label:'Wing (Å)'},{key:'minLambda',label:'Min λ'},{key:'maxLambda',label:'Max λ'},
+  {key:'reducedChiSq',label:'χ²ν'},
+];
+function fmtVal(v){
+  if(v==null)return'<span class="null">—</span>';
+  if(typeof v==='number'){if(Math.abs(v)<1e-6&&v!==0)return v.toExponential(4);return parseFloat(v.toPrecision(6)).toString();}
+  return String(v);
+}
+function renderDetailPanel(){
+  const panel=document.getElementById('detail-panel');
+  if(selectedNum==null){panel.style.display='none';return;}
+  const obs=filteredObs.find(o=>o.spectrumNum===selectedNum);
+  if(!obs){panel.style.display='none';return;}
+  panel.style.display='block';
+  document.getElementById('detail-title').textContent='Spectrum '+selectedNum+' — '+obs.emissionLine;
+  document.getElementById('detail-grid').innerHTML=DETAIL_FIELDS.map(f=>`<div class="detail-item"><div class="dl">${f.label}</div><div class="dv">${fmtVal(obs[f.key])}</div></div>`).join('');
+}
+function navigateSpec(dir){
+  const sorted=[...new Set(filteredObs.filter(o=>o.spectrumNum!=null).map(o=>o.spectrumNum))].sort((a,b)=>a-b);
+  if(!sorted.length)return;
+  if(selectedNum==null)selectedNum=dir>0?sorted[0]:sorted[sorted.length-1];
+  else{const idx=sorted.indexOf(selectedNum),next=idx+dir;if(next<0||next>=sorted.length)return;selectedNum=sorted[next];}
+  document.getElementById('spec-sel').value=String(selectedNum);renderAllPanels();
+}
+document.getElementById('btn-prev').addEventListener('click',()=>navigateSpec(-1));
+document.getElementById('btn-next').addEventListener('click',()=>navigateSpec(+1));
+document.getElementById('btn-clear').addEventListener('click',()=>{selectedNum=null;document.getElementById('spec-sel').value='';renderAllPanels();});
+function attachExportButtons(){
+  document.querySelectorAll('[data-export]').forEach(btn=>{
+    btn.addEventListener('click',function(){
+      const id=this.getAttribute('data-export'),el=document.getElementById('chart-'+id);
+      if(!el||!el._fullLayout)return;
+      const def=PANEL_DEFS.find(d=>d.id===id);
+      Plotly.downloadImage(el,{format:'png',width:1400,height:700,scale:2,filename:'3c273_lya_'+(def?def.title.replace(/\s+/g,'_').replace(/[^\w-]/g,''):id)});
+    });
+  });
+}
+function showWarnings(msgs){
+  const el=document.getElementById('warnings');
+  if(!msgs.length){el.style.display='none';return;}
+  el.style.display='block';el.innerHTML=msgs.map(m=>'⚠ '+m).join('<br>');
+}
+document.getElementById('file-input').addEventListener('change',function(e){
+  const file=e.target.files[0];if(!file)return;
+  const status=document.getElementById('file-status');status.className='';status.textContent='Parsing…';
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    try{
+      const rawRows=parseWorkbook(new Uint8Array(ev.target.result));
+      allObs=normalizeRows(rawRows);
+      const warnings=[],nullSpec=allObs.filter(o=>o.spectrumNum==null);
+      if(nullSpec.length)warnings.push(nullSpec.length+' row(s) excluded (unrecognised spectrum number).');
+      const lines=[...new Set(allObs.map(o=>o.emissionLine).filter(Boolean))].sort();
+      document.getElementById('line-sel').innerHTML=lines.map(l=>`<option value="${l}">${l}</option>`).join('');
+      if(lines.length===1)document.getElementById('line-sel').value=lines[0];
+      const specNums=[...new Set(allObs.filter(o=>o.spectrumNum!=null).map(o=>o.spectrumNum))].sort((a,b)=>a-b);
+      document.getElementById('spec-sel').innerHTML='<option value="">None</option>'+specNums.map(n=>`<option value="${n}">${n}</option>`).join('');
+      showWarnings(warnings);
+      status.className='ok';status.textContent=file.name+' — '+allObs.length+' observations';
+      document.getElementById('upload-prompt').style.display='none';
+      document.getElementById('main').style.display='block';
+      renderPanelGrid();renderAllPanels();
+      initViewerNav(specNums);
+    }catch(err){status.className='err';status.textContent=err.message;showWarnings([err.message]);}
+  };
+  reader.readAsArrayBuffer(file);
+});
+document.getElementById('line-sel').addEventListener('change',()=>{selectedNum=null;document.getElementById('spec-sel').value='';renderAllPanels();});
+document.getElementById('spec-sel').addEventListener('change',function(){selectedNum=this.value?parseInt(this.value,10):null;renderAllPanels();});
+</script>
+
+<!-- ═══ INDIVIDUAL VIEWER LOGIC ═══ -->
+<script>
+/* ──────────────────────────────────────────────────────────
+   STATE
+────────────────────────────────────────────────────────── */
+const txtMap = new Map();  // filename (lowercase) → {wavelengths[], fluxes[]}
+let currentViewerRows = [];
+const DEFAULT_WINDOWS = '1100:1150, 1325:1370, 1425:1475, 1590:1620, 1660:1700';
+
+/* ──────────────────────────────────────────────────────────
+   .TXT FILE PARSING
+────────────────────────────────────────────────────────── */
+function parseTxtSpectrum(text) {
+  const wl = [], fl = [];
+  for (const line of text.split('\n')) {
+    const p = line.trim().split(/\s+/);
+    if (p.length >= 2) {
+      const w = parseFloat(p[0]), f = parseFloat(p[1]);
+      if (!isNaN(w) && !isNaN(f)) { wl.push(w); fl.push(f); }
+    }
+  }
+  return { wavelengths: wl, fluxes: fl };
+}
+
+document.getElementById('txt-folder-input').addEventListener('change', function(e) {
+  const files = Array.from(e.target.files).filter(f => f.name.toLowerCase().endsWith('.txt'));
+  if (!files.length) return;
+  const statusEl = document.getElementById('txt-status');
+  statusEl.className = ''; statusEl.textContent = 'Loading ' + files.length + ' files...';
+  let loaded = 0;
+  txtMap.clear();
+  for (const file of files) {
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      const key = file.name.toLowerCase();
+      txtMap.set(key, parseTxtSpectrum(ev.target.result));
+      loaded++;
+      if (loaded === files.length) {
+        statusEl.className = 'ok';
+        statusEl.textContent = loaded + ' .txt files loaded';
+        // Re-render current spectrum if one is selected
+        if (currentViewerRows.length) viewSpectrum(currentViewerRows[0].spectrumNum);
+      }
+    };
+    reader.readAsText(file);
+  }
+});
+
+/* ──────────────────────────────────────────────────────────
+   CONTINUUM FITTING (power law, log-log regression)
+────────────────────────────────────────────────────────── */
+function parseWindowStr(str) {
+  return str.split(',').map(s => {
+    const parts = s.trim().split(':');
+    if (parts.length === 2) {
+      const lo = parseFloat(parts[0]), hi = parseFloat(parts[1]);
+      if (!isNaN(lo) && !isNaN(hi)) return [lo, hi];
+    }
+    return null;
+  }).filter(Boolean);
+}
+
+function fitPowerLaw(wl, fl, windowRanges) {
+  const xc = [], yc = [];
+  for (let i = 0; i < wl.length; i++) {
+    for (const [lo, hi] of windowRanges) {
+      if (wl[i] >= lo && wl[i] <= hi && fl[i] > 0) { xc.push(wl[i]); yc.push(fl[i]); break; }
+    }
+  }
+  if (xc.length < 4) return null;
+  // log-log linear regression: log(y) = log(A) + index * log(x)
+  const lx = xc.map(x => Math.log(x)), ly = yc.map(y => Math.log(y));
+  const n = lx.length;
+  const sx = lx.reduce((a,b)=>a+b,0), sy = ly.reduce((a,b)=>a+b,0);
+  const sxx = lx.reduce((a,x)=>a+x*x,0), sxy = lx.reduce((a,x,i)=>a+x*ly[i],0);
+  const index = (n*sxy - sx*sy) / (n*sxx - sx*sx);
+  const amplitude = Math.exp((sy - index*sx) / n);
+  // Compute basic errors via residuals
+  const residuals = xc.map((x,i) => ly[i] - (Math.log(amplitude) + index*Math.log(x)));
+  const rss = residuals.reduce((a,r)=>a+r*r,0);
+  const sErr = Math.sqrt(rss / (n-2));
+  const sxErr = Math.sqrt(sxx/n - (sx/n)**2);
+  const indexErr = sErr / (sxErr * Math.sqrt(n));
+  const ampErr = amplitude * sErr;
+  return { amplitude, index, indexErr, ampErr, nPoints: n, xc, yc };
+}
+
+function applyContinuum(wl, amplitude, index) {
+  return wl.map(x => amplitude * Math.pow(x, index));
+}
+
+/* ──────────────────────────────────────────────────────────
+   GAUSSIAN HELPERS
+────────────────────────────────────────────────────────── */
+const GAUSS_SIGMA = f => f / 2.3548200;
+const GAUSS_AMP   = (flux, sigma) => flux / (sigma * Math.sqrt(2 * Math.PI));
+
+function gaussY(x, center, sigma, ampl) {
+  return ampl * Math.exp(-0.5 * ((x - center) / sigma) ** 2);
+}
+
+function gaussCurve(rows, xLo, xHi, N) {
+  N = N || 700;
+  const xs = Array.from({length:N+1}, (_,i) => xLo + (xHi-xLo)*i/N);
+  const ys = xs.map(x =>
+    rows.reduce((s, row) => {
+      if (row.lineCenter==null||row.fwhmAngstrom==null||row.flux==null) return s;
+      const σ = GAUSS_SIGMA(row.fwhmAngstrom);
+      return s + gaussY(x, row.lineCenter, σ, GAUSS_AMP(row.flux, σ));
+    }, 0)
+  );
+  return {xs, ys};
+}
+
+/* ──────────────────────────────────────────────────────────
+   PLOTLY BASE
+────────────────────────────────────────────────────────── */
+function vLayout(xT, yT, extra) {
+  return Object.assign({
+    paper_bgcolor:'#f7f5f0', plot_bgcolor:'#faf9f6',
+    font:{color:'#7a756e',family:'Inter,system-ui,sans-serif',size:10},
+    xaxis:{title:{text:xT,standoff:6,font:{size:10}},gridcolor:'#e4e0d8',linecolor:'#d4cfc6',tickcolor:'#d4cfc6',zerolinecolor:'#ccc8c0',tickfont:{family:'IBM Plex Mono,monospace',size:9}},
+    yaxis:{title:{text:yT,standoff:6,font:{size:10}},gridcolor:'#e4e0d8',linecolor:'#d4cfc6',tickcolor:'#d4cfc6',zerolinecolor:'#ccc8c0',tickfont:{family:'IBM Plex Mono,monospace',size:9}},
+    margin:{l:70,r:10,t:14,b:54},hovermode:'x',
+    hoverlabel:{bgcolor:'#1a1814',bordercolor:'#1a1814',font:{color:'#f7f5f0',family:'IBM Plex Mono,monospace',size:10}},
+    showlegend:true,legend:{orientation:'h',x:0.5,xanchor:'center',y:-0.28,font:{size:10}},
+  }, extra || {});
+}
+const V_CFG={scrollZoom:true,displayModeBar:true,displaylogo:false,modeBarButtonsToRemove:['select2d','lasso2d'],toImageButtonOptions:{format:'png',width:1600,height:900,scale:2}};
+
+/* ──────────────────────────────────────────────────────────
+   FORMAT HELPERS
+────────────────────────────────────────────────────────── */
+function fmtSci(v,d){return v==null?'—':v.toExponential(d!=null?d:4);}
+function fmtN(v,d){return v==null?'—':parseFloat(v.toPrecision(d||5)).toString();}
+function setEl(id,txt,cls){const el=document.getElementById(id);if(!el)return;el.textContent=txt;if(cls!=null)el.className='pv'+(cls?' '+cls:'');}
+function noData(el){el.innerHTML='<div class="v-placeholder"><p>Load .txt spectra folder to view full spectrum</p><small>Select the folder containing IUE SWP .txt files</small></div>';}
+
+/* ──────────────────────────────────────────────────────────
+   VIEWER NAV INIT
+────────────────────────────────────────────────────────── */
+function initViewerNav(specNums) {
+  document.getElementById('viewer-no-data').style.display = 'none';
+  const vc = document.getElementById('viewer-content');
+  vc.style.display = 'flex';
+  const sel = document.getElementById('v-spec-sel');
+  sel.innerHTML = specNums.map(n => `<option value="${n}">Spectrum ${n}</option>`).join('');
+  viewSpectrum(specNums[0]);
+}
+
+/* ──────────────────────────────────────────────────────────
+   MAIN: view spectrum
+────────────────────────────────────────────────────────── */
+function viewSpectrum(specNum) {
+  const rows = allObs.filter(o => o.spectrumNum === specNum);
+  if (!rows.length) return;
+  currentViewerRows = rows;
+  const r = rows[0];
+
+  document.getElementById('v-spec-sel').value = String(specNum);
+  document.getElementById('v-meta').textContent = r.emissionLine + ' | ' + r.spectrum;
+
+  // Try to get .txt data
+  const fname = r.spectrum.replace(/^3c273\s+/i, '').trim().toLowerCase();
+  const txtData = txtMap.get(fname);
+
+  // Get continuum windows
+  const winStr = document.getElementById('cont-windows').value;
+  const windows = parseWindowStr(winStr);
+
+  // Fit continuum from .txt if available
+  let continFit = null;
+  if (txtData && windows.length) {
+    continFit = fitPowerLaw(txtData.wavelengths, txtData.fluxes, windows);
+  }
+
+  updateParamsPanel(rows, specNum, continFit);
+  renderChartFull(rows, txtData, continFit, windows, specNum);
+  renderChartEmission(rows, txtData, continFit, specNum);
+  renderChartResiduals(rows, txtData, continFit, specNum);
+  updateResultsTable(rows, specNum);
+  // Auto-fill wing calc FWHM
+  if (r.fwhmKmS != null) document.getElementById('wc-fwhm').value = r.fwhmKmS.toFixed(1);
+}
+
+/* ──────────────────────────────────────────────────────────
+   PARAMS PANEL
+────────────────────────────────────────────────────────── */
+function updateParamsPanel(rows, specNum, continFit) {
+  const r = rows[0];
+  setEl('vp-num', String(specNum), 'hi');
+  setEl('vp-ncomp', rows.length + (rows.length > 1 ? ' (multi-component)' : ' (single Gaussian)'), '');
+
+  // Gaussian component details
+  const colors = ['#1a3a5c','#7a2020','#2a5a2a'];
+  document.getElementById('vp-comp-body').innerHTML = rows.map((row,i) => {
+    const σ = row.fwhmAngstrom != null ? GAUSS_SIGMA(row.fwhmAngstrom) : null;
+    const A = (row.flux != null && σ != null) ? GAUSS_AMP(row.flux, σ) : null;
+    const col = colors[i % colors.length];
+    return `
+      <div style="padding:5px 11px;border-bottom:1px solid var(--rule);${rows.length>1?'border-left:3px solid '+col:''}">
+        ${rows.length>1?`<div style="font-size:9px;font-weight:600;color:${col};margin-bottom:3px;letter-spacing:.06em">COMPONENT ${i+1}</div>`:''}
+        <div class="pr"><span class="pk">Line Centre</span><span class="pv hi">${fmtN(row.lineCenter,6)} Å</span></div>
+        <div class="pr"><span class="pk">FWHM</span><span class="pv hi">${fmtN(row.fwhmAngstrom,4)} Å</span></div>
+        <div class="pr"><span class="pk">FWHM</span><span class="pv hi">${fmtN(row.fwhmKmS,5)} km/s</span></div>
+        <div class="pr"><span class="pk">Gaussian σ</span><span class="pv">${σ!=null?fmtN(σ,4)+' Å':'—'}</span></div>
+        <div class="pr"><span class="pk">Peak flux</span><span class="pv">${fmtSci(A,3)}</span></div>
+      </div>`;
+  }).join('');
+
+  setEl('vp-flux', fmtSci(r.flux), '');
+  setEl('vp-fluxerr', fmtSci(r.fluxError), '');
+  setEl('vp-snr', fmtN(r.snr, 4), 'hi');
+  setEl('vp-ew', fmtN(r.ew, 4), '');
+  setEl('vp-ewerr', fmtN(r.ewError, 4), '');
+
+  if (continFit) {
+    setEl('vp-si', fmtN(continFit.index, 4) + ' ± ' + fmtN(continFit.indexErr, 2), 'hi2');
+    setEl('vp-amp', fmtSci(continFit.amplitude, 4), 'hi2');
+    const fc = r.lineCenter != null ? continFit.amplitude * Math.pow(r.lineCenter, continFit.index) : null;
+    setEl('vp-fcont', fmtSci(fc, 4), '');
+    setEl('vp-cpts', String(continFit.nPoints) + ' pixels', '');
+  } else {
+    setEl('vp-si', 'Load .txt files', 'null');
+    setEl('vp-amp', 'Load .txt files', 'null');
+    const fcEst = (r.flux != null && r.ew != null && r.ew > 0) ? r.flux / r.ew : null;
+    setEl('vp-fcont', fcEst != null ? fmtSci(fcEst, 4) + ' (est. flux/EW)' : '—', fcEst ? '' : 'null');
+    setEl('vp-cpts', '—', 'null');
+  }
+
+  const wLo = (r.lineCenter != null && r.wingWindow != null) ? r.lineCenter - r.wingWindow/2 : null;
+  const wHi = (r.lineCenter != null && r.wingWindow != null) ? r.lineCenter + r.wingWindow/2 : null;
+  setEl('vp-wing', fmtN(r.wingWindow, 4), '');
+  setEl('vp-wlo', wLo != null ? fmtN(wLo, 6) + ' Å' : '—', wLo != null ? 'hi2' : 'null');
+  setEl('vp-whi', wHi != null ? fmtN(wHi, 6) + ' Å' : '—', wHi != null ? 'hi2' : 'null');
+  setEl('vp-minl', fmtN(r.minLambda, 5), '');
+  setEl('vp-maxl', fmtN(r.maxLambda, 5), '');
+  setEl('vp-chi2', fmtN(r.reducedChiSq, 4), '');
+}
+
+/* ──────────────────────────────────────────────────────────
+   CHART A: FULL SPECTRUM — raw + continuum + subtracted
+────────────────────────────────────────────────────────── */
+function renderChartFull(rows, txtData, continFit, windows, specNum) {
+  const el = document.getElementById('v-chart-full');
+  const r = rows[0];
+
+  if (!txtData) { noData(el); return; }
+
+  const wl = txtData.wavelengths, fl = txtData.fluxes;
+  const continY = continFit ? applyContinuum(wl, continFit.amplitude, continFit.index) : null;
+  const subtrY  = continY  ? fl.map((f, i) => f - continY[i]) : null;
+
+  // Gaussian from Excel params
+  const xLo = Math.min(...wl), xHi = Math.max(...wl);
+  const {xs: gxs, ys: gys} = gaussCurve(rows, xLo, xHi, 1000);
+  const gaussPeak = Math.max(...gys);
+
+  const shapes = [];
+  // Continuum window regions
+  if (windows.length && continFit) {
+    for (const [lo, hi] of windows) {
+      shapes.push({type:'rect',xref:'x',yref:'paper',x0:lo,x1:hi,y0:0,y1:1,
+        fillcolor:'rgba(122,32,32,0.06)',line:{width:0},layer:'below'});
+    }
+  }
+  // Line centre
+  if (r.lineCenter != null) {
+    shapes.push({type:'line',xref:'x',yref:'paper',x0:r.lineCenter,x1:r.lineCenter,y0:0,y1:1,
+      line:{color:'rgba(176,112,16,0.6)',width:1,dash:'dash'}});
+  }
+
+  const traces = [];
+
+  // Raw spectrum (blue)
+  traces.push({
+    x:wl, y:fl, type:'scatter', mode:'lines', name:'Before continuum subtraction',
+    line:{color:'#1a3a5c', width:1}, showlegend:true,
+    hovertemplate:'λ=%{x:.2f}Å<br>F=%{y:.4e}<extra></extra>',
+  });
+
+  // Continuum fit (green)
+  if (continY) {
+    traces.push({
+      x:wl, y:continY, type:'scatter', mode:'lines', name:'Continuum fit (power law)',
+      line:{color:'#2a6a2a', width:1.5}, showlegend:true, hoverinfo:'skip',
+    });
+  }
+
+  // Continuum window points (red dots)
+  if (continFit) {
+    traces.push({
+      x:continFit.xc, y:continFit.yc, type:'scatter', mode:'markers', name:'Continuum windows',
+      marker:{color:'#b03030', size:4, opacity:0.8}, showlegend:true, hoverinfo:'skip',
+    });
+  }
+
+  // After subtraction (purple)
+  if (subtrY) {
+    traces.push({
+      x:wl, y:subtrY, type:'scatter', mode:'lines', name:'After subtraction',
+      line:{color:'#5a1a7a', width:1}, showlegend:true,
+      hovertemplate:'λ=%{x:.2f}Å<br>Fsub=%{y:.4e}<extra></extra>',
+    });
+  }
+
+  // Gaussian from Excel params (amber, overlaid on raw for reference)
+  if (gaussPeak > 0) {
+    const contAtCenter = (continFit && r.lineCenter != null)
+      ? continFit.amplitude * Math.pow(r.lineCenter, continFit.index) : 0;
+    traces.push({
+      x:gxs, y:gys.map(y => y + contAtCenter), type:'scatter', mode:'lines',
+      name:'Gaussian (from Excel)',
+      line:{color:'#b07010', width:1.5, dash:'dot'}, showlegend:true,
+      hovertemplate:'λ=%{x:.2f}Å<br>G=%{y:.4e}<extra></extra>',
+    });
+  }
+
+  const layout = vLayout('Wavelength (Å)', 'Flux (erg cm⁻² s⁻¹ Å⁻¹)');
+  layout.shapes = shapes;
+  layout.yaxis.rangemode = 'normal';
+
+  const noteEl = document.getElementById('va-note');
+  if (continFit) {
+    noteEl.textContent = `index=${continFit.index.toFixed(4)}, A=${continFit.amplitude.toExponential(3)}`;
+  } else {
+    noteEl.textContent = '';
+  }
+
+  Plotly.react(el, traces, layout, V_CFG);
+}
+
+/* ──────────────────────────────────────────────────────────
+   CHART B: EMISSION LINE FIT (zoomed around line)
+────────────────────────────────────────────────────────── */
+function renderChartEmission(rows, txtData, continFit, specNum) {
+  const el = document.getElementById('v-chart-emission');
+  const r = rows[0];
+
+  if (r.lineCenter == null || r.fwhmAngstrom == null) {
+    el.innerHTML = '<div class="v-placeholder"><p>No emission line parameters</p></div>'; return;
+  }
+
+  const σ1 = GAUSS_SIGMA(r.fwhmAngstrom);
+  // X range: around the emission line
+  const xLo = (r.minLambda != null ? r.minLambda : r.lineCenter - 5*σ1) - 8;
+  const xHi = (r.maxLambda != null ? r.maxLambda : r.lineCenter + 5*σ1) + 8;
+
+  const {xs: gxs, ys: gys} = gaussCurve(rows, xLo, xHi, 700);
+  const gPeak = Math.max(...gys);
+
+  // Wing boundaries
+  const wLo = r.wingWindow != null ? r.lineCenter - r.wingWindow/2 : null;
+  const wHi = r.wingWindow != null ? r.lineCenter + r.wingWindow/2 : null;
+
+  const shapes = [];
+  // Fitting window
+  if (r.minLambda != null && r.maxLambda != null) {
+    shapes.push({type:'rect',xref:'x',yref:'paper',x0:r.minLambda,x1:r.maxLambda,y0:0,y1:1,
+      fillcolor:'rgba(26,58,92,0.05)',line:{width:1,color:'rgba(26,58,92,0.2)',dash:'dot'},layer:'below'});
+  }
+  // Wing regions (outside wing boundary, inside fitting window)
+  if (wLo != null && r.minLambda != null) {
+    shapes.push({type:'rect',xref:'x',yref:'paper',x0:r.minLambda,x1:wLo,y0:0,y1:1,
+      fillcolor:'rgba(122,32,32,0.05)',line:{width:0},layer:'below'});
+    shapes.push({type:'rect',xref:'x',yref:'paper',x0:wHi,x1:r.maxLambda,y0:0,y1:1,
+      fillcolor:'rgba(122,32,32,0.05)',line:{width:0},layer:'below'});
+  }
+
+  const traces = [];
+
+  // Continuum-subtracted raw spectrum (green), zoomed
+  if (txtData && continFit) {
+    const wl = txtData.wavelengths, fl = txtData.fluxes;
+    const mask = wl.map((w,i) => w >= xLo && w <= xHi ? {w, f: fl[i] - continFit.amplitude * Math.pow(w, continFit.index)} : null).filter(Boolean);
+    if (mask.length) {
+      traces.push({
+        x:mask.map(p=>p.w), y:mask.map(p=>p.f), type:'scatter', mode:'lines',
+        name:'Continuum subtracted', line:{color:'#2a6a2a', width:1.2}, showlegend:true,
+        hovertemplate:'λ=%{x:.2f}Å<br>Fₛᵘᵇ=%{y:.4e}<extra></extra>',
+      });
+    }
+  }
+
+  // Error envelope on Gaussian
+  if (r.fluxError != null && r.flux != null && r.flux > 0) {
+    const frac = r.fluxError / r.flux;
+    const yUp = gys.map(y => y*(1+frac)), yDn = gys.map(y => Math.max(0, y*(1-frac)));
+    traces.push({
+      x:[...gxs,...gxs.slice().reverse()], y:[...yUp,...yDn.slice().reverse()],
+      fill:'toself', fillcolor:'rgba(176,112,16,0.10)', line:{color:'transparent'},
+      type:'scatter', mode:'lines', name:'\xb11σ Gaussian', showlegend:true, hoverinfo:'skip',
+    });
+  }
+
+  // Individual Gaussian components
+  const compColors = ['#b07010','#7a2020','#2a5a2a'];
+  rows.forEach((row, i) => {
+    if (row.lineCenter==null||row.fwhmAngstrom==null||row.flux==null) return;
+    const σ = GAUSS_SIGMA(row.fwhmAngstrom), A = GAUSS_AMP(row.flux, σ);
+    const cxs = gxs, cys = gxs.map(x => gaussY(x, row.lineCenter, σ, A));
+    const col = compColors[i % compColors.length];
+    traces.push({
+      x:cxs, y:cys, type:'scatter', mode:'lines',
+      name: rows.length>1 ? `Gaussian ${i+1} (λ=${row.lineCenter.toFixed(1)}Å)` : 'Gaussian (Excel params)',
+      line:{color:col, width:rows.length>1?1.5:2, dash: rows.length>1 && i>0 ? 'dash':'solid'}, showlegend:true,
+      fill:'tozeroy', fillcolor:`rgba(${col==='#b07010'?'176,112,16':col==='#7a2020'?'122,32,32':'42,90,42'},0.08)`,
+      hovertemplate:'λ=%{x:.2f}Å<br>G=%{y:.4e}<extra></extra>',
+    });
+  });
+
+  // Total Gaussian (only if multiple components)
+  if (rows.length > 1) {
+    traces.push({x:gxs, y:gys, type:'scatter', mode:'lines', name:'Total model',
+      line:{color:'#1a1814', width:1.5}, showlegend:true,
+      hovertemplate:'λ=%{x:.2f}Å<br>Total=%{y:.4e}<extra></extra>'});
+  }
+
+  // FWHM bar
+  const halfMax = GAUSS_AMP(r.flux, σ1) / 2;
+  const fwhmLo = r.lineCenter - r.fwhmAngstrom/2, fwhmHi = r.lineCenter + r.fwhmAngstrom/2;
+  traces.push({
+    x:[fwhmLo,fwhmHi], y:[halfMax,halfMax], type:'scatter', mode:'lines+markers',
+    name:`FWHM=${r.fwhmAngstrom.toFixed(2)}Å`,
+    line:{color:'#7a2020', width:2, dash:'dot'},
+    marker:{color:'#7a2020', size:6, symbol:'line-ns-open', line:{width:2}},
+    showlegend:true, hoverinfo:'skip',
+  });
+
+  // Line centre
+  traces.push({x:[r.lineCenter,r.lineCenter],y:[0,gPeak*1.06],type:'scatter',mode:'lines',
+    name:'λ₀',line:{color:'#b07010',width:1.5,dash:'dash'},showlegend:true,hoverinfo:'skip'});
+
+  // Wing boundary lines
+  if (wLo != null) {
+    traces.push({x:[wLo,wLo],y:[0,gPeak*0.92],type:'scatter',mode:'lines',name:'Wing boundaries',
+      line:{color:'#7a2020',width:1,dash:'dot'},showlegend:true,hoverinfo:'skip'});
+    traces.push({x:[wHi,wHi],y:[0,gPeak*0.92],type:'scatter',mode:'lines',name:null,
+      line:{color:'#7a2020',width:1,dash:'dot'},showlegend:false,hoverinfo:'skip'});
+  }
+
+  const annots = [
+    {x:r.lineCenter,y:gPeak*1.09,xref:'x',yref:'y',text:`λ₀=${r.lineCenter.toFixed(2)}Å`,
+     showarrow:false,font:{size:9,color:'#7a756e',family:'IBM Plex Mono,monospace'},xanchor:'center'},
+  ];
+  if (r.ew != null) {
+    annots.push({x:r.lineCenter,y:gPeak*0.15,xref:'x',yref:'y',
+      text:`EW=${r.ew.toFixed(2)}Å`,showarrow:false,
+      font:{size:9,color:'#4a4640',family:'IBM Plex Mono,monospace'},xanchor:'center'});
+  }
+  if (r.reducedChiSq != null) {
+    annots.push({x:xLo+(xHi-xLo)*0.02,yref:'paper',y:0.97,xref:'x',
+      text:'χ²ν='+r.reducedChiSq.toFixed(3),showarrow:false,
+      font:{size:9,color:'#4a4640',family:'IBM Plex Mono,monospace'},xanchor:'left'});
+  }
+
+  const layout = vLayout('Wavelength (Å)', 'Flux density (erg cm⁻² s⁻¹ Å⁻¹)');
+  layout.shapes = shapes; layout.annotations = annots;
+  layout.xaxis.range = [xLo, xHi]; layout.yaxis.rangemode = 'tozero';
+  layout.margin = {l:70,r:10,t:14,b:54};
+
+  document.getElementById('vb-note').textContent =
+    r.fwhmKmS != null ? `FWHM = ${r.fwhmKmS.toFixed(0)} km s⁻¹` : '';
+  Plotly.react(el, traces, layout, V_CFG);
+}
+
+/* ──────────────────────────────────────────────────────────
+   CHART C: RESIDUALS (data - continuum - Gaussian)
+────────────────────────────────────────────────────────── */
+function renderChartResiduals(rows, txtData, continFit, specNum) {
+  const el = document.getElementById('v-chart-residual');
+  const r = rows[0];
+
+  if (!txtData || !continFit) {
+    // Fallback: show estimated residual envelope from fit quality
+    const σ = r.fwhmAngstrom != null ? GAUSS_SIGMA(r.fwhmAngstrom) : null;
+    const A = (r.flux != null && σ != null) ? GAUSS_AMP(r.flux, σ) : null;
+    const noisePeak = (r.snr != null && r.snr > 0 && A != null) ? A / r.snr : null;
+    const chiSq = r.reducedChiSq != null ? Math.max(1, r.reducedChiSq) : 1;
+    const residRms = noisePeak != null ? noisePeak * Math.sqrt(chiSq) : null;
+    const xLo = (r.minLambda||1195), xHi = (r.maxLambda||1235);
+    const xs = Array.from({length:400},(_,i)=>xLo+(xHi-xLo)*i/399);
+    const traces = [];
+    if (residRms != null) {
+      traces.push({x:[...xs,...xs.slice().reverse()],y:[...xs.map(()=>residRms),...xs.map(()=>-residRms)],
+        fill:'toself',fillcolor:'rgba(122,32,32,0.08)',line:{color:'transparent'},type:'scatter',mode:'lines',
+        name:'Est. residual RMS (√χ² × noise)',showlegend:true,hoverinfo:'skip'});
+      traces.push({x:[...xs,...xs.slice().reverse()],y:[...xs.map(()=>noisePeak),...xs.map(()=>-noisePeak)],
+        fill:'toself',fillcolor:'rgba(26,58,92,0.08)',line:{color:'transparent'},type:'scatter',mode:'lines',
+        name:'\xb11σ noise (A/SNR)',showlegend:true,hoverinfo:'skip'});
+    }
+    traces.push({x:[xLo,xHi],y:[0,0],type:'scatter',mode:'lines',name:'Zero',line:{color:'#c0bbb4',width:1},showlegend:false,hoverinfo:'skip'});
+    const layout=vLayout('Wavelength (Å)','Residual flux');
+    layout.yaxis.rangemode='normal';
+    layout.annotations=r.reducedChiSq!=null?[{x:(xLo+xHi)/2,yref:'paper',y:0.96,xref:'x',
+      text:'χ²ν='+r.reducedChiSq.toFixed(3)+' | load .txt for actual residuals',
+      showarrow:false,font:{size:9,color:'#7a756e',family:'IBM Plex Mono,monospace'},xanchor:'center'}]:[];
+    layout.margin={l:70,r:10,t:14,b:54};
+    document.getElementById('vc-note').textContent=r.reducedChiSq!=null?'χ²ν='+r.reducedChiSq.toFixed(3):'';
+    Plotly.react(el,traces,layout,V_CFG);
+    return;
+  }
+
+  // Full residuals from data
+  const wl = txtData.wavelengths, fl = txtData.fluxes;
+  const xLo = (r.minLambda != null ? r.minLambda : r.lineCenter - 20) - 10;
+  const xHi = (r.maxLambda != null ? r.maxLambda : r.lineCenter + 20) + 10;
+
+  // Residual = data - continuum - Gaussian_model
+  const {xs: gxs, ys: gys_lookup} = gaussCurve(rows, Math.min(...wl), Math.max(...wl), 10000);
+  // Build fast Gaussian lookup at actual wavelengths
+  const residWl = [], residFl = [];
+  for (let i = 0; i < wl.length; i++) {
+    const w = wl[i];
+    if (w < xLo || w > xHi) continue;
+    const cont = continFit.amplitude * Math.pow(w, continFit.index);
+    const gaussVal = rows.reduce((s, row) => {
+      if (row.lineCenter==null||row.fwhmAngstrom==null||row.flux==null) return s;
+      const σ = GAUSS_SIGMA(row.fwhmAngstrom);
+      return s + gaussY(w, row.lineCenter, σ, GAUSS_AMP(row.flux, σ));
+    }, 0);
+    residWl.push(w);
+    residFl.push(fl[i] - cont - gaussVal);
+  }
+
+  const yMax = residFl.length ? Math.max(Math.abs(Math.max(...residFl)), Math.abs(Math.min(...residFl))) * 1.2 : 1;
+
+  const traces = [];
+
+  // Zero line
+  traces.push({x:[xLo,xHi],y:[0,0],type:'scatter',mode:'lines',name:'Zero',
+    line:{color:'#c0bbb4',width:1},showlegend:false,hoverinfo:'skip'});
+
+  // ±noise level from SNR
+  const σ1 = r.fwhmAngstrom ? GAUSS_SIGMA(r.fwhmAngstrom) : null;
+  const A1 = (r.flux && σ1) ? GAUSS_AMP(r.flux, σ1) : null;
+  const noiseLvl = (r.snr && A1) ? A1 / r.snr : null;
+  if (noiseLvl) {
+    traces.push({x:[xLo,xHi,xHi,xLo],y:[noiseLvl,noiseLvl,-noiseLvl,-noiseLvl],
+      fill:'toself',fillcolor:'rgba(26,58,92,0.06)',line:{color:'rgba(26,58,92,0.25)',width:1},
+      type:'scatter',mode:'lines',name:'\xb11σ noise',showlegend:true,hoverinfo:'skip'});
+  }
+
+  // Actual residuals (purple, like the Angular app)
+  traces.push({
+    x:residWl, y:residFl, type:'scatter', mode:'lines', name:'Residuals (data − continuum − Gaussian)',
+    line:{color:'#5a1a7a', width:1}, showlegend:true,
+    hovertemplate:'λ=%{x:.2f}Å<br>R=%{y:.4e}<extra></extra>',
+  });
+
+  const annots = [];
+  if (r.reducedChiSq != null) {
+    annots.push({x:(xLo+xHi)/2,yref:'paper',y:0.97,xref:'x',
+      text:'χ²ν='+r.reducedChiSq.toFixed(3),
+      showarrow:false,font:{size:9,color:'#4a4640',family:'IBM Plex Mono,monospace'},xanchor:'center'});
+  }
+
+  const layout = vLayout('Wavelength (Å)', 'Residual flux (erg cm⁻² s⁻¹ Å⁻¹)');
+  layout.yaxis.rangemode = 'normal';
+  layout.yaxis.range = [-yMax, yMax];
+  layout.xaxis.range = [xLo, xHi];
+  layout.shapes = [{type:'line',xref:'x',yref:'paper',x0:r.lineCenter,x1:r.lineCenter,y0:0,y1:1,
+    line:{color:'rgba(176,112,16,0.5)',width:1,dash:'dash'}}];
+  layout.annotations = annots;
+  layout.margin = {l:70,r:10,t:14,b:54};
+
+  document.getElementById('vc-note').textContent =
+    r.reducedChiSq != null ? 'χ²ν=' + r.reducedChiSq.toFixed(3) : '';
+  Plotly.react(el, traces, layout, V_CFG);
+}
+
+/* ──────────────────────────────────────────────────────────
+   RESULTS TABLE
+────────────────────────────────────────────────────────── */
+function updateResultsTable(rows, specNum) {
+  const body = document.getElementById('v-results-body');
+  const fn = (v, d) => v != null ? (typeof v === 'number' && Math.abs(v) < 1e-5 && v !== 0 ? v.toExponential(3) : parseFloat(v.toPrecision(d||5)).toString()) : '—';
+  body.innerHTML = rows.map(r => `<tr>
+    <td style="font-size:9.5px;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.spectrum || ''}">${r.spectrum || '—'}</td>
+    <td>${r.emissionLine}</td>
+    <td>${fn(r.lineCenter,5)}</td>
+    <td>${fn(r.flux,4)}</td>
+    <td>${fn(r.fluxError,3)}</td>
+    <td>${fn(r.snr,4)}</td>
+    <td>${fn(r.ew,4)}</td>
+    <td>${fn(r.ewError,3)}</td>
+    <td>${fn(r.fwhmAngstrom,4)}</td>
+    <td>${fn(r.fwhmKmS,5)}</td>
+    <td>${fn(r.wingWindow,4)}</td>
+    <td>${fn(r.minLambda,5)}</td>
+    <td>${fn(r.maxLambda,5)}</td>
+    <td>${fn(r.reducedChiSq,4)}</td>
+  </tr>`).join('');
+}
+
+/* ──────────────────────────────────────────────────────────
+   WING WAVELENGTH CALCULATOR
+────────────────────────────────────────────────────────── */
+function calcWingWavelength() {
+  const restLam = parseFloat(document.getElementById('wc-restlam').value);
+  const restFwhm = parseFloat(document.getElementById('wc-fwhm').value);
+  const r = currentViewerRows.length ? currentViewerRows[0] : null;
+  if (!r || isNaN(restLam)) return;
+
+  const C = 299792.458; // km/s
+
+  // Observed line centre
+  const obsCenter = r.lineCenter || restLam;
+  // Velocity of line centre relative to rest: redshift
+  const zV = (obsCenter - restLam) / restLam * C; // km/s
+
+  // Wing velocity = half the observed FWHM
+  const obsFwhm = isNaN(restFwhm) ? (r.fwhmKmS || 0) : restFwhm;
+  const wingVel = obsFwhm / 2; // km/s at wing boundary
+
+  // Blue and red wing wavelengths in observed frame
+  const blueWing = obsCenter * (1 - wingVel / C);
+  const redWing  = obsCenter * (1 + wingVel / C);
+  // wing_wavelength = half-width in Å
+  const wingLambda = (redWing - blueWing) / 2;
+
+  document.getElementById('wc-wing-lambda').textContent = wingLambda.toFixed(3) + ' Å';
+  document.getElementById('wc-blue').textContent = blueWing.toFixed(3) + ' Å';
+  document.getElementById('wc-red').textContent  = redWing.toFixed(3)  + ' Å';
+  document.getElementById('wc-vel').textContent  =
+    `v(centre) ≈ ${zV.toFixed(0)} km/s  |  wing half-width = ${wingVel.toFixed(0)} km/s`;
+  document.getElementById('wc-result').style.display = 'block';
+}
+
+/* ──────────────────────────────────────────────────────────
+   NAV + EXPORT
+────────────────────────────────────────────────────────── */
+document.getElementById('v-spec-sel').addEventListener('change', function() {
+  const num = parseInt(this.value, 10);
+  if (!isNaN(num)) viewSpectrum(num);
+});
+document.getElementById('v-btn-prev').addEventListener('click', () => {
+  const sel = document.getElementById('v-spec-sel');
+  if (sel.selectedIndex > 0) { sel.selectedIndex--; sel.dispatchEvent(new Event('change')); }
+});
+document.getElementById('v-btn-next').addEventListener('click', () => {
+  const sel = document.getElementById('v-spec-sel');
+  if (sel.selectedIndex < sel.options.length-1) { sel.selectedIndex++; sel.dispatchEvent(new Event('change')); }
+});
+document.getElementById('btn-reset-windows').addEventListener('click', () => {
+  document.getElementById('cont-windows').value = DEFAULT_WINDOWS;
+  if (currentViewerRows.length) viewSpectrum(currentViewerRows[0].spectrumNum);
+});
+function exportV(elId, suffix) {
+  const el = document.getElementById(elId);
+  if (!el || !el._fullLayout || !currentViewerRows.length) return;
+  const num = currentViewerRows[0].spectrumNum;
+  Plotly.downloadImage(el, {format:'png',width:1600,height:900,scale:2,filename:`3c273_lya_${num}_${suffix}`});
+}
+['v-exp-full','v-exp-emission','v-exp-residual'].forEach((id, i) => {
+  const suffixes = ['full_spectrum','emission_line','residuals'];
+  const elIds    = ['v-chart-full','v-chart-emission','v-chart-residual'];
+  document.getElementById(id).addEventListener('click', () => exportV(elIds[i], suffixes[i]));
+});
+</script>
+</body>
+</html>
