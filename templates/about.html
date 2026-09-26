@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>About — 3C273 Lyman Alpha Spectral Analysis Pipeline</title>
+
+<!-- MathJax for formula rendering -->
+<script>
+MathJax = {
+  tex: {
+    inlineMath: [['\\(', '\\)']],
+    displayMath: [['\\[', '\\]']],
+    tags: 'ams'
+  },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script" async></script>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap"/>
+
+<style>
+:root {
+  --paper:  #f7f5f0;
+  --paper2: #f0ede6;
+  --paper3: #e8e4db;
+  --ink:    #1a1814;
+  --ink2:   #4a4640;
+  --ink3:   #7a756e;
+  --rule:   #d4cfc6;
+  --rule2:  #c4bfb6;
+  --accent: #1a3a5c;
+  --accent2:#7a2020;
+  --green:  #2a5a2a;
+  --mono: 'IBM Plex Mono','Courier New',monospace;
+  --serif: 'EB Garamond',Georgia,serif;
+  --sans: 'Inter',system-ui,sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.75;
+}
+
+/* ── Masthead ──────────────────────────────────────────────────── */
+.masthead {
+  background: var(--paper2);
+  border-bottom: 2px solid var(--ink);
+  padding: 0.6rem 2rem;
+}
+.nav-inner {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.nav-brand {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  font-weight: 500;
+}
+.nav-pills {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.nav-pill {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  padding: 0.25rem 0.7rem;
+  border: 1px solid var(--rule2);
+  border-radius: 2px;
+  color: var(--ink2);
+  text-decoration: none;
+  background: var(--paper);
+  transition: border-color .15s, color .15s;
+}
+.nav-pill:hover  { border-color: var(--accent); color: var(--accent); }
+.nav-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ── Journal wrapper ──────────────────────────────────────────── */
+.journal {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 3.5rem 2rem 6rem;
+}
+
+/* ── Title block ──────────────────────────────────────────────── */
+.journal-title {
+  font-family: var(--serif);
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--ink);
+  margin-bottom: 0.4rem;
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 0.9rem;
+}
+.journal-subtitle {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 1.1rem;
+}
+.journal-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.3rem 2rem;
+  font-family: var(--sans);
+  font-size: 0.82rem;
+  color: var(--ink2);
+  margin-bottom: 2.2rem;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 1.2rem;
+}
+.journal-meta strong { color: var(--ink); }
+
+/* ── Abstract ─────────────────────────────────────────────────── */
+.abstract {
+  background: var(--paper2);
+  border-left: 3px solid var(--accent);
+  padding: 1.1rem 1.4rem;
+  margin-bottom: 2.8rem;
+  font-size: 0.95rem;
+}
+.abstract-label {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 0.45rem;
+}
+
+/* ── Sections ─────────────────────────────────────────────────── */
+.section {
+  margin-bottom: 2.6rem;
+}
+.section-number {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--accent2);
+  letter-spacing: 0.08em;
+  display: block;
+  margin-bottom: 0.15rem;
+}
+h2 {
+  font-family: var(--serif);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--accent);
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 0.3rem;
+  margin-bottom: 0.9rem;
+}
+h3 {
+  font-family: var(--sans);
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 1.4rem 0 0.5rem;
+  letter-spacing: 0.02em;
+}
+p {
+  margin-bottom: 0.85rem;
+  text-align: justify;
+  hyphens: auto;
+}
+p:last-child { margin-bottom: 0; }
+
+/* ── Math blocks ──────────────────────────────────────────────── */
+.math-block {
+  background: var(--paper3);
+  border: 1px solid var(--rule2);
+  border-radius: 3px;
+  padding: 1rem 1.4rem;
+  margin: 1.1rem 0;
+  overflow-x: auto;
+  font-size: 0.97rem;
+}
+.math-label {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--ink3);
+  float: right;
+  letter-spacing: 0.05em;
+}
+
+/* ── Code / mono inline ───────────────────────────────────────── */
+code {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  background: var(--paper3);
+  padding: 0.05em 0.35em;
+  border-radius: 2px;
+  color: var(--accent2);
+}
+
+/* ── Tables ───────────────────────────────────────────────────── */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  margin: 1.1rem 0;
+}
+.data-table th {
+  background: var(--paper3);
+  border: 1px solid var(--rule2);
+  padding: 0.4rem 0.7rem;
+  text-align: left;
+  color: var(--ink2);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+.data-table td {
+  border: 1px solid var(--rule);
+  padding: 0.35rem 0.7rem;
+  color: var(--ink);
+  vertical-align: top;
+}
+.data-table tr:nth-child(even) td { background: var(--paper2); }
+.data-table .val { color: var(--accent); }
+
+/* ── Caption ──────────────────────────────────────────────────── */
+.caption {
+  font-family: var(--sans);
+  font-size: 0.77rem;
+  color: var(--ink3);
+  margin-top: 0.4rem;
+  text-align: center;
+  font-style: italic;
+}
+.fig-label {
+  font-weight: 600;
+  color: var(--ink2);
+  font-style: normal;
+}
+
+/* ── Pipeline diagram ─────────────────────────────────────────── */
+.pipeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 1.4rem 0;
+}
+.pipe-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+.pipe-num {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 50%;
+  width: 1.6rem;
+  height: 1.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+.pipe-body {
+  flex: 1;
+  padding-bottom: 1.1rem;
+  border-left: 2px solid var(--rule2);
+  padding-left: 1rem;
+  margin-left: -1.8rem;
+  padding-left: 1.6rem;
+}
+.pipe-step:last-child .pipe-body { border-left: 2px solid transparent; }
+.pipe-title {
+  font-family: var(--sans);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 0.2rem;
+}
+.pipe-desc {
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  color: var(--ink2);
+  line-height: 1.55;
+}
+
+/* ── Score breakdown ──────────────────────────────────────────── */
+.score-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  margin: 0.9rem 0;
+}
+.score-table th {
+  background: var(--accent);
+  color: #fff;
+  padding: 0.35rem 0.7rem;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-align: left;
+}
+.score-table td {
+  border: 1px solid var(--rule);
+  padding: 0.3rem 0.7rem;
+  vertical-align: top;
+}
+.score-table tr:nth-child(even) td { background: var(--paper2); }
+.w { font-family: var(--mono); color: var(--accent2); font-weight: 500; }
+
+/* ── References ───────────────────────────────────────────────── */
+.references {
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  color: var(--ink2);
+  line-height: 1.55;
+}
+.ref-item {
+  display: flex;
+  gap: 0.7rem;
+  margin-bottom: 0.55rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--rule);
+}
+.ref-key {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--accent2);
+  flex-shrink: 0;
+  width: 3.5rem;
+  padding-top: 0.05rem;
+}
+.ref-item em { font-style: italic; }
+
+/* ── Inline cite ──────────────────────────────────────────────── */
+sup.cite {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--accent2);
+  cursor: default;
+}
+
+/* ── Callout box ──────────────────────────────────────────────── */
+.callout {
+  background: var(--paper2);
+  border: 1px solid var(--rule2);
+  border-left: 3px solid var(--accent2);
+  padding: 0.85rem 1.1rem;
+  margin: 1.1rem 0;
+  font-family: var(--sans);
+  font-size: 0.82rem;
+  color: var(--ink2);
+}
+.callout strong { color: var(--ink); }
+
+/* ── Footer ───────────────────────────────────────────────────── */
+.site-footer {
+  background: var(--paper3);
+  border-top: 2px solid var(--ink);
+  padding: 2rem;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--ink3);
+  letter-spacing: 0.06em;
+}
+.site-footer a { color: var(--accent); text-decoration: none; }
+.site-footer a:hover { text-decoration: underline; }
+
+@media (max-width: 600px) {
+  .journal { padding: 2rem 1rem 4rem; }
+  .journal-meta { grid-template-columns: 1fr; }
+  .journal-title { font-size: 1.35rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- Masthead nav -->
+<header class="masthead">
+  <div class="nav-inner">
+    <a href="/" class="nav-brand">3C273 · UV Spectral Pipeline</a>
+    <nav class="nav-pills">
+      <a href="/"   class="nav-pill">V1 — Classic</a>
+      <a href="/v2" class="nav-pill">V2 — Studio</a>
+      <a href="/v3" class="nav-pill">V3 — Campaign</a>
+      <a href="/about" class="nav-pill active">About</a>
+    </nav>
+  </div>
+</header>
+
+<main class="journal">
+
+  <!-- ─── Title block ──────────────────────────────────────────── -->
+  <p class="journal-subtitle">Technical Report · UV Spectroscopy Pipeline</p>
+  <h1 class="journal-title">Automated Lyman-Alpha Emission-Line Fitting for<br>IUE Short-Wavelength Prime Spectra of 3C&nbsp;273</h1>
+
+  <div class="journal-meta">
+    <div><strong>Observatory:</strong> International Ultraviolet Explorer (IUE)</div>
+    <div><strong>Instrument:</strong> Short-Wavelength Prime (SWP) Camera</div>
+    <div><strong>Target:</strong> 3C 273 (quasar, z = 0.158)</div>
+    <div><strong>Campaign:</strong> 215 archival spectra, SWP 1979–1996</div>
+    <div><strong>Spectral Range:</strong> 1150–1830 Å (rest frame)</div>
+    <div><strong>Resolution:</strong> R ≈ 300 (low-dispersion mode)</div>
+    <div><strong>Primary Line:</strong> Lyman Alpha (Ly\(\alpha\)) at \(\lambda_0 = 1216\) Å</div>
+    <div><strong>Pipeline Version:</strong> Step 4A — Shape-Objective Candidate Engine</div>
+  </div>
+
+  <!-- ─── Abstract ─────────────────────────────────────────────── -->
+  <div class="abstract">
+    <div class="abstract-label">Abstract</div>
+    We present an automated spectral fitting pipeline for measuring the Lyman-Alpha
+    (Ly\(\alpha\), \(\lambda_0 = 1216\) Å) emission line in 215 archival
+    International Ultraviolet Explorer (IUE) Short-Wavelength Prime (SWP)
+    low-dispersion spectra of the bright quasar 3C&nbsp;273.
+    The pipeline performs power-law continuum modeling via log–log linear regression,
+    followed by a two-stage emission-line decomposition:
+    (1) a discrete multi-dimensional grid search scoring ~5,600 Gaussian candidates
+    using a five-criterion composite objective (reduced \(\chi^2\), peak alignment,
+    bilateral wing residuals, and signal-to-noise ratio), and
+    (2) a profile-weighted least-squares amplitude refinement.
+    Physical observables — integrated flux \(F\), equivalent width \(W_\lambda\),
+    full-width at half maximum (FWHM), and signal-to-noise ratio (SNR) — are
+    computed by trapezoidal integration over the fitting window.
+    Campaign-level variability is quantified by the fractional variability amplitude
+    \(F_\text{var}\) and the flux ratio \(R_\text{max}\).
+    This document describes every computational step, the mathematical formulations
+    employed, and the rationale for key design choices.
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       §1  Introduction
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <span class="section-number">§ 1</span>
+    <h2>Introduction</h2>
+
+    <p>
+      The quasar 3C&nbsp;273 (RA 12h 29m 06.7s, Dec +02° 03′ 09″; redshift \(z = 0.158\))
+      is among the brightest and most studied quasi-stellar objects in the sky.
+      Its UV continuum and broad emission lines have been monitored extensively
+      with the <em>International Ultraviolet Explorer</em> (IUE) satellite, which operated
+      from 1978 to 1996 and accumulated a uniquely dense, long-baseline UV spectral
+      archive for this source.<sup class="cite">[1,2]</sup>
+    </p>
+
+    <p>
+      The Short-Wavelength Prime (SWP) camera covers 1150–1975 Å in low-dispersion
+      mode at a resolving power of \(R \approx 300\) (\(\Delta\lambda \approx 4\)–6 Å),
+      capturing the Lyman-Alpha emission line at its redshifted observed wavelength
+      near \(\lambda_\text{obs} \approx 1409\) Å. However, because this pipeline
+      works in the <em>rest frame</em> (spectra are not redshift-corrected in the
+      archive files we process), the line appears near \(\lambda \approx 1214\)–\(1218\) Å
+      in the extracted 1-D text files.<sup class="cite">[3]</sup>
+    </p>
+
+    <p>
+      Measuring Ly\(\alpha\) flux accurately is critical for:
+      (a) reverberation mapping of the broad-line region (BLR),
+      (b) variability analysis of the accretion disc,
+      and (c) quantifying the relationship between continuum and emission-line
+      fluxes on year-to-decade timescales.<sup class="cite">[4,5]</sup>
+      Automated, reproducible fitting across all 215 SWP spectra requires
+      a pipeline robust to varying S/N, continuum slope, and line asymmetry.
+    </p>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       §2  Pipeline Overview
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <span class="section-number">§ 2</span>
+    <h2>End-to-End Pipeline Overview</h2>
+
+    <p>
+      The pipeline is implemented in Python and exposed through a Flask web application.
+      Each spectrum file (two-column ASCII: wavelength in Å, flux in erg s⁻¹ cm⁻² Å⁻¹)
+      is processed independently. The seven principal stages are:
+    </p>
+
+    <div class="pipeline">
+
+      <div class="pipe-step">
+        <div class="pipe-num">1</div>
+        <div class="pipe-body">
+          <div class="pipe-title">Data Ingestion &amp; Parsing</div>
+          <div class="pipe-desc">Read 2-column ASCII spectrum; validate wavelength monotonicity and positive flux.</div>
+        </div>
+      </div>
+
+      <div class="pipe-step">
+        <div class="pipe-num">2</div>
+        <div class="pipe-body">
+          <div class="pipe-title">Power-Law Continuum Modeling</div>
+          <div class="pipe-desc">Fit \(F_c(\lambda) = A\,\lambda^\alpha\) via log–log ordinary least squares on line-free windows. Subtract to obtain \(F_\text{sub}(\lambda) = F(\lambda) - F_c(\lambda)\).</div>
+        </div>
+      </div>
+
+      <div class="pipe-step">
+        <div class="pipe-num">3</div>
+        <div class="pipe-body">
+          <div class="pipe-title">Observed Peak Location</div>
+          <div class="pipe-desc">Locate the brightest pixel within ±15 Å of \(\lambda_0 = 1216\) Å in the continuum-subtracted spectrum. This observed peak \(\lambda_\text{peak}\) anchors the center grid.</div>
+        </div>
+      </div>
+
+      <div class="pipe-step">
+        <div class="pipe-num">4</div>
+        <div class="pipe-body">
+          <div class="pipe-title">Coarse Grid Search — Candidate Engine</div>
+          <div class="pipe-desc">Enumerate ~5,600 Gaussian candidates on a discrete \((\mu, \sigma, A)\) grid. Score each with a 5-criterion composite objective. Retain the top-20 candidates ranked by composite score.</div>
+        </div>
+      </div>
+
+      <div class="pipe-step">
+        <div class="pipe-num">5</div>
+        <div class="pipe-body">
+          <div class="pipe-title">Stage-B Amplitude Refinement</div>
+          <div class="pipe-desc">For each top candidate, re-estimate amplitude \(A\) via profile-weighted least squares, suppressing the contribution of the bright core where photon noise is highest.</div>
+        </div>
+      </div>
+
+      <div class="pipe-step">
+        <div class="pipe-num">6</div>
+        <div class="pipe-body">
+          <div class="pipe-title">Physical Statistics Computation</div>
+          <div class="pipe-desc">Compute flux, flux error, SNR, EW, EW error, FWHM (Å &amp; km/s), reduced \(\chi^2\), and wing wavelengths for each candidate using the refined amplitude.</div>
+        </div>
+      </div>
+
+      <div class="pipe-step">
+        <div class="pipe-num">7</div>
+        <div class="pipe-body">
+          <div class="pipe-title">Quality Evaluation &amp; Selection</div>
+          <div class="pipe-desc">Accept the highest-ranked candidate passing the quality thresholds (SNR ≥ 5, \(\chi^2_\text{red} &lt; 5\), peak offset &lt; 3 Å). Fall back to rank-1 if none pass.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       §3  Data Ingestion
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <span class="section-number">§ 3</span>
+    <h2>Data Ingestion &amp; Pre-processing</h2>
+
+    <p>
+      Each IUE SWP spectrum is stored as a two-column plain-text file extracted from the
+      MAST archive. Column 1 is the vacuum wavelength \(\lambda\) in Ångströms (Å);
+      column 2 is the calibrated flux density \(F(\lambda)\) in units of
+      \(10^{-14}\) erg s\(^{-1}\) cm\(^{-2}\) Å\(^{-1}\).
+      Lines beginning with <code>#</code> or containing non-numeric content are skipped.
+    </p>
+
+    <p>
+      A typical SWP low-dispersion spectrum contains approximately 400–500 data points
+      spanning 1150–1830 Å, sampled at \(\Delta\lambda \approx 1.5\)–2 Å per pixel.
+      No rebinning or interpolation is applied; the pipeline operates on the native
+      pixel grid throughout.
+    </p>
+
+    <div class="callout">
+      <strong>File convention:</strong> Spectrum files follow the IUE MAST naming scheme,
+      e.g., <code>70dcdr2dswp35476mxlo.txt</code>, where <code>70</code> is the campaign
+      sequence number and <code>swp35476</code> is the SWP image number.
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       §4  Continuum Modeling
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <span class="section-number">§ 4</span>
+    <h2>Continuum Modeling: Power-Law Fit</h2>
+
+    <p>
+      The UV continuum of a quasar/AGN is well described by a power law
+      \(F_c(\lambda) = A\,\lambda^\alpha\),
+      where \(A\) is the continuum amplitude and \(\alpha\) is the spectral index
+      (typically \(\alpha \approx -1.5\) to \(-2.5\) for UV continua).<sup class="cite">[6]</sup>
+      Taking the natural logarithm linearises the problem:
+    </p>
+
+    <div class="math-block">
+      <span class="math-label">(Eq. 1)</span>
+      \[\ln F_c = \alpha \ln\lambda + \ln A\]
+    </div>
+
+    <p>
+      Ordinary least squares is applied to \((\ln\lambda_i, \ln F_i)\) pairs drawn
+      from two <em>line-free</em> continuum windows: 1150–1175 Å and 1300–1350 Å.
+      These windows bracket the Ly\(\alpha\) emission feature and are chosen to be
+      free of strong emission lines.<sup class="cite">[7]</sup>
+    </p>
+
+    <h3>Least-Squares Solution</h3>
+
+    <p>Let \(x_i = \ln\lambda_i\) and \(y_i = \ln F_i\) for \(n\) continuum pixels. The OLS estimators are:</p>
+
+    <div class="math-block">
+      <span class="math-label">(Eq. 2)</span>
+      \[
+      \hat{\alpha} = \frac{n\sum x_i y_i - (\sum x_i)(\sum y_i)}{n\sum x_i^2 - (\sum x_i)^2},
+      \qquad
+      \hat{A} = \exp\!\left(\frac{\sum y_i - \hat{\alpha}\sum x_i}{n}\right)
+      \]
+    </div>
+
+    <p>
+      The best-fit continuum \(\hat{F}_c(\lambda) = \hat{A}\,\lambda^{\hat{\alpha}}\)
+      is then evaluated on the full wavelength grid, and the continuum-subtracted
+      (emission-only) spectrum is:
+    </p>
+
+    <div class="math-block">
+      <span class="math-label">(Eq. 3)</span>
+      \[F_\text{sub}(\lambda) = F(\lambda) - \hat{F}_c(\lambda)\]
+    </div>
+
+    <p>
+      For Spectrum 70, the fit yields \(\hat{A} \approx 1.4\times10^{-4}\),
+      \(\hat{\alpha} \approx -1.73\), confirming the standard steep UV spectral slope
+      of 3C&nbsp;273.
+    </p>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       §5  Candidate Engine — Grid Search
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <span class="section-number">§ 5</span>
+    <h2>Stage A: Discrete Candidate Grid Search</h2>
+
+    <h3>5.1 Design Philosophy</h3>
+    <p>
+      Rather than feeding a continuous solver a single starting point and trusting it to
+      find the global minimum, the candidate engine takes a
+      <em>decision-making</em> approach: enumerate a physically constrained set of
+      Gaussian models and rank them by a multi-criteria score that mirrors how a
+      human expert would judge a fit. This avoids local-minimum traps common in
+      UV emission-line fitting where low S/N or asymmetric profiles create
+      false optima.<sup class="cite">[8]</sup>
+    </p>
+
+    <h3>5.2 Gaussian Emission-Line Model</h3>
+
+    <p>
+      Each candidate emission-line model is a single Gaussian:
+    </p>
+
+    <div class="math-block">
+      <span class="math-label">(Eq. 4)</span>
+      \[
+      G(\lambda;\,A,\mu,\sigma) = A \exp\!\left(-\frac{(\lambda - \mu)^2}{2\sigma^2}\right)
+      \]
+    </div>
+
+    <p>where \(A\) is the peak amplitude (erg s\(^{-1}\) cm\(^{-2}\) Å\(^{-1}\)),
+    \(\mu\) is the line center (Å), and \(\sigma\) is the Gaussian width (Å).</p>
+
+    <h3>5.3 Parameter Grids</h3>
+
+    <p>The search space is defined over three parameters:</p>
+
+    <table class="data-table">
+      <thead>
+        <tr><th>Parameter</th><th>Grid Definition</th><th>Typical Size</th><th>Rationale</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Center \(\mu\)</td>
+          <td>\(\lambda_\text{peak} \pm 5\) Å, step 0.5 Å</td>
+          <td class="val">20 values</td>
+          <td>Anchored to observed peak; allows for small redshift offsets</td>
+        </tr>
+        <tr>
+          <td>Width \(\sigma\)</td>
+          <td>Fixed integer grid: {4, 5, 6, 7, 8, 9, 10} Å</td>
+          <td class="val">7 values</td>
+          <td>Derived from approved fits: \(\sigma \approx 4.5\)–5.6 Å for IUE Ly\(\alpha\)</td>
+        </tr>
+        <tr>
+          <td>Amplitude \(A\)</td>
+          <td>\([0.4\,A_\text{peak},\; 2.0\,A_\text{peak}]\), 20 linear steps</td>
+          <td class="val">20 values</td>
+          <td>Broad range accommodating under- and over-exposure</td>
+        </tr>
+        <tr>
+          <td>Wing window \(W\)</td>
+          <td>Fixed at first grid entry (14 Å full-width) during search</td>
+          <td class="val">1 value</td>
+          <td>Fitting window width; optimized separately in quality evaluation</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>
+      The grid yields \(20 \times 7 \times 20 = 2{,}800\) combinations per
+      center position, or approximately 5,600 total candidates across the center grid.
+      For each candidate the half-wing
+      \(h = W/2 = 7\) Å defines the wavelength window
+      \([\mu - h,\; \mu + h]\) over which the model is evaluated.
+    </p>
+
+    <h3>5.4 Noise Estimation (Robust MAD)</h3>
+
+    <p>
+      A robust noise estimate is required both for scoring (\(\chi^2\)) and for
+      SNR computation. The pipeline uses the Median Absolute Deviation (MAD),
+      scaled to match the standard deviation of a normal distribution:<sup class="cite">[9]</sup>
+    </p>
+
+    <div class="math-block">
+      <span class="math-label">(Eq. 5)</span>
+      \[
+      \hat{\sigma}_\text{noise} = 1.4826 \times \text{median}\!\left(\,|r_i - \tilde{r}|\,\right),
+      \quad \tilde{r} = \text{median}(r_i)
+      \]
+    </div>
+
+    <p>
+      where \(r_i = F_\text{sub}(\lambda_i) / \bar{F}_c\) are the normalised
+      continuum-subtracted residuals over a ±20 Å window around the line.
+      The factor 1.4826 converts the MAD to a Gaussian-equivalent \(\sigma\).
+      The absolute noise level is then \(\sigma_n = \hat{\sigma}_\text{noise}\,|\bar{F}_c|\).
+    </p>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       §6  Composite Scoring Function
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <span class="section-number">§ 6</span>
+    <h2>Composite Scoring Function</h2>
+
+    <p>
+      Each candidate \((A, \mu, \sigma, W)\) receives a composite score
+      \(S \in [0, 1]\) as a weighted sum of five orthogonal quality criteria.
+      Higher \(S\) is better.
+    </p>
+
+    <div class="math-block">
+      <span class="math-label">(Eq. 6)</span>
+      \[
+      S = w_{\chi^2}\,s_{\chi^2} + w_\text{peak}\,s_\text{peak}
+          + w_\text{left}\,s_\text{left} + w_\text{right}\,s_\text{right}
+          + w_\text{SNR}\,s_\text{SNR}
+      \]
+    </div>
+
+    <table class="score-table">
+      <thead>
+        <tr>
+          <th>Criterion</th><th>Weight</th><th>Component Formula</th><th>Rationale</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Reduced \(\chi^2\)</td>
+          <td class="w">0.35</td>
+          <td>\(s_{\chi^2} = \exp\!\bigl[-\tfrac{1}{2}\bigl(\tfrac{\chi^2_\text{eff}-1}{2}\bigr)^2\bigr]\)</td>
+          <td>Gaussian bell centred at \(\chi^2_\text{red}=1\); overfitting (\(\chi^2_\text{red}&lt;0.15\)) penalised by reflection</td>
+        </tr>
+        <tr>
+          <td>Peak alignment</td>
+          <td class="w">0.25</td>
+          <td>\(s_\text{peak} = 0.6\,e^{-(\mu-\lambda_\text{peak})^2/(2\cdot3^2)} + 0.4\,e^{-(\mu-1216)^2/(2\cdot5^2)}\)</td>
+          <td>Soft blend: 60% toward observed peak (σ=3 Å), 40% toward rest wavelength (σ=5 Å)</td>
+        </tr>
+        <tr>
+          <td>Left-wing residuals</td>
+          <td class="w">0.20</td>
+          <td>\(s_\text{left} = \exp\!\bigl[-\sqrt{\langle r_\text{left}^2\rangle}/\sigma_n\bigr]\)</td>
+          <td>RMS residual on the blue side of the line center, normalised by noise</td>
+        </tr>
+        <tr>
+          <td>Right-wing residuals</td>
+          <td class="w">0.10</td>
+          <td>\(s_\text{right} = \exp\!\bigl[-\sqrt{\langle r_\text{right}^2\rangle}/\sigma_n\bigr]\)</td>
+          <td>As above for the red side; lower weight because red wing is cleaner in Ly\(\alpha\)</td>
+        </tr>
+        <tr>
+          <td>SNR</td>
+          <td class="w">0.10</td>
+          <td>\(s_\text{SNR} = \exp\!\bigl[-\tfrac{1}{2}\bigl(\tfrac{A/\sigma_n - \text{SNR}_\text{target}}{0.5\,\text{SNR}_\text{target}}\bigr)^2\bigr]\)</td>
+          <td>Soft prior favouring candidates near the expected SNR target (≈7); prevents preference for noise spikes</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>
+      The \(\chi^2\) effective value applies an overfitting penalty:
+      for \(\chi^2_\text{red} &lt; 0.15\), the effective value is
+      \(\chi^2_\text{eff} = 1 + 4(0.15 - \chi^2_\text{red})\),
+      ensuring that an implausibly good fit (which often indicates the model
+      is chasing noise structure) is also penalised.
+    </p>
+
+    <p>
+      An additional diagnostic shape metric \(J_\text{shape}\) is computed:
+    </p>
+
+    <div class="math-block">
+      <span class="math-label">(Eq. 7)</span>
+      \[
+      J_\text{shape} = \chi^2_\text{core} + 1.5\,\chi^2_\text{wing} + R_\text{profile}
+      \]
+    </div>
+
+    <p>
+      where \(\chi^2_\text{core}\) and \(\chi^2_\text{wing}\) are mean-normalised
+      \(\chi^2\) values within and beyond \(|\lambda - \mu| \leq \sigma\),
+      and \(R_\text{profile}\) is the mean squared difference between the
+      normalised observed profile and the normalised model profile.
+      \(J_\text{shape}\) is returned for diagnostics but does not enter the
+      composite score directly.
+    </p>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       §7  Stage-B Amplitude Refinement
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <span class="section-number">§ 7</span>
+    <h2>Stage B: Profile-Weighted Amplitude Estimation</h2>
+
+    <p>
+      After the coarse grid selects the top-20 candidate \((\mu, \sigma)\) pairs,
+      the amplitude \(A\) is re-estimated analytically via a <em>profile-weighted</em>
+      least-squares formulation. The motivation: a simple least-squares solution
+      \(A = \langle F_\text{sub} / G \rangle\) is dominated by the bright core of the
+      emission line where noise is largest relative to the sensitivity of the fit
+      to \(A\).<sup class="cite">[10]</sup>
+    </p>
+
+    <p>
+      Define the unnormalised Gaussian template:
+      \(g_i = \exp[-(\lambda_i - \mu)^2 / (2\sigma^2)]\).
+      A suppression weight is applied:
+      \(w_i = 1 - g_i\), which is zero at the peak (\(g_i = 1\))
+      and approaches one far in the wings (\(g_i \to 0\)).
+      The weighted least-squares amplitude is:
+    </p>
+
+    <div class="math-block">
+      <span class="math-label">(Eq. 8)</span>
+      \[
+      \hat{A} = \frac{\displaystyle\sum_{i \in W} w_i\, g_i\, F_{\text{sub},i}}
+                     {\displaystyle\sum_{i \in W} w_i\, g_i^2}
+      \]
+    </div>
+
+    <p>
+      where the sum runs over all pixels \(i\) inside the fitting window \(W = [\mu - W/2,\; \mu + W/2]\).
+      If the denominator vanishes or the resulting \(\hat{A} \leq 0\)
+      (unphysical due to noise), the algorithm falls back to the grid-search amplitude.
+      This estimator gives more weight to the wing region, which carries the sharpest
+      constraints on the Gaussian profile shape.
+    </p>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       §8  Physical Statistics
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <span class="section-number">§ 8</span>
+    <h2>Physical Statistics Computation</h2>
+
+    <p>
+      Once the best-fit parameters \((\hat{A}, \hat{\mu}, \hat{\sigma})\) are determined
+      and the fitting window \([\lambda_\text{min},\, \lambda_\text{max}]\) is set by
+      the wing window \(W\):
+    </p>
+
+    <div class="math-block">
+      <span class="math-label">(Eq. 9)</span>
+      \[
+      \lambda_\text{min} = \hat{\mu} - W/2, \qquad \lambda_\text{max} = \hat{\mu} + W/2
+      \]
+    </div>
+
+    <p>
+      all statistics are evaluated over the \(n\) pixels in
+      \(\mathcal{W} = \{\lambda_i : \lambda_\text{min} \leq \lambda_i \leq \lambda_\text{max}\}\).
+    </p>
+
+    <div class="callout">
+      <strong>Wing-window convention:</strong> \(W\) is the <em>full</em> window width.
+      The half-width is \(W/2\). This follows the convention of the reference
+      Angular spectral analysis tool and is verified against approved fits
+      (e.g., Spectrum 15: \(\hat{\mu}=1215\) Å, \(W=20\) Å, \(\lambda_\text{min}=1205\) Å,
+      \(\lambda_\text{max}=1225\) Å).
+    </div>
+
+    <h3>8.1 Integrated Flux</h3>
+
+    <p>
+      The emission-line flux is computed by trapezoidal integration of the
+      <em>fitted Gaussian model</em> over the window:
+    </p>
+
+    <div class="math-block">
+      <span class="math-label">(Eq. 10)</span>
+      \[
+      F = \int_{\lambda_\text{min}}^{\lambda_\text{max}}
+          G(\lambda;\,\hat{A}, \hat{\mu}, \hat{\sigma})\; d\lambda
+        \approx \sum_{i=1}^{n-1} \frac{G_i + G_{i+1}}{2}\,(\lambda_{i+1} - \lambda_i)
+      \]
+    </div>
+
+    <p>
+      Units: erg s\(^{-1}\) cm\(^{-2}\).
+      For a perfect Gaussian sampled finely, this converges to
+      \(F = \hat{A}\,\hat{\sigma}\sqrt{2\pi}\).
+    </p>
+
+    <h3>8.2 Flux Error</h3>
+
+    <p>
+      The flux uncertainty is estimated from the noise level and the window size,
+      following the formulation of the reference Angular tool:
+    </p>
+
+    <div class="math-block">
+      <span class="math-label">(Eq. 11)</span>
+      \[
+      \sigma_F = \sqrt{n}\;\hat{\sigma}_\text{noise}\;\delta_\text{res}\;\bar{F}_c
+      \]
+    </div>
+
+    <p>
+      where \(n\) is the number of pixels in the window, \(\hat{\sigma}_\text{noise}\)
+      is the normalised noise estimate from Eq.&nbsp;5, \(\delta_\text{res} = 1.676\)
+      is the IUE SWP low-dispersion resolution factor (pixels per resolution element),
+      and \(\bar{F}_c = \langle F_c \rangle\) is the mean continuum level.
+    </p>
+
+    <h3>8.3 Signal-to-Noise Ratio</h3>
+
+    <p>
+      The SNR is defined as the ratio of integrated flux to flux error:
+    </p>
+
+    <div class="math-block">
+      <span class="math-label">(Eq. 12)</span>
+      \[
+      \text{SNR} = \frac{F}{\sigma_F}
+      \]
+    </div>
+
+    <p>
+      This is a <em>detection} significance</em>, not a per-pixel S/N.
+      The SNR for the Ly\(\alpha\) emission in Spectrum 70 is approximately 9.6
+      (reference: 8.94).
+    </p>
+
+    <h3>8.4 Equivalent Width</h3>
+
+    <p>
+      The rest-frame equivalent width (EW) measures the width of a hypothetical
+      rectangular band in the continuum that would contain the same flux as the
+      emission line:<sup class="cite">[11]</sup>
+    </p>
+
+    <div class="math-block">
+      <span class="math-label">(Eq. 13)</span>
+      \[
+      W_\lambda = \int_{\lambda_\text{min}}^{\lambda_\text{max}}
+                  \frac{F_\text{sub}(\lambda)}{F_c(\lambda)}\; d\lambda
+      \approx \sum_{i=1}^{n-1} \frac{1}{2}\left(\frac{F_{\text{sub},i}}{F_{c,i}}
+              + \frac{F_{\text{sub},i+1}}{F_{c,i+1}}\right)(\lambda_{i+1} - \lambda_i)
+      \]
+    </div>
+
+    <p>
+      The EW error propagates the fractional flux error:
+    </p>
+
+    <div class="math-block">
+      <span class="math-label">(Eq. 14)</span>
+      \[
+      \sigma_{W_\lambda} = |W_\lambda| \cdot \frac{\sigma_F}{F}
+      \]
+    </div>
+
+    <h3>8.5 Full-Width at Half Maximum</h3>
+
+    <p>
+      The FWHM of a Gaussian with standard deviation \(\hat{\sigma}\) is:
+    </p>
+
+    <div class="math-block">
+      <span class="math-label">(Eq. 15)</span>
+      \[
+      \text{FWHM}_\lambda = 2\sqrt{2\ln 2}\;\hat{\sigma} \approx 2.3548\;\hat{\sigma} \quad[\text{Å}]
+      \]
+    </div>
+
+    <p>
+      Converting to velocity width via the Doppler formula:
+    </p>
+
+    <div class="math-block">
+      <span class="math-label">(Eq. 16)</span>
+      \[
+      \text{FWHM}_{v} = \frac{\text{FWHM}_\lambda}{\hat{\mu}}\, c \quad [\text{km s}^{-1}]
+      \]
+    </div>
+
+    <p>
+      where \(c = 299{,}792.458\) km s\(^{-1}\).
+      For Spectrum 70: \(\hat{\sigma} = 6.0\) Å gives
+      \(\text{FWHM}_\lambda = 14.13\) Å and
+      \(\text{FWHM}_v \approx 3{,}487\) km s\(^{-1}\) (reference: 3,487.6 km s\(^{-1}\)).
+    </p>
+
+    <h3>8.6 Reduced Chi-Squared</h3>
+
+    <p>
+      Within the fitting window, the reduced chi-squared measures goodness of fit:
+    </p>
+
+    <div class="math-block">
+      <span class="math-label">(Eq. 17)</span>
+      \[
+      \chi^2_\text{red} = \frac{1}{\nu}\sum_{i \in \mathcal{W}}
+                          \left(\frac{F_{\text{sub},i} - G(\lambda_i;\hat{A},\hat{\mu},\hat{\sigma})}
+                                {\sigma_n}\right)^2,
+      \quad \nu = n - 3
+      \]
+    </div>
+
+    <p>
+      where \(\nu = n - 3\) is the number of degrees of freedom (three free parameters:
+      \(A, \mu, \sigma\)) and \(\sigma_n\) is the absolute noise level from Eq.&nbsp;5.
+      Values near 1.0 indicate a statistically good fit; \(\chi^2_\text{red} \gg 1\)
+      implies systematic residuals (poor fit) and \(\chi^2_\text{red} \ll 1\)
+      implies noise overestimation or overfitting.
+    </p>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       §9  Quality Evaluation
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <span class="section-number">§ 9</span>
+    <h2>Quality Evaluation &amp; Acceptance Thresholds</h2>
+
+    <p>
+      A fit is classified as ACCEPTED, MARGINAL, or REJECTED based on three criteria:
+    </p>
+
+    <table class="data-table">
+      <thead>
+        <tr><th>Criterion</th><th>Condition</th><th>Action</th><th>Penalty</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Reduced \(\chi^2\)</td>
+          <td>\(\chi^2_\text{red} > 5.0\)</td>
+          <td>REJECTED</td>
+          <td class="val">−0.30 to quality score</td>
+        </tr>
+        <tr>
+          <td>Reduced \(\chi^2\) (low)</td>
+          <td>\(\chi^2_\text{red} < 0.10\)</td>
+          <td>Warning: overfitting</td>
+          <td class="val">−0.10 to quality score</td>
+        </tr>
+        <tr>
+          <td>SNR (low)</td>
+          <td>\(\text{SNR} < 5.0\)</td>
+          <td>REJECTED / MARGINAL</td>
+          <td class="val">−0.40 to quality score</td>
+        </tr>
+        <tr>
+          <td>SNR (very low)</td>
+          <td>\(\text{SNR} < 3.0\)</td>
+          <td>NOT_DETECTED</td>
+          <td class="val">Hard rejection</td>
+        </tr>
+        <tr>
+          <td>Peak alignment</td>
+          <td>\(|\hat{\mu} - \lambda_\text{peak}| > 3.0\) Å</td>
+          <td>REJECTED</td>
+          <td class="val">−0.30 to quality score</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>
+      The overall quality score is \(\max(0,\; 1 - \text{total penalty})\).
+      Note that a <em>high</em> SNR is never penalised; only low SNR triggers rejection.
+      This is physically motivated: bright emission lines with SNR\(>15\) are
+      always genuine detections, even if their SNR is unusually high by typical standards.
+    </p>
+
+    <p>
+      Among the 20 ranked candidates, the first one satisfying all quality criteria
+      is selected as the final result. If none pass, the rank-1 candidate is returned
+      with status REJECTED (reporting the failure reason) so the UI can still display
+      the best available fit.
+    </p>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       §10  Campaign Variability Statistics
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <span class="section-number">§ 10</span>
+    <h2>Campaign Variability Statistics</h2>
+
+    <p>
+      Over 215 IUE SWP epochs spanning 1979–1996, the Ly\(\alpha\) flux of 3C&nbsp;273
+      varies on timescales of weeks to years, driven by changes in the accretion rate
+      and BLR response. Two standard variability metrics are computed:<sup class="cite">[12,13]</sup>
+    </p>
+
+    <h3>10.1 Fractional Variability Amplitude \(F_\text{var}\)</h3>
+
+    <p>
+      The fractional variability amplitude quantifies intrinsic variability
+      relative to the measurement uncertainties:
+    </p>
+
+    <div class="math-block">
+      <span class="math-label">(Eq. 18)</span>
+      \[
+      F_\text{var} = \frac{\sqrt{S^2 - \langle\sigma_\text{err}^2\rangle}}{\bar{F}}
+      \]
+    </div>
+
+    <p>
+      where \(S^2 = \frac{1}{N-1}\sum(F_i - \bar{F})^2\) is the sample variance,
+      \(\langle\sigma_\text{err}^2\rangle = \frac{1}{N}\sum\sigma_{F,i}^2\)
+      is the mean squared measurement error, and \(\bar{F}\) is the mean flux.
+      When \(S^2 &lt; \langle\sigma_\text{err}^2\rangle\) (i.e., no significant variability),
+      the absolute value is taken and \(F_\text{var}\) is reported as an upper limit.
+    </p>
+
+    <h3>10.2 Flux Ratio \(R_\text{max}\)</h3>
+
+    <p>
+      The simplest variability measure is the ratio of maximum to minimum observed flux:
+    </p>
+
+    <div class="math-block">
+      <span class="math-label">(Eq. 19)</span>
+      \[
+      R_\text{max} = \frac{F_\text{max}}{F_\text{min}}
+      \]
+    </div>
+
+    <p>
+      For the 3C&nbsp;273 Ly\(\alpha\) campaign, typical values are
+      \(F_\text{var} \approx 0.1\)–0.3 and \(R_\text{max} \approx 2\)–4,
+      consistent with the moderate variability amplitude characteristic of
+      radio-loud quasars in this luminosity range.
+    </p>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       §11  Example: Spectrum 70
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <span class="section-number">§ 11</span>
+    <h2>Worked Example: Spectrum 70 (SWP 35476)</h2>
+
+    <p>
+      Spectrum 70 (IUE image SWP&nbsp;35476, file
+      <code>70dcdr2dswp35476mxlo.txt</code>) is used as the primary
+      validation case. The table below compares the pipeline output
+      to the reference values from human-approved measurements:
+    </p>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Quantity</th><th>Pipeline</th><th>Reference</th><th>Units</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Line Center \(\hat{\mu}\)</td><td class="val">1214.73</td><td>1214.50</td><td>Å</td><td>✓ &lt;0.25 Å offset</td></tr>
+        <tr><td>FWHM (Å)</td><td class="val">14.13</td><td>14.13</td><td>Å</td><td>✓ Exact</td></tr>
+        <tr><td>FWHM (km/s)</td><td class="val">3,487</td><td>3,487.6</td><td>km s⁻¹</td><td>✓ &lt;0.1% error</td></tr>
+        <tr><td>Min \(\lambda\)</td><td class="val">1207.73</td><td>1207.00</td><td>Å</td><td>✓ &lt;0.8 Å offset</td></tr>
+        <tr><td>Max \(\lambda\)</td><td class="val">1221.73</td><td>1222.00</td><td>Å</td><td>✓ &lt;0.3 Å offset</td></tr>
+        <tr><td>Wing Window \(W\)</td><td class="val">14</td><td>15</td><td>Å</td><td>△ Grid search limitation</td></tr>
+        <tr><td>Flux \(F\)</td><td class="val">7.76 × 10⁻¹²</td><td>5.25 × 10⁻¹²</td><td>erg s⁻¹ cm⁻²</td><td>△ ~48% high</td></tr>
+        <tr><td>Flux Error \(\sigma_F\)</td><td class="val">8.11 × 10⁻¹³</td><td>5.87 × 10⁻¹³</td><td>erg s⁻¹ cm⁻²</td><td>△ Propagated from flux</td></tr>
+        <tr><td>SNR</td><td class="val">9.56</td><td>8.94</td><td>—</td><td>✓ &lt;7% error</td></tr>
+        <tr><td>EW \(W_\lambda\)</td><td class="val">37.29</td><td>40.49</td><td>Å</td><td>✓ &lt;8% error</td></tr>
+        <tr><td>EW Error</td><td class="val">3.90</td><td>4.53</td><td>Å</td><td>✓ Within 14%</td></tr>
+        <tr><td>Reduced \(\chi^2\)</td><td class="val">0.052</td><td>0.18</td><td>—</td><td>△ Under-estimated noise</td></tr>
+      </tbody>
+    </table>
+
+    <p class="caption">
+      <span class="fig-label">Table 1.</span>
+      Comparison of pipeline output vs. human-approved reference measurements for Spectrum 70 (Ly\(\alpha\)).
+      Residual discrepancies in flux and \(\chi^2_\text{red}\) are attributed to differences in
+      amplitude estimation method and noise normalisation; wing window discrepancy (14 vs. 15 Å)
+      results from the current grid using only the first entry in the wing grid.
+    </p>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       §12  Instrument Characteristics
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <span class="section-number">§ 12</span>
+    <h2>IUE SWP Instrument Characteristics</h2>
+
+    <p>
+      The Short-Wavelength Prime camera of the IUE satellite employed a
+      Vidicon detector with a caesium telluride photocathode, covering
+      1150–1975 Å. In low-dispersion mode (the standard for monitoring campaigns),
+      the spectral resolving power is \(R = \lambda/\Delta\lambda \approx 300\),
+      corresponding to a resolution element of approximately 5–6 Å FWHM.
+      Individual spectra are extracted and calibrated by the IUE reduction pipeline
+      (NEWSIPS for post-1992 data, or the original IUESIPS for earlier data)
+      to produce flux-calibrated 1-D spectra in absolute units.<sup class="cite">[14]</sup>
+    </p>
+
+    <p>
+      The low-dispersion resolution factor used in flux error estimation is
+      \(\delta_\text{res} = 1.676\) pixels per resolution element, derived from
+      the SWP camera's known dispersion and the digital sampling interval.
+      This factor appears explicitly in the reference Angular spectral analysis tool
+      and is adopted directly in Eq.&nbsp;11.
+    </p>
+
+    <p>
+      Sky background is negligible for bright point sources in the UV;
+      scattered-light corrections are included in the NEWSIPS flux calibration.
+      No additional background subtraction is applied by this pipeline.
+    </p>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       §13  Software Architecture
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <span class="section-number">§ 13</span>
+    <h2>Software Architecture</h2>
+
+    <table class="data-table">
+      <thead>
+        <tr><th>Module</th><th>Role</th><th>Key Outputs</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>src/reader.py</code></td>
+          <td>ASCII spectrum parser</td>
+          <td>\(\lambda\), \(F(\lambda)\) arrays</td>
+        </tr>
+        <tr>
+          <td><code>src/continuum.py</code></td>
+          <td>Power-law continuum fitting (Eq. 1–3)</td>
+          <td>\(\hat{A}\), \(\hat{\alpha}\), \(F_c(\lambda)\), \(F_\text{sub}(\lambda)\)</td>
+        </tr>
+        <tr>
+          <td><code>src/candidate_engine.py</code></td>
+          <td>Grid search + composite scoring (Eq. 4–7)</td>
+          <td>Ranked list of 20 candidates</td>
+        </tr>
+        <tr>
+          <td><code>src/statistics.py</code></td>
+          <td>Physical statistics (Eq. 8–17)</td>
+          <td>Flux, EW, SNR, FWHM, \(\chi^2_\text{red}\)</td>
+        </tr>
+        <tr>
+          <td><code>src/quality.py</code></td>
+          <td>Quality evaluation (§9)</td>
+          <td>Quality score, acceptance flag, status message</td>
+        </tr>
+        <tr>
+          <td><code>src/line_fitter.py</code></td>
+          <td>Single-line orchestrator</td>
+          <td>Best-fit line result dict</td>
+        </tr>
+        <tr>
+          <td><code>src/pipeline.py</code></td>
+          <td>End-to-end pipeline orchestrator</td>
+          <td>Complete record with all arrays and line results</td>
+        </tr>
+        <tr>
+          <td><code>src/joint_fitter.py</code></td>
+          <td>Multi-line simultaneous fitting (overlapping lines)</td>
+          <td>Refined parameters for blended lines</td>
+        </tr>
+        <tr>
+          <td><code>src/plotting.py</code></td>
+          <td>Publication-quality diagnostic plots</td>
+          <td>4-panel PNG figure</td>
+        </tr>
+        <tr>
+          <td><code>config/Lya.yaml</code></td>
+          <td>Ly\(\alpha\) line parameters and grid definitions</td>
+          <td>Search bounds, quality thresholds, priors</td>
+        </tr>
+        <tr>
+          <td><code>app.py</code></td>
+          <td>Flask web server; routes: /, /v2, /v3, /about, /fit, /stream</td>
+          <td>JSON responses; SSE log stream; HTML pages</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>
+      The web application exposes the pipeline through three interactive interfaces:
+      <strong>V1</strong> (dark Nolan theme, full diagnostic output),
+      <strong>V2</strong> (academic off-white theme, real-time SSE log stream,
+      campaign statistics panel), and
+      <strong>V3</strong> (client-side campaign viewer using the pre-computed
+      reference Excel, no server-side fitting required).
+    </p>
+  </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       §14  References
+  ══════════════════════════════════════════════════════════════ -->
+  <div class="section">
+    <span class="section-number">§ 14</span>
+    <h2>References</h2>
+    <div class="references">
+
+      <div class="ref-item">
+        <span class="ref-key">[1]</span>
+        <span>Ulrich, M.-H., et al. (1980). "A coordinated study of 3C 273 in the ultraviolet."
+        <em>Monthly Notices of the Royal Astronomical Society</em>, 192, 561–575.</span>
+      </div>
+
+      <div class="ref-item">
+        <span class="ref-key">[2]</span>
+        <span>Türler, M., Courvoisier, T. J.-L., &amp; Paltani, S. (1999).
+        "Modelling the submillimetre-to-radio variability of 3C 273."
+        <em>Astronomy &amp; Astrophysics</em>, 349, 45–54.</span>
+      </div>
+
+      <div class="ref-item">
+        <span class="ref-key">[3]</span>
+        <span>Rodriguez-Pascual, P. M., et al. (1997).
+        "Steps Toward Determination of the Size and Structure of the Broad-Line Region in Active Galactic Nuclei.
+        XI. Intensive Monitoring of NGC 4151."
+        <em>Astrophysical Journal Supplement Series</em>, 110, 9–20.</span>
+      </div>
+
+      <div class="ref-item">
+        <span class="ref-key">[4]</span>
+        <span>Peterson, B. M. (1993). "Reverberation mapping of active galactic nuclei."
+        <em>Publications of the Astronomical Society of the Pacific</em>, 105(686), 247–268.</span>
+      </div>
+
+      <div class="ref-item">
+        <span class="ref-key">[5]</span>
+        <span>Kinney, A. L., Rivolo, A. R., &amp; Koratkar, A. P. (1991).
+        "Properties of emission lines in the ultraviolet: The IUE data base."
+        <em>Astrophysical Journal</em>, 375, 532–544.</span>
+      </div>
+
+      <div class="ref-item">
+        <span class="ref-key">[6]</span>
+        <span>Vanden Berk, D. E., et al. (2001). "Composite Quasar Spectra from the Sloan Digital Sky Survey."
+        <em>Astronomical Journal</em>, 122(1), 549–564.</span>
+      </div>
+
+      <div class="ref-item">
+        <span class="ref-key">[7]</span>
+        <span>Cristiani, S. &amp; Vio, R. (1990).
+        "Continuum and emission-line variability of 3C 273."
+        <em>Astronomy &amp; Astrophysics</em>, 227, 385–393.</span>
+      </div>
+
+      <div class="ref-item">
+        <span class="ref-key">[8]</span>
+        <span>Press, W. H., Teukolsky, S. A., Vetterling, W. T., &amp; Flannery, B. P. (2007).
+        <em>Numerical Recipes: The Art of Scientific Computing</em> (3rd ed.).
+        Cambridge University Press. §15.5 — Nonlinear models.</span>
+      </div>
+
+      <div class="ref-item">
+        <span class="ref-key">[9]</span>
+        <span>Huber, P. J., &amp; Ronchetti, E. M. (2009).
+        <em>Robust Statistics</em> (2nd ed.). Wiley. §3.2 — The MAD estimator.</span>
+      </div>
+
+      <div class="ref-item">
+        <span class="ref-key">[10]</span>
+        <span>Bevington, P. R. &amp; Robinson, D. K. (2003).
+        <em>Data Reduction and Error Analysis for the Physical Sciences</em> (3rd ed.).
+        McGraw-Hill. §8.1 — Weighted least-squares fitting.</span>
+      </div>
+
+      <div class="ref-item">
+        <span class="ref-key">[11]</span>
+        <span>Draine, B. T. (2011).
+        <em>Physics of the Interstellar and Intergalactic Medium</em>.
+        Princeton University Press. §7.4 — Equivalent widths.</span>
+      </div>
+
+      <div class="ref-item">
+        <span class="ref-key">[12]</span>
+        <span>Vaughan, S., Edelson, R., Warwick, R. S., &amp; Uttley, P. (2003).
+        "On characterizing the variability properties of X-ray light curves from active galaxies."
+        <em>Monthly Notices of the Royal Astronomical Society</em>, 345(4), 1271–1284.</span>
+      </div>
+
+      <div class="ref-item">
+        <span class="ref-key">[13]</span>
+        <span>Edelson, R., et al. (2002).
+        "Multiwavelength Observations of Short-Term Variability in NGC 4151. II. Ultraviolet/Optical/Infrared."
+        <em>Astrophysical Journal</em>, 568(2), 610–627.</span>
+      </div>
+
+      <div class="ref-item">
+        <span class="ref-key">[14]</span>
+        <span>Nichols, J. S. &amp; Linsky, J. L. (1996).
+        "The New IUE Extraction System: Improved Data for the IUE Final Archive."
+        <em>Astronomical Journal</em>, 111, 517–528.
+        [NEWSIPS pipeline documentation]</span>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<!-- Footer -->
+<footer class="site-footer">
+  <div>
+    3C 273 IUE SWP Lyman-Alpha Pipeline &nbsp;·&nbsp;
+    <a href="/">V1</a> &nbsp;·&nbsp;
+    <a href="/v2">V2 Studio</a> &nbsp;·&nbsp;
+    <a href="/v3">V3 Campaign</a> &nbsp;·&nbsp;
+    <a href="/about">About</a>
+  </div>
+  <div style="margin-top:0.5rem; color: var(--rule2);">
+    IUE archive data courtesy of NASA/ESA MAST · Pipeline: Python 3 / Flask · Plots: Plotly.js
+  </div>
+</footer>
+
+</body>
+</html>

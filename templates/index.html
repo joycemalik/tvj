@@ -142,7 +142,7 @@
                 <div class="section-subtitle">// MASTER EMISSION LINE SUMMARY</div>
                 <div class="table-container">
                     <table class="summary-table" id="summaryTable">
-                        <thead><tr><th>Line</th><th>Rest λ (Å)</th><th>Fitted λ (Å)</th><th>Δλ (Å)</th><th>Velocity (km/s)</th><th>σ (Å)</th><th>Flux</th><th>EW (Å)</th><th>SNR</th><th>χ²red</th><th>Status</th></tr></thead>
+                        <thead><tr><th>Line</th><th>Rest λ (Å)</th><th>Fitted λ (Å)</th><th>Δλ (Å)</th><th>Velocity (km/s)</th><th>σ (Å)</th><th>FWHM (km/s)</th><th>Flux</th><th>Flux Err</th><th>EW (Å)</th><th>EW Err</th><th>SNR</th><th>χ²red</th><th>Status</th></tr></thead>
                         <tbody id="summaryTableBody"></tbody>
                     </table>
                 </div>
@@ -183,11 +183,14 @@
                                 <tr><td class="param-name">Velocity Offset (v)</td><td class="param-value" id="valVelOffset">-254.1 km/s</td></tr>
                                 <tr><td class="param-name">Gaussian Amplitude (A)</td><td class="param-value" id="valAmp">8.00e-13</td></tr>
                                 <tr><td class="param-name">Gaussian Sigma (σ)</td><td class="param-value" id="valSigma">6.14 Å</td></tr>
-                                <tr><td class="param-name">Reported FWHM (Dataset)</td><td class="param-value" id="valFWHM">16.95 Å</td></tr>
-                                <tr><td class="param-name">Derived 2.355σ FWHM</td><td class="param-value" id="valFWHM235">14.46 Å</td></tr>
-                                <tr><td class="param-name">Integrated Line Flux</td><td class="param-value" id="valFlux">1.04e-11</td></tr>
-                                <tr><td class="param-name">Equivalent Width (EW)</td><td class="param-value" id="valEW">46.66 Å</td></tr>
-                                <tr><td class="param-name">Signal-to-Noise (SNR)</td><td class="param-value" id="valSNR">9.14</td></tr>
+                                <tr><td class="param-name">FWHM (Å) = 2.355σ</td><td class="param-value" id="valFWHM">14.13 Å</td></tr>
+                                <tr><td class="param-name">FWHM (km/s)</td><td class="param-value" id="valFWHMkms">— km/s</td></tr>
+                                <tr><td class="param-name">Derived 2.355σ FWHM</td><td class="param-value" id="valFWHM235">14.13 Å</td></tr>
+                                <tr><td class="param-name">Integrated Line Flux</td><td class="param-value" id="valFlux">—</td></tr>
+                                <tr><td class="param-name">Flux Error</td><td class="param-value" id="valFluxErr">—</td></tr>
+                                <tr><td class="param-name">Equivalent Width (EW)</td><td class="param-value" id="valEW">— Å</td></tr>
+                                <tr><td class="param-name">EW Error</td><td class="param-value" id="valEWErr">— Å</td></tr>
+                                <tr><td class="param-name">Signal-to-Noise (SNR)</td><td class="param-value" id="valSNR">—</td></tr>
                                 <tr><td class="param-name">Reduced χ² (χ²red)</td><td class="param-value" id="valChi2">0.036</td></tr>
                                 <tr><td class="param-name">Fitting Wing Window</td><td class="param-value" id="valWingWindow">19.0 Å</td></tr>
                             </table>
@@ -236,6 +239,10 @@
                 <a href="/v3" class="footer-nav-link">
                     <span class="fnl-label">SPECTRUM ANALYSIS — V3</span>
                     <span class="fnl-desc">Client-side time-series viewer for all 215 observations. Load the Excel results dataset, explore variability statistics, and overlay individual .txt spectra with continuum fits.</span>
+                </a>
+                <a href="/about" class="footer-nav-link">
+                    <span class="fnl-label">ABOUT — PIPELINE DOCUMENTATION</span>
+                    <span class="fnl-desc">Full scientific journal writeup of every pipeline stage: continuum modeling, grid search, composite scoring, statistics formulas, and validated example results.</span>
                 </a>
             </div>
             <!-- Pipeline summary -->
@@ -329,7 +336,7 @@
                 else if (fitStat.includes('REJECTED')) { badgeText = '✕ REJECTED'; badgeClass = 'status-rejected'; }
                 else if (fitStat.includes('ACCEPTED')) { badgeText = '✓ ACCEPTED'; badgeClass = 'status-accepted'; }
 
-                tr.innerHTML = `<td style="font-weight:600; color:#fff;">${l.line_name}</td><td>${l.rest_wavelength.toFixed(1)}</td><td>${l.detected ? fmtNum(l.center, 2) : '-'}</td><td>${l.detected ? fmtNum(deltaWl, 2) : '-'}</td><td>${l.detected ? fmtNum(velOffset, 1) : '-'}</td><td>${l.detected ? fmtNum(l.sigma, 2) : '-'}</td><td>${l.detected ? fmtExp(l.flux) : '-'}</td><td>${l.detected ? fmtNum(l.ew, 1) : '-'}</td><td>${l.detected ? fmtNum(l.snr, 2) : '-'}</td><td>${l.detected ? fmtNum(l.reduced_chi2, 3) : '-'}</td><td><span class="status-badge ${badgeClass}" style="padding:0.15rem 0.4rem; font-size:0.65rem;">${badgeText}</span></td>`;
+                tr.innerHTML = `<td style="font-weight:600; color:#fff;">${l.line_name}</td><td>${l.rest_wavelength.toFixed(1)}</td><td>${l.detected ? fmtNum(l.center, 2) : '-'}</td><td>${l.detected ? fmtNum(deltaWl, 2) : '-'}</td><td>${l.detected ? fmtNum(velOffset, 1) : '-'}</td><td>${l.detected ? fmtNum(l.sigma, 2) : '-'}</td><td>${l.detected ? fmtNum(l.fwhm_kms, 0) : '-'}</td><td>${l.detected ? fmtExp(l.flux) : '-'}</td><td>${l.detected ? fmtExp(l.flux_err) : '-'}</td><td>${l.detected ? fmtNum(l.ew, 2) : '-'}</td><td>${l.detected ? fmtNum(l.ew_err, 2) : '-'}</td><td>${l.detected ? fmtNum(l.snr, 2) : '-'}</td><td>${l.detected ? fmtNum(l.reduced_chi2, 3) : '-'}</td><td><span class="status-badge ${badgeClass}" style="padding:0.15rem 0.4rem; font-size:0.65rem;">${badgeText}</span></td>`;
                 tbody.appendChild(tr);
             });
         }
@@ -370,9 +377,12 @@
             document.getElementById('valAmp').textContent = fmtExp(amp);
             document.getElementById('valSigma').textContent = `${fmtNum(sigma, 2)} Å`;
             document.getElementById('valFWHM').textContent = line.fwhm_ang ? `${fmtNum(line.fwhm_ang, 2)} Å` : `${fmtNum(2.355 * sigma, 2)} Å`;
+            document.getElementById('valFWHMkms').textContent = line.fwhm_kms ? `${fmtNum(line.fwhm_kms, 1)} km/s` : '—';
             document.getElementById('valFWHM235').textContent = `${fmtNum(2.355 * sigma, 2)} Å`;
             document.getElementById('valFlux').textContent = fmtExp(line.flux);
+            document.getElementById('valFluxErr').textContent = fmtExp(line.flux_err);
             document.getElementById('valEW').textContent = `${fmtNum(line.ew, 2)} Å`;
+            document.getElementById('valEWErr').textContent = line.ew_err ? `${fmtNum(line.ew_err, 2)} Å` : '—';
             document.getElementById('valSNR').textContent = fmtNum(line.snr, 2);
             document.getElementById('valChi2').textContent = fmtNum(line.reduced_chi2, 3);
             document.getElementById('valWingWindow').textContent = `${fmtNum(wingWindow, 1)} Å`;

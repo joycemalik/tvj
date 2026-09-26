@@ -163,6 +163,7 @@ body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-heigh
     <a href="/" class="nav-pill">V1 Classic</a>
     <a href="/v2" class="nav-pill active">V2 Studio</a>
     <a href="/v3" class="nav-pill">V3 Analysis</a>
+    <a href="/about" class="nav-pill">About</a>
   </div>
 </div>
 
@@ -237,7 +238,8 @@ body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-heigh
           <thead>
             <tr>
               <th>Line</th><th>Rest λ (Å)</th><th>Fitted λ (Å)</th><th>Δλ (Å)</th>
-              <th>Velocity (km/s)</th><th>σ (Å)</th><th>Flux</th><th>EW (Å)</th>
+              <th>v (km/s)</th><th>σ (Å)</th><th>FWHM (km/s)</th>
+              <th>Flux</th><th>Flux Err</th><th>EW (Å)</th><th>EW Err</th>
               <th>SNR</th><th>χ²<sub>red</sub></th><th>Status</th>
             </tr>
           </thead>
@@ -302,10 +304,13 @@ body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-heigh
                 <tr><td>Velocity Offset (v)</td><td id="valVelOffset">—</td></tr>
                 <tr><td>Amplitude (A)</td><td id="valAmp">—</td></tr>
                 <tr><td>Gaussian σ</td><td id="valSigma">—</td></tr>
-                <tr><td>Reported FWHM</td><td id="valFWHM">—</td></tr>
+                <tr><td>FWHM (Å) = 2.355σ</td><td id="valFWHM">—</td></tr>
+                <tr><td>FWHM (km/s)</td><td id="valFWHMkms">—</td></tr>
                 <tr><td>Derived 2.355σ FWHM</td><td id="valFWHM235">—</td></tr>
                 <tr><td>Integrated Flux</td><td id="valFlux">—</td></tr>
+                <tr><td>Flux Error</td><td id="valFluxErr">—</td></tr>
                 <tr><td>Equivalent Width (EW)</td><td id="valEW">—</td></tr>
+                <tr><td>EW Error</td><td id="valEWErr">—</td></tr>
                 <tr><td>SNR</td><td id="valSNR">—</td></tr>
                 <tr><td>Reduced χ²</td><td id="valChi2">—</td></tr>
                 <tr><td>Wing Window</td><td id="valWingWindow">—</td></tr>
@@ -361,6 +366,10 @@ body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-heigh
       <a href="/v3" class="footer-nav-link">
         <span class="fnl-label">Spectrum Analysis — V3</span>
         <span class="fnl-desc">Client-side time-series viewer for all 215 observations. Load Excel results, variability stats, individual spectra.</span>
+      </a>
+      <a href="/about" class="footer-nav-link">
+        <span class="fnl-label">About — Pipeline Documentation</span>
+        <span class="fnl-desc">Scientific journal writeup: continuum modeling, grid search, composite scoring, all statistics formulas with citations.</span>
       </a>
     </div>
     <div>
@@ -549,8 +558,11 @@ function buildSummaryTable(lines) {
       <td>${l.detected ? fmtN(dWl,2) : '—'}</td>
       <td>${l.detected ? fmtN(vel,1) : '—'}</td>
       <td>${l.detected ? fmtN(l.sigma,2) : '—'}</td>
+      <td>${l.detected ? fmtN(l.fwhm_kms,0) : '—'}</td>
       <td>${l.detected ? fmtX(l.flux) : '—'}</td>
-      <td>${l.detected ? fmtN(l.ew,1) : '—'}</td>
+      <td>${l.detected ? fmtX(l.flux_err) : '—'}</td>
+      <td>${l.detected ? fmtN(l.ew,2) : '—'}</td>
+      <td>${l.detected ? fmtN(l.ew_err,2) : '—'}</td>
       <td>${l.detected ? fmtN(l.snr,2) : '—'}</td>
       <td>${l.detected ? fmtN(l.reduced_chi2,3) : '—'}</td>
       <td><span class="${bCls}">${bTxt}</span></td>`;
@@ -618,9 +630,12 @@ function renderLineDetails(line) {
   document.getElementById('valAmp').textContent       = fmtX(amp);
   document.getElementById('valSigma').textContent     = `${fmtN(sigma,2)} Å`;
   document.getElementById('valFWHM').textContent      = line.fwhm_ang ? `${fmtN(line.fwhm_ang,2)} Å` : `${fmtN(2.355*sigma,2)} Å`;
+  document.getElementById('valFWHMkms').textContent   = line.fwhm_kms ? `${fmtN(line.fwhm_kms,1)} km/s` : '—';
   document.getElementById('valFWHM235').textContent   = `${fmtN(2.355*sigma,2)} Å`;
   document.getElementById('valFlux').textContent      = fmtX(line.flux);
+  document.getElementById('valFluxErr').textContent   = fmtX(line.flux_err);
   document.getElementById('valEW').textContent        = `${fmtN(line.ew,2)} Å`;
+  document.getElementById('valEWErr').textContent     = line.ew_err ? `${fmtN(line.ew_err,2)} Å` : '—';
   document.getElementById('valSNR').textContent       = fmtN(line.snr,2);
   document.getElementById('valChi2').textContent      = fmtN(line.reduced_chi2,3);
   document.getElementById('valWingWindow').textContent= `${fmtN(wing,1)} Å`;

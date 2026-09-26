@@ -50,8 +50,8 @@ def fit_single_line(
       center            : float (Å)
       sigma             : float (Å)
       wing_window       : float (Å)
-      min_wavelength    : float (Å)   = center - wing_window
-      max_wavelength    : float (Å)   = center + wing_window
+      min_wavelength    : float (Å)   = center - wing_window/2  (wing_window is full width)
+      max_wavelength    : float (Å)   = center + wing_window/2
       flux              : float
       flux_err          : float
       snr               : float

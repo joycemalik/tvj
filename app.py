@@ -58,6 +58,11 @@ def index_v3():
     return render_template('spectrum-analysis.html')
 
 
+@app.route('/about')
+def about():
+    return render_template('about.html')
+
+
 @app.route('/api/analysis_summary')
 def analysis_summary():
     try:

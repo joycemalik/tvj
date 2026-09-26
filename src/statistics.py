@@ -39,10 +39,11 @@ def compute_statistics(
     - FWHM (Å and km/s)
     - Wing Wavelengths (Blue Wing, Red Wing, Δλ)
     """
+    # wing_window is the FULL fitting width; half is the radius
     if manual_min_wl is None:
-        manual_min_wl = center - wing_window
+        manual_min_wl = center - wing_window / 2.0
     if manual_max_wl is None:
-        manual_max_wl = center + wing_window
+        manual_max_wl = center + wing_window / 2.0
         
     # Fit window mask
     mask = (wavelength >= manual_min_wl) & (wavelength <= manual_max_wl)
