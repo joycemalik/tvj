@@ -66,7 +66,9 @@ df = df.dropna(subset=['spec_idx']).sort_values('spec_idx').reset_index(drop=Tru
 df['obs_num'] = np.arange(1, len(df) + 1)
 
 ly_df = df[df['Emission Line'] == 'LYMAN ALPHA'].copy()
-print(f"  Lyman Alpha records: {len(ly_df)}")
+n_rows = len(ly_df)
+ly_df = ly_df.drop_duplicates('spec_idx', keep='first')
+print(f"  Lyman Alpha records: {len(ly_df)} ({n_rows - len(ly_df)} duplicate spectra dropped)")
 
 # ─────────────────────────────────────────────
 # 2. LOAD INPUT PARAMETERS (LYMAN_ALPHA.xlsx)
@@ -116,44 +118,10 @@ except Exception as e:
 # 3. FVAR & RMAX CALCULATIONS
 # ─────────────────────────────────────────────
 def compute_fvar_rmax(flux_arr, err_arr):
-    """Compute fractional variability and Rmax."""
-    F = np.array(flux_arr, dtype=float)
-    E = np.array(err_arr, dtype=float)
-    mask = np.isfinite(F) & np.isfinite(E)
-    F, E = F[mask], E[mask]
-    n = len(F)
-    if n < 2:
-        return np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
-
-    xbar = np.mean(F)
-    xe   = np.mean(E)
-
-    S2 = np.sum((F - xbar)**2) / (n - 1)
-    C  = np.sum(E**2)
-    H  = C / n
-
-    E_val = S2 - H
-    N_val = math.sqrt(abs(E_val))
-    Fvar  = N_val / xbar if xbar != 0 else np.nan
-
-    # Error in Fvar
-    Asquare = (E - xe)**2
-    L = np.sum(Asquare) / (n - 1)
-    if S2 == L:
-        ErrFvar = math.sqrt(1 / (2*n)) * (L / ((xbar**2) * Fvar)) if Fvar != 0 else np.nan
-    else:
-        ErrFvar = math.sqrt(L/n) * (1/xbar) if xbar != 0 else np.nan
-
-    Fmax = np.max(F)
-    Fmin = np.min(F)
-    idx_max = np.argmax(F)
-    idx_min = np.argmin(F)
-    err_max = E[idx_max]
-    err_min = E[idx_min]
-    Rmax = Fmax / Fmin if Fmin != 0 else np.nan
-    Rmax_err = math.sqrt((err_min/Fmin)**2 + (err_max/Fmax)**2) if (Fmin != 0 and Fmax != 0) else np.nan
-
-    return Fvar, ErrFvar, Rmax, Rmax_err, xbar, xe
+    """Fvar ± err (Vaughan et al. 2003) and Rmax ± err."""
+    from src.statistics import fractional_variability
+    v = fractional_variability(flux_arr, err_arr)
+    return v['fvar'], v['fvar_err'], v['rmax'], v['rmax_err'], v['mean'], v.get('mean_err', np.nan)
 
 ly_fvar, ly_fvar_err, ly_rmax, ly_rmax_err, ly_mean, ly_merr = \
     compute_fvar_rmax(ly_df['Flux'].values, ly_df['Flux Error'].values)

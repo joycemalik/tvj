@@ -74,30 +74,23 @@ def analysis_summary():
         df = df_raw.dropna(subset=['Spectrum']).copy()
         df['Emission Line'] = df['Emission Line'].astype(str).str.strip().str.upper()
         ly_df = df[df['Emission Line'] == 'LYMAN ALPHA'].copy()
+        # One measurement per spectrum: duplicated rows would bias the variance
+        ly_df['_file'] = ly_df['Spectrum'].astype(str).str.split().str[-1].str.lower()
+        ly_df = ly_df.drop_duplicates('_file')
 
-        F = ly_df['Flux'].values
-        E = ly_df['Flux Error'].values
-        mask = np.isfinite(F) & np.isfinite(E)
-        F, E = F[mask], E[mask]
-        n = len(F)
+        from src.statistics import fractional_variability
+        v = fractional_variability(ly_df['Flux'].values, ly_df['Flux Error'].values)
 
-        xbar = float(np.mean(F))
-        xe = float(np.mean(E))
-        S2 = float(np.sum((F - xbar)**2) / (n - 1))
-        H = float(np.sum(E**2) / n)
-        E_val = S2 - H
-        N_val = float(np.sqrt(abs(E_val)))
-        Fvar = float(N_val / xbar) if xbar != 0 else 0.0
-
-        Fmax = float(np.max(F))
-        Fmin = float(np.min(F))
-        Rmax = float(Fmax / Fmin) if Fmin != 0 else 0.0
+        def _r(x, nd=4):
+            return None if not np.isfinite(x) else round(float(x), nd)
 
         return jsonify({
             'total_spectra': int(len(ly_df)),
-            'fvar': round(Fvar, 4),
-            'rmax': round(Rmax, 4),
-            'mean_flux': round(xbar * 1e13, 3),
+            'fvar': _r(v['fvar']),
+            'fvar_err': _r(v['fvar_err']),
+            'rmax': _r(v['rmax']),
+            'rmax_err': _r(v['rmax_err']),
+            'mean_flux': round(v['mean'] * 1e13, 3),
             'mean_snr': round(float(np.nanmean(ly_df['SNR'])), 2),
             'mean_ew': round(float(np.nanmean(ly_df['EW'])), 2),
             'mean_fwhm_kms': round(float(np.nanmean(ly_df['FWHM (km/s)'])), 1)

@@ -10,58 +10,54 @@ model: "single_gaussian"
 #   min = center - I
 #   max = center + I
 #
-# Approved examples:
-#   Spectrum 15:  center=1215,    wing=20, min=1205,    max=1225    (half=10)
-#   Spectrum 16:  center=1216,    wing=21, min=1205.5,  max=1226.5  (half=10.5)
-#   Spectrum 17:  center=1217,    wing=21, min=1206.5,  max=1227.5  (half=10.5)
-#   Spectrum 18:  center=1214.5,  wing=19, min=1205,    max=1224    (half=9.5)
-#   Spectrum 153: center=1213,    wing=18, min=1204,    max=1222    (half=9)
-#   Spectrum 172: center=1213.75, wing=17, min=1205.25, max=1222.25 (half=8.5)
+# Approved examples (from reference dataset):
+#   Spectrum 15:  center=1215,    wing=20, min=1205,    max=1225
+#   Spectrum 16:  center=1216,    wing=21, min=1205.5,  max=1226.5
+#   Spectrum 17:  center=1217,    wing=21, min=1206.5,  max=1227.5
+#   Spectrum 18:  center=1214.5,  wing=19, min=1205,    max=1224
+#   Spectrum 153: center=1213,    wing=18, min=1204,    max=1222
+#   Spectrum 172: center=1213.75, wing=17, min=1205.25, max=1222.25
 # ===========================================================================
 
 amplitude:
-  # Auto-computed analytically via linear least squares in Stage 1.
+  # Auto-computed analytically via Stage-B weighted least-squares per triplet.
   # No grid steps required.
 
 center:
-  range: 5.0          # Search ±5 Å around observed emission peak
-  step: 0.1           # Fine grid step for Stage-1 search (Å)
+  range: 5.0          # Search +-5 A around observed emission peak
+  step: 0.25          # Grid step for search (A) — 0.25 is sufficient resolution
 
 sigma:
-  # Stage-1 searches a fine grid. Stage-2 fixes sigma and refines center/amp.
-  # Data-driven bounds from 6 approved Lyα fits:
-  #   sigma = 4.49, 4.73, 4.86, 5.27, 5.39, 5.64  → range 4.49 to 5.64 Å
-  # Hard bounds: allow slight margin below and above approved range.
-  min: 2.5            # Hard lower bound (Å)
-  max: 6.5            # Hard upper bound (Å)
-  step: 0.1           # Fine grid step for Stage-1 search (Å)
+  # Data-driven bounds from 215-spectrum campaign (Approved_From_Jasil dataset):
+  #   sigma range = 4.5 to 8.5 A  (derived from FWHM_kms and center)
+  #   mean = 6.32 A, std = 0.72 A
+  # Hard bounds allow margin below/above campaign range.
+  min: 3.5            # Hard lower bound (A)
+  max: 9.5            # Hard upper bound (A)
+  step: 0.2           # Grid step (A) — 30 values across range
   #
-  # Sigma prior for scoring: soft Gaussian prior in composite score.
-  # Mean of approved: 5.06 Å, std: 0.43 Å
-  # Prior_std slightly wider (1.0) for robustness across spectra:
-  prior_center: 5.0   # Å — expected sigma for Lyα
-  prior_std:    1.0   # Å — wider prior since hard bound does primary constraining
-
+  # Sigma prior for composite score (soft Gaussian prior):
+  # Mean of 215-spectrum campaign: 6.32 A, std: 0.72 A
+  prior_center: 6.5   # A — slight upward shift to allow sigma=7-8 to compete via chi2
+  prior_std:    1.5   # A — wide prior: chi2 from sub_y drives sigma; prior prevents extremes
 
 
 wing_window:
-  # FULL window widths (Å) to evaluate.
-  # Approved examples use wings 17–21.
-  # Grid covers 14–25 to allow search above and below the approved range.
-  grid: [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
+  # FULL window widths (A) to evaluate.
+  # Campaign dataset: wing min=13, max=23, mean=16.8, std=2.04
+  # Grid covers 13-24 spanning the full observed range.
+  grid: [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
   #
-  # Wing prior for scoring: soft Gaussian prior on the window width.
-  # Derived from approved Lyα fits:
-  #   wings = 17, 18, 19, 20, 21  → median = 19, mean = 19
-  # prior_std=2: wing=15 scores 0.29, wing=19 scores 1.0, wing=23 scores 0.29
-  prior_center: 19.0  # Å (full width) — median of approved wings
-  prior_std:    2.0   # Å — std=2 makes >4Å deviation substantially penalised
+  # Wing prior for composite score (soft Gaussian prior):
+  # Shifted to 18 (reference set mean is ~19); wider std so 17-22 compete fairly.
+  prior_center: 18.0  # A (full width) — balanced: allows 17-21 to compete via chi2
+  prior_std:    2.5   # A — wing=13 heavily penalized; wing=17-20 compete; wing=21+ moderately penalized
 
 
-# Peak search radius (Å around rest_wavelength to locate emission peak)
+# Peak search radius (A around rest_wavelength to locate emission peak)
 peak_search_radius: 15.0
 
 # Quality thresholds
 snr_min: 5.0
-snr_max: 15.0
+snr_max: 20.0
 chi2_red_max: 5.0
