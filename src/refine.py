@@ -19,10 +19,12 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 from scipy.optimize import least_squares
+from scipy.stats import chi2 as chi2_dist, norm, shapiro
 
 from config import SPEED_OF_LIGHT_KMS, INSTRUMENTAL_FWHM_REST
 
 UNIT = 1.0e-13          # fit in units of 1e-13 so all parameters are O(1)-O(1e3)
+_trapz = getattr(np, 'trapezoid', None) or np.trapz
 SIGMA_INSTR = INSTRUMENTAL_FWHM_REST / 2.3548
 FWHM_PER_SIGMA = 2.0 * math.sqrt(2.0 * math.log(2.0))
 
@@ -34,6 +36,28 @@ def der_snr_noise(flux: np.ndarray) -> float:
     if len(f) < 5:
         return float('nan')
     return 1.482602 / math.sqrt(6.0) * float(np.median(np.abs(2.0 * f[2:-2] - f[:-4] - f[4:])))
+
+
+def pixel_correlation(wavelength: np.ndarray, flux: np.ndarray,
+                      windows: Optional[List[Tuple[float, float]]] = None) -> float:
+    """
+    Lag-1 autocorrelation of the pixel noise, measured in line-free continuum
+    windows (residuals from a straight line in each window, pooled). Resampling
+    of IUE MXLO spectra makes neighbouring pixels correlated.
+    """
+    from config import DEFAULT_CONTINUUM_WINDOWS
+    from src.continuum import parse_window_ranges
+    windows = windows or parse_window_ranges(DEFAULT_CONTINUUM_WINDOWS)
+    num = den = 0.0
+    for lo, hi in windows:
+        m = (wavelength >= lo) & (wavelength <= hi) & (flux != 0)
+        if m.sum() < 6:
+            continue
+        r = flux[m] - np.polyval(np.polyfit(wavelength[m], flux[m], 1), wavelength[m])
+        num += float(np.sum(r[1:] * r[:-1]))
+        den += float(np.sum(r * r))
+    rho = num / den if den > 0 else 0.0
+    return float(np.clip(rho, 0.0, 0.95))
 
 
 def apply_masks(wavelength: np.ndarray, mask_ranges: Optional[List[List[float]]]) -> np.ndarray:
@@ -150,6 +174,26 @@ def refine_line(
     at_bound = bool(np.isclose(s, comps[0]['smin'], rtol=1e-3) or np.isclose(s, comps[0]['smax'], rtol=1e-3)
                     or np.isclose(abs(mu - rest_wl), tol, rtol=1e-3))
 
+    model = _model(x, p, n_g, x_mid)
+    continuum = p[3 * n_g] + p[3 * n_g + 1] * (x - x_mid)
+    gauss = [p[3 * k] * np.exp(-0.5 * ((x - p[3 * k + 1]) / p[3 * k + 2]) ** 2) for k in range(n_g)]
+    norm_resid = (y - model) / noise
+
+    rho = pixel_correlation(wavelength, flux)
+    verification = verify_fit(x, y, model, continuum, gauss, norm_resid, noise, chi2r, dof,
+                              mu, s, F, F_err, fwhm_ang, at_bound, rho)
+    labels = [cfg.get('line_name', f'{rest_wl:g} Å')] + [f"companion {c['rest']:g} Å" for c in comps[1:]]
+    plot = {
+        'x': x.tolist(),
+        'y': (y * UNIT).tolist(),
+        'yerr': float(noise * UNIT),
+        'model': (model * UNIT).tolist(),
+        'continuum': (continuum * UNIT).tolist(),
+        'components': [{'label': lab, 'y': (g * UNIT).tolist()} for lab, g in zip(labels, gauss)],
+        'norm_resid': norm_resid.tolist(),
+        'mask_ranges': cfg.get('mask_ranges') or [],
+    }
+
     return {
         'refined': True,
         'amplitude': A * UNIT,
@@ -172,4 +216,85 @@ def refine_line(
         'refine_window': [float(lo), float(hi)],
         'at_bound': at_bound,
         'n_pix': int(len(x)),
+        'dof': int(dof),
+        'plot': plot,
+        'verification': verification,
     }
+
+
+def runs_test(signs: np.ndarray) -> Tuple[int, float, float]:
+    """Wald–Wolfowitz runs test on residual signs. Returns (runs, z, two-sided p)."""
+    s = signs[signs != 0]
+    n1, n2 = int(np.sum(s > 0)), int(np.sum(s < 0))
+    n = n1 + n2
+    if n1 == 0 or n2 == 0 or n < 3:
+        return 0, float('nan'), float('nan')
+    runs = 1 + int(np.sum(s[1:] != s[:-1]))
+    mean = 2.0 * n1 * n2 / n + 1.0
+    var = 2.0 * n1 * n2 * (2.0 * n1 * n2 - n) / (n * n * (n - 1.0))
+    z = (runs - mean) / math.sqrt(var) if var > 0 else float('nan')
+    return runs, z, float(2.0 * norm.sf(abs(z))) if np.isfinite(z) else float('nan')
+
+
+def verify_fit(x, y, model, continuum, gauss, norm_resid, noise, chi2r, dof,
+               mu, s, F, F_err, fwhm_ang, at_bound, rho=0.0) -> Dict[str, Any]:
+    """
+    Statistical checks of a refined fit (all quantities in fit units).
+
+    1. Goodness of fit: p = P(χ² ≥ χ²_obs). With lag-1 pixel correlation ρ, the
+       sum of squared residuals has variance inflated by c = (1+ρ²)/(1−ρ²) (AR(1)
+       noise); χ²/c is compared with a χ² distribution of dof/c degrees of
+       freedom (Satterthwaite 1946 moment matching).
+    2. Residual randomness: Wald–Wolfowitz runs test on residual signs (Wald & Wolfowitz 1940).
+    3. Residual normality: Shapiro–Wilk test of (data − model)/σ (Shapiro & Wilk 1965).
+    4. Model-independent flux: direct integration of data − continuum − companions over
+       μ ± 3σ, compared with the fitted Gaussian over the same pixels.
+    5. Detection: F/σ_F ≥ 3.   6. Parameters inside their allowed ranges.
+    7. Resolution: FWHM above the instrumental FWHM (informational).
+    """
+    checks = []
+
+    def add(name, value, ok, criterion, ref, required=True):
+        checks.append({'name': name, 'value': value, 'pass': bool(ok), 'criterion': criterion,
+                       'reference': ref, 'required': required})
+
+    c = (1.0 + rho ** 2) / (1.0 - rho ** 2)
+    p_chi2 = float(chi2_dist.sf(chi2r * dof / c, dof / c))
+    add('Goodness of fit', f'χ²_red = {chi2r:.2f} (dof {dof}, pixel ρ = {rho:.2f}), p = {p_chi2:.3g}',
+        p_chi2 >= 0.01, 'p(χ²) ≥ 0.01, corrected for pixel correlation',
+        'Bevington & Robinson 2003; Satterthwaite 1946')
+
+    runs, z_runs, p_runs = runs_test(np.sign(norm_resid))
+    add('Residual randomness', f'{runs} runs, z = {z_runs:.2f}, p = {p_runs:.3g}',
+        np.isfinite(p_runs) and p_runs >= 0.01, 'runs-test p ≥ 0.01', 'Wald & Wolfowitz 1940')
+
+    if len(norm_resid) >= 3:
+        p_sw = float(shapiro(norm_resid).pvalue)
+        add('Residual normality', f'Shapiro–Wilk p = {p_sw:.3g}', p_sw >= 0.01, 'p ≥ 0.01',
+            'Shapiro & Wilk 1965')
+
+    core = np.abs(x - mu) <= 3.0 * s
+    if np.sum(core) >= 3:
+        primary = gauss[0]
+        others = sum(gauss[1:]) if len(gauss) > 1 else 0.0
+        net = (y - continuum - others)[core]
+        xc = x[core]
+        f_direct = float(_trapz(net, xc))
+        f_model = float(_trapz(primary[core], xc))
+        dlam = float(np.median(np.diff(xc))) if len(xc) > 1 else 1.0
+        e_direct = noise * dlam * math.sqrt(len(xc))
+        z_flux = (f_direct - f_model) / e_direct if e_direct > 0 else float('nan')
+        add('Model-independent flux', f'direct {f_direct * UNIT:.3e} vs Gaussian {f_model * UNIT:.3e} '
+            f'(z = {z_flux:.2f})', np.isfinite(z_flux) and abs(z_flux) <= 2.0,
+            '|z| ≤ 2 over μ ± 3σ', 'direct numerical integration')
+
+    sig = F / F_err if F_err > 0 else 0.0
+    add('Detection', f'F/σ_F = {sig:.1f}', sig >= 3.0, 'F/σ_F ≥ 3', 'standard 3σ criterion')
+    add('Parameter bounds', 'at bound' if at_bound else 'inside allowed ranges', not at_bound,
+        'σ and μ not at configured limits', 'config ranges')
+    add('Resolved by instrument', f'FWHM {fwhm_ang:.2f} Å vs instrumental {INSTRUMENTAL_FWHM_REST:.2f} Å',
+        fwhm_ang > INSTRUMENTAL_FWHM_REST, 'FWHM > instrumental FWHM', 'IUE NEWSIPS manual §2.3.2.1',
+        required=False)
+
+    failed = [c['name'] for c in checks if c['required'] and not c['pass']]
+    return {'status': 'VERIFIED' if not failed else 'CHECK', 'failed': failed, 'checks': checks}
