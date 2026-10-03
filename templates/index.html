@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="/static/js/fitplots.js"></script>
 
     <style>
         :root {
@@ -148,7 +149,7 @@
             <div class="brand-meta">// SINGLE-SPECTRUM FITTING MODULE</div>
             <h1>Single-Spectrum Fitting Engine</h1>
         </div>
-        <div class="header-instrument-id">IUE SWP · 3C 273 Quasar · Ly&alpha; &lambda;1216&Aring;<br>Power-law continuum · Gaussian decomposition · 5,600 candidates</div>
+        <div class="header-instrument-id">IUE SWP · 3C 273 Quasar · Ly&alpha; &lambda;1216&Aring;<br>Power-law continuum · least-squares Gaussian fits · statistical verification</div>
     </header>
     <main>
         <div class="nolan-card">
@@ -177,7 +178,7 @@
                 </div>
             </div>
             <div class="nolan-card">
-                <div class="section-subtitle"><span>// GRAPH 1: FULL UV SPECTRUM OVERVIEW (900 – 1830 Å)<span class="info-anchor"><button class="info-btn" onclick="toggleInfo('info-g1',this)" title="About this plot">i</button><div class="info-popover" id="info-g1"><div class="info-popover-head">GRAPH 1 — SPECTRUM OVERVIEW<span class="info-popover-close" onclick="closeInfo('info-g1')">✕</span></div><div class="info-popover-body"><p>Shows the full observed UV spectrum from 900–1830 Å with the fitted <strong>power-law continuum</strong> overlaid (<code>F_c = A·λ^α</code>), estimated by OLS regression in log-log space.</p><p>Vertical markers indicate each detected emission line centroid. Click any line tab below to zoom into that line's fit window.</p></div></div></span></span><span style="color: var(--text-muted); font-size: 0.7rem;">OBSERVED | POWER-LAW CONTINUUM | DETECTED LINE MARKERS</span></div>
+                <div class="section-subtitle"><span>// GRAPH 1: REST-FRAME SPECTRUM</span><span style="color: var(--text-muted); font-size: 0.7rem;">OBSERVED · POWER-LAW CONTINUUM · SHADED: CONTINUUM WINDOWS</span></div>
                 <div id="overviewPlot" class="plotly-plot-overview"></div>
             </div>
             <div class="nolan-card">
@@ -194,13 +195,13 @@
                 <div class="diagnostic-grid">
                     <div style="display: flex; flex-direction: column; gap: 1.5rem;">
                         <div class="nolan-card">
-                            <div class="section-subtitle"><span id="localFitTitle">// GRAPH 2: ZOOMED LINE FIT<span class="info-anchor"><button class="info-btn" onclick="toggleInfo('info-g2',this)" title="About this plot">i</button><div class="info-popover" id="info-g2"><div class="info-popover-head">GRAPH 2 — ZOOMED LINE FIT<span class="info-popover-close" onclick="closeInfo('info-g2')">✕</span></div><div class="info-popover-body"><p>Zooms into the wing window around the selected emission line. Shows the <strong>continuum-subtracted flux</strong>, the best-fit <strong>Gaussian profile</strong>, FWHM span, and the blue/red wing boundaries.</p><p>Wing boundaries mark the integration limits used for flux and EW computation. The Gaussian peak corresponds to the fitted line center μ.</p></div></div></span></span><span style="color: var(--text-muted); font-size: 0.7rem;">LOCAL λ WINDOW | FWHM | FIT BOUNDARIES</span></div>
+                            <div class="section-subtitle"><span id="localFitTitle">// GRAPH 2: LINE FIT</span><span style="color: var(--text-muted); font-size: 0.7rem;">DATA ± 1σ · GAUSSIAN + LOCAL CONTINUUM (WEIGHTED LEAST SQUARES)</span></div>
                             <div id="localPlot" class="plotly-plot"></div>
-                            <div class="section-subtitle" style="margin-top: 1.5rem;"><span>// GRAPH 3: NORMALIZED RESIDUALS [r_i = (F_i - F_model) / σ_i]</span><span style="color: var(--text-muted); font-size: 0.7rem;">±1σ / ±2σ ERROR BOUNDS</span></div>
+                            <div class="section-subtitle" style="margin-top: 1.5rem;"><span>// GRAPH 3: NORMALISED RESIDUALS (F − F_model)/σ</span><span style="color: var(--text-muted); font-size: 0.7rem;">±1σ / ±2σ ERROR BOUNDS</span></div>
                             <div id="residualPlot" class="plotly-plot-res"></div>
                         </div>
                         <div class="nolan-card">
-                            <div class="section-subtitle"><span>// GRAPH 4: MODEL-SELECTION LANDSCAPE<span class="info-anchor"><button class="info-btn" onclick="toggleInfo('info-g4',this)" title="About this plot">i</button><div class="info-popover" id="info-g4"><div class="info-popover-head">GRAPH 4 — MODEL LANDSCAPE<span class="info-popover-close" onclick="closeInfo('info-g4')">✕</span></div><div class="info-popover-body"><p>A heatmap of the composite score across the 5,600-candidate search grid (σ × wing window combinations). <strong>Brighter = higher score</strong> = better fit.</p><p>The <strong>★ star</strong> marks the selected best candidate. The score combines χ², peak proximity, wing symmetry, and SNR — see the scoring breakdown below.</p><p>A flat landscape means many models fit equally well; a sharp peak means the solution is well-constrained.</p></div></div></span></span><span style="color: var(--text-muted); font-size: 0.7rem;">SIGMA × WING WINDOW (★ = CHOICES SELECTED)</span></div>
+                            <div class="section-subtitle"><span>// GRAPH 4: RESIDUAL DISTRIBUTION</span><span style="color: var(--text-muted); font-size: 0.7rem;">HISTOGRAM VS. STANDARD NORMAL N(0,1)</span></div>
                             <div id="landscapePlot" class="plotly-plot-landscape"></div>
                         </div>
                     </div>
@@ -237,22 +238,14 @@
                                 <tr><td class="param-name">Fitting Wing Window</td><td class="param-value" id="valWingWindow">19.0 Å</td></tr>
                             </table>
                         </div>
-                        <div class="nolan-card">
-                            <div class="section-subtitle">// QUALITY CONTROL & SELECTION DIAGNOSTICS<span class="info-anchor"><button class="info-btn" onclick="toggleInfo('info-qc',this)" title="QC guide">i</button><div class="info-popover" id="info-qc"><div class="info-popover-head">QUALITY CONTROL<span class="info-popover-close" onclick="closeInfo('info-qc')">✕</span></div><div class="info-popover-body"><p>Each check is a pass/warn/fail gate. <strong>SNR</strong> must exceed the threshold for a reliable detection. <strong>χ²red</strong> near 1 indicates a good fit; far above 1 = poor fit or underestimated noise.</p><p><strong>Composite score</strong> = 0.35·χ² + 0.25·peak + 0.20·left wing + 0.10·right wing + 0.10·SNR. Higher = better model.</p><p>ACCEPTED means all primary gates passed. REJECTED spectra still report parameters but should be treated with caution.</p></div></div></span></div>
-                            <div class="qc-list" id="qcChecklist"></div>
-                            <div class="section-subtitle" style="margin-top: 1.5rem;">// PIPELINE AUTOMATION SEARCH FLOW</div>
-                            <div class="pipeline-flow">
-                                <div class="flow-step"><span class="arrow">▶</span> SEARCH SPACE: <span class="val">5,600 candidate models</span></div>
-                                <div class="flow-step"><span class="arrow">▶</span> STAGE 1: <span class="val">Coarse discrete grid basin search</span></div>
-                                <div class="flow-step"><span class="arrow">▶</span> STAGE 2: <span class="val">Scipy least-squares refinement</span></div>
-                                <div class="flow-step"><span class="arrow">▶</span> DECISION METRIC: <span class="val" id="valCompScore">Score: 0.831</span></div>
-                                <table id="valScoreBreakdown" class="params-table" style="margin-top:0.5rem; font-size:0.7rem;"></table>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
-            <div class="actions-bar"><button class="btn-nolan" type="button" onclick="window.print()">PRINT REPORT</button></div>
+            <div class="nolan-card">
+                <div class="section-subtitle"><span>// VERIFICATION — STATISTICAL CHECKS OF THE SELECTED LINE FIT</span><span style="color: var(--text-muted); font-size: 0.7rem;">REQUIRED CHECKS MUST PASS FOR VERIFIED</span></div>
+                <div id="verificationPanel" style="overflow-x:auto;"></div>
+            </div>
+            <div class="actions-bar"><a class="btn-nolan" id="figLink" href="#" target="_blank" rel="noopener" style="text-decoration:none;">PUBLICATION FIGURE (PNG)</a><button class="btn-nolan" type="button" onclick="window.print()">PRINT REPORT</button></div>
         </div>
     </main>
 
@@ -293,6 +286,9 @@
 
     <script>
         let currentRecord = null, selectedLineIndex = 0;
+        FitPlots.setTheme({ paper: '#090a0f', plot: '#090a0f', ink: '#e2e8f0', muted: '#94a3b8', grid: '#1b2130',
+            data: '#e2e8f0', model: '#60a5fa', cont: '#94a3b8', comp: '#f59e0b', shade: 'rgba(255,255,255,0.07)',
+            bar: 'rgba(96,165,250,0.3)', pass: '#4ade80', fail: '#f87171' });
         const dropzone = document.getElementById('dropzone'), fileInput = document.getElementById('fileInput'), loader = document.getElementById('loader'), errorBox = document.getElementById('errorBox'), resultsDashboard = document.getElementById('resultsDashboard'), demoBtn = document.getElementById('demoBtn');
         dropzone.addEventListener('click', () => fileInput.click());
         dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
@@ -319,30 +315,17 @@
             const badge = document.getElementById('resStatusBadge');
             badge.textContent = data.lines && data.lines.some(l => l.detected) ? 'MODEL STATUS: ✓ VALIDATED' : 'LIMITED FIT';
             badge.className = data.lines && data.lines.some(l => l.detected) ? 'status-badge status-accepted' : 'status-badge status-rejected';
+            document.getElementById('figLink').href = data.plot_url || '#';
             drawFullOverviewPlot(data); buildSummaryTable(data.lines || []); buildLineTabs(data.lines || []);
-            let initialIdx = (data.lines || []).findIndex(l => l.line_name.includes('Lyman') || l.detected);
+            let initialIdx = (data.lines || []).findIndex(l => l.rest_wavelength === 1216.0);
+            if (initialIdx < 0) initialIdx = (data.lines || []).findIndex(l => l.detected);
             if (initialIdx < 0) initialIdx = 0;
             selectLine(initialIdx);
             resultsDashboard.style.display = 'flex'; resultsDashboard.scrollIntoView({ behavior: 'smooth' });
         }
 
         function drawFullOverviewPlot(data) {
-            const wl = data.wavelength || [], flux = data.observed_flux || [], cont = data.continuum_fit || [], suby = data.subtracted_y || [];
-            const traces = [
-                { x: wl, y: flux, mode: 'lines', name: 'Raw Observed Spectrum', line: { color: '#64748b', width: 1 } },
-                { x: wl, y: cont, mode: 'lines', name: 'Power-Law Continuum', line: { color: '#f59e0b', width: 1.5, dash: 'dash' } },
-                { x: wl, y: suby, mode: 'lines', name: 'Continuum Subtracted', line: { color: '#06b6d4', width: 1.2 } }
-            ];
-            const shapes = [], annotations = [];
-            (data.lines || []).forEach(l => {
-                shapes.push({ type: 'line', x0: l.rest_wavelength, x1: l.rest_wavelength, y0: 0, y1: 1, yref: 'paper', line: { color: l.detected ? '#eab308' : '#475569', width: 1, dash: 'dot' } });
-                annotations.push({ x: l.rest_wavelength, y: 0.95, yref: 'paper', text: l.line_name, showarrow: false, font: { family: 'JetBrains Mono', size: 10, color: l.detected ? '#f59e0b' : '#64748b' } });
-            });
-            const midFlux = flux.slice(Math.floor(flux.length * 0.05), Math.floor(flux.length * 0.95));
-            const yMax = Math.max(...midFlux) * 1.2;
-            const yMin = Math.min(...midFlux) < 0 ? Math.min(...midFlux) * 1.2 : -yMax * 0.1;
-            const layout = { margin: { t: 25, r: 25, l: 65, b: 45 }, paper_bgcolor: '#090a0f', plot_bgcolor: '#090a0f', xaxis: { title: { text: 'Wavelength (Å)', font: { family: 'JetBrains Mono', color: '#94a3b8', size: 11 } }, gridcolor: '#151924', tickfont: { color: '#94a3b8' } }, yaxis: { range: [yMin, yMax], title: { text: 'Flux (erg cm⁻² s⁻¹ Å⁻¹)', font: { family: 'JetBrains Mono', color: '#94a3b8', size: 11 } }, gridcolor: '#151924', tickfont: { color: '#94a3b8' } }, legend: { orientation: 'h', x: 0, y: 1.12, font: { family: 'JetBrains Mono', color: '#e2e8f0', size: 10 } }, shapes: shapes, annotations: annotations };
-            Plotly.newPlot('overviewPlot', traces, layout, { responsive: true, displayModeBar: false });
+            FitPlots.overview('overviewPlot', data);
         }
 
         function buildSummaryTable(lines) {
@@ -374,160 +357,49 @@
             selectedLineIndex = idx; const lines = currentRecord.lines || []; if (idx >= lines.length) return;
             document.querySelectorAll('.line-tab').forEach((t, i) => { t.classList.toggle('active', i === idx); });
             document.querySelectorAll('#summaryTableBody tr').forEach((tr, i) => { tr.classList.toggle('active-row', i === idx); });
-            const line = lines[idx]; document.getElementById('localFitTitle').textContent = `// GRAPH 2: ZOOMED LINE FIT — ${line.line_name.toUpperCase()} (λ${line.rest_wavelength.toFixed(0)})`;
+            const line = lines[idx]; document.getElementById('localFitTitle').textContent = `// GRAPH 2: LINE FIT — ${line.line_name.toUpperCase()} (λ${line.rest_wavelength.toFixed(0)} Å)`;
             renderLineDetails(line);
         }
 
         function renderLineDetails(line) {
-            const wl = currentRecord.wavelength || [], suby = currentRecord.subtracted_y || [];
-            const restWl = line.rest_wavelength, center = line.center || restWl, sigma = line.sigma || 5.0, amp = line.amplitude || 0.0, wingWindow = line.wing_window || 20.0;
-            const minWl = line.min_wavelength || (center - wingWindow/2), maxWl = line.max_wavelength || (center + wingWindow/2);
+            const restWl = line.rest_wavelength, center = line.center || restWl, sigma = line.sigma, wingWindow = line.wing_window;
             const deltaWl = center - restWl, velOffset = (deltaWl / restWl) * 299792.458;
-            const fmtExp = v => v ? Number(v).toExponential(3) : '0.00e0', fmtNum = (v, d=2) => (v !== undefined && v !== null && !isNaN(v)) ? Number(v).toFixed(d) : '0.00';
+            const ok = v => v !== undefined && v !== null && isFinite(v);
+            const fmtExp = v => ok(v) && v !== 0 ? Number(v).toExponential(3) : '—';
+            const fmtNum = (v, d=2) => ok(v) ? Number(v).toFixed(d) : '—';
+            const pm = (v, e, d) => ok(e) ? `${fmtNum(v, d)} ± ${fmtNum(e, d)}` : fmtNum(v, d);
+            const pmExp = (v, e) => ok(e) ? `${fmtExp(v)} ± ${fmtExp(e)}` : fmtExp(v);
 
-            document.getElementById('valOutAmp').textContent = fmtExp(amp);
-            document.getElementById('valOutCenter').textContent = `${fmtNum(center, 2)}`;
-            document.getElementById('valOutWing').textContent = `${fmtNum(wingWindow, 0)}`;
-            document.getElementById('valOutMin').textContent = `${fmtNum(minWl, 2)}`;
-            document.getElementById('valOutMax').textContent = `${fmtNum(maxWl, 2)}`;
-            document.getElementById('valOutSigma').textContent = `${fmtNum(sigma, 2)}`;
+            document.getElementById('valOutAmp').textContent = pmExp(line.amplitude, line.amplitude_err);
+            document.getElementById('valOutCenter').textContent = pm(center, line.center_err, 2);
+            document.getElementById('valOutWing').textContent = fmtNum(wingWindow, 0);
+            document.getElementById('valOutMin').textContent = fmtNum(line.min_wavelength, 2);
+            document.getElementById('valOutMax').textContent = fmtNum(line.max_wavelength, 2);
+            document.getElementById('valOutSigma').textContent = pm(sigma, line.sigma_err, 2);
 
             document.getElementById('valRestWl').textContent = `${restWl.toFixed(2)} Å`;
-            document.getElementById('valCenter').textContent = `${fmtNum(center, 2)} Å`;
+            document.getElementById('valCenter').textContent = `${pm(center, line.center_err, 2)} Å`;
             document.getElementById('valDeltaWl').textContent = `${deltaWl >= 0 ? '+' : ''}${fmtNum(deltaWl, 2)} Å`;
             document.getElementById('valVelOffset').textContent = `${fmtNum(velOffset, 1)} km/s`;
-            document.getElementById('valAmp').textContent = fmtExp(amp);
-            document.getElementById('valSigma').textContent = `${fmtNum(sigma, 2)} Å`;
-            document.getElementById('valFWHM').textContent = line.fwhm_ang ? `${fmtNum(line.fwhm_ang, 2)} Å` : `${fmtNum(2.355 * sigma, 2)} Å`;
-            document.getElementById('valFWHMkms').textContent = line.fwhm_kms ? `${fmtNum(line.fwhm_kms, 1)} km/s` : '—';
-            document.getElementById('valFWHM235').textContent = `${fmtNum(2.355 * sigma, 2)} Å`;
+            document.getElementById('valAmp').textContent = pmExp(line.amplitude, line.amplitude_err);
+            document.getElementById('valSigma').textContent = `${pm(sigma, line.sigma_err, 2)} Å`;
+            document.getElementById('valFWHM').textContent = `${fmtNum(line.fwhm_ang, 2)} Å`;
+            document.getElementById('valFWHMkms').textContent = `${fmtNum(line.fwhm_kms, 0)} km/s (intrinsic ${fmtNum(line.fwhm_kms_intrinsic, 0)})`;
+            document.getElementById('valFWHM235').textContent = `${fmtNum(2.3548 * sigma, 2)} Å`;
             document.getElementById('valFlux').textContent = fmtExp(line.flux);
             document.getElementById('valFluxErr').textContent = fmtExp(line.flux_err);
             document.getElementById('valEW').textContent = `${fmtNum(line.ew, 2)} Å`;
-            document.getElementById('valEWErr').textContent = line.ew_err ? `${fmtNum(line.ew_err, 2)} Å` : '—';
+            document.getElementById('valEWErr').textContent = `${fmtNum(line.ew_err, 2)} Å`;
             document.getElementById('valSNR').textContent = fmtNum(line.snr, 2);
-            document.getElementById('valChi2').textContent = fmtNum(line.reduced_chi2, 3);
+            document.getElementById('valChi2').textContent = `${fmtNum(line.reduced_chi2, 3)} (dof ${line.dof ?? '—'})`;
             document.getElementById('valWingWindow').textContent = `${fmtNum(wingWindow, 1)} Å`;
-            document.getElementById('valCompScore').textContent = `Score: ${fmtNum(line.composite_score || line.quality_score, 3)}`;
 
-            const scoreTbody = document.getElementById('valScoreBreakdown');
-            if (scoreTbody) {
-                scoreTbody.innerHTML = '';
-                if (line.score_components) {
-                    const W_CHI2=0.25, W_PEAK=0.20, W_LEFT=0.05, W_RIGHT=0.05, W_SHAPE=0.15, W_WING=0.10, W_SIGMA=0.20;
-                    const addCompRow = (label, val) => {
-                        const r = document.createElement('tr');
-                        r.innerHTML = `<td style="color:var(--text-muted); width:70%; border:none; padding:2px;">${label}</td><td style="color:#fff; text-align:right; border:none; padding:2px;">${fmtNum(val, 2)}</td>`;
-                        scoreTbody.appendChild(r);
-                    };
-                    addCompRow('χ² contribution', line.score_components.chi2_score * W_CHI2);
-                    addCompRow('Peak alignment', line.score_components.peak_score * W_PEAK);
-                    addCompRow('Shape match', line.score_components.shape_score * W_SHAPE);
-                    addCompRow('Wing residuals', (line.score_components.left_score * W_LEFT) + (line.score_components.right_score * W_RIGHT));
-                    addCompRow('σ prior match', line.score_components.sigma_score * W_SIGMA);
-                    addCompRow('Window prior match', line.score_components.wing_score * W_WING);
-                    
-                    const divider = document.createElement('tr');
-                    divider.innerHTML = `<td colspan="2"><hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:4px 0;"></td>`;
-                    scoreTbody.appendChild(divider);
-                    
-                    const finalRow = document.createElement('tr');
-                    finalRow.innerHTML = `<td style="color:var(--starlight); font-weight:600; border:none; padding:2px;">Final score</td><td style="color:var(--amber-warm); font-weight:600; text-align:right; border:none; padding:2px;">${fmtNum(line.composite_score || line.quality_score, 3)}</td>`;
-                    scoreTbody.appendChild(finalRow);
-                }
-            }
-            const zoomMin = center - 25, zoomMax = center + 25;
-            const localWl = [], localSuby = [], localGauss = [];
-            for (let i = 0; i < wl.length; i++) {
-                if (wl[i] >= zoomMin && wl[i] <= zoomMax) {
-                    localWl.push(wl[i]); localSuby.push(suby[i]);
-                    localGauss.push(amp * Math.exp(-Math.pow(wl[i] - center, 2) / (2 * Math.pow(sigma, 2))));
-                }
-            }
-
-            const localTraces = [
-                { x: localWl, y: localSuby, mode: 'lines+markers', name: 'Subtracted Data', line: { color: '#06b6d4', width: 1.5 }, marker: { size: 4, color: '#06b6d4' } },
-                { x: localWl, y: localGauss, mode: 'lines', name: 'Best Gaussian Fit', line: { color: '#f59e0b', width: 2.5 } }
-            ];
-
-            const fwhm = 2.355 * sigma;
-            const halfFwhm = fwhm / 2.0;
-            const localLayout = {
-                margin: { t: 25, r: 25, l: 65, b: 40 }, paper_bgcolor: '#090a0f', plot_bgcolor: '#090a0f',
-                xaxis: { range: [zoomMin, zoomMax], title: { text: 'Wavelength (Å)', font: { family: 'JetBrains Mono', color: '#94a3b8', size: 10 } }, gridcolor: '#151924', tickfont: { color: '#94a3b8' } },
-                yaxis: { title: { text: 'Subtracted Flux', font: { family: 'JetBrains Mono', color: '#94a3b8', size: 10 } }, gridcolor: '#151924', tickfont: { color: '#94a3b8' } },
-                legend: { orientation: 'h', x: 0, y: 1.12, font: { family: 'JetBrains Mono', color: '#e2e8f0', size: 10 } },
-                shapes: [
-                    { type: 'rect', x0: minWl, x1: maxWl, y0: 0, y1: 1, yref: 'paper', fillcolor: 'rgba(245, 158, 11, 0.06)', line: { width: 0 } },
-                    { type: 'rect', x0: center - halfFwhm, x1: center + halfFwhm, y0: 0, y1: 1, yref: 'paper', fillcolor: 'rgba(245, 158, 11, 0.15)', line: { width: 0 } },
-                    { type: 'line', x0: restWl, x1: restWl, y0: 0, y1: 1, yref: 'paper', line: { color: '#64748b', width: 1.5, dash: 'dash' } },
-                    { type: 'line', x0: center, x1: center, y0: 0, y1: 1, yref: 'paper', line: { color: '#f59e0b', width: 2 } }
-                ],
-                annotations: [
-                    { x: restWl, y: 0.98, yref: 'paper', text: `Rest λ ${restWl.toFixed(1)}Å`, showarrow: false, font: { family: 'JetBrains Mono', size: 9, color: '#94a3b8' } },
-                    { x: center, y: 0.90, yref: 'paper', text: `Fitted μ ${center.toFixed(2)}Å`, showarrow: false, font: { family: 'JetBrains Mono', size: 9, color: '#f59e0b' } }
-                ]
-            };
-            Plotly.newPlot('localPlot', localTraces, localLayout, { responsive: true, displayModeBar: false });
-
-            const noise = line.noise_sigma || 1e-14;
-            const resWl = [], normRes = [];
-            for (let i = 0; i < localWl.length; i++) { resWl.push(localWl[i]); normRes.push((localSuby[i] - localGauss[i]) / noise); }
-            const resTraces = [{ x: resWl, y: normRes, mode: 'markers', name: 'Residual (σ)', marker: { color: '#06b6d4', size: 5 } }];
-            const resLayout = {
-                margin: { t: 15, r: 25, l: 65, b: 35 }, paper_bgcolor: '#090a0f', plot_bgcolor: '#090a0f',
-                xaxis: { range: [zoomMin, zoomMax], title: { text: 'Wavelength (Å)', font: { family: 'JetBrains Mono', color: '#94a3b8', size: 9 } }, gridcolor: '#151924', tickfont: { color: '#94a3b8' } },
-                yaxis: { title: { text: 'Residual (σ)', font: { family: 'JetBrains Mono', color: '#94a3b8', size: 9 } }, gridcolor: '#151924', tickfont: { color: '#94a3b8' } },
-                legend: { showlegend: false },
-                shapes: [
-                    { type: 'line', x0: zoomMin, x1: zoomMax, y0: 0, y1: 0, line: { color: '#ffffff', width: 1 } },
-                    { type: 'line', x0: zoomMin, x1: zoomMax, y0: 1, y1: 1, line: { color: '#64748b', width: 1, dash: 'dot' } },
-                    { type: 'line', x0: zoomMin, x1: zoomMax, y0: -1, y1: -1, line: { color: '#64748b', width: 1, dash: 'dot' } },
-                    { type: 'line', x0: zoomMin, x1: zoomMax, y0: 2, y1: 2, line: { color: '#ef4444', width: 1, dash: 'dot' } },
-                    { type: 'line', x0: zoomMin, x1: zoomMax, y0: -2, y1: -2, line: { color: '#ef4444', width: 1, dash: 'dot' } }
-                ]
-            };
-            Plotly.newPlot('residualPlot', resTraces, resLayout, { responsive: true, displayModeBar: false });
-
-            const landscape = line.landscape || { wings: [14,16,18,19,20,22,24], sigmas: [3,4,5,6,7,8], grid: [[0.5,0.6,0.7,0.8,0.7,0.6,0.5]] };
-            const landTraces = [
-                { z: landscape.grid, x: landscape.wings, y: landscape.sigmas, type: 'heatmap', colorscale: 'Viridis' },
-                { x: [wingWindow], y: [sigma], mode: 'markers+text', name: 'Selected Fit (★)', marker: { symbol: 'star', size: 14, color: '#f59e0b', line: { color: '#ffffff', width: 1 } }, text: ['★ Selected Fit'], textposition: 'top center', textfont: { family: 'JetBrains Mono', color: '#ffffff', size: 11 } }
-            ];
-            const landLayout = {
-                margin: { t: 25, r: 25, l: 65, b: 40 }, paper_bgcolor: '#090a0f', plot_bgcolor: '#090a0f',
-                xaxis: { title: { text: 'Wing Window (Å)', font: { family: 'JetBrains Mono', color: '#94a3b8', size: 10 } }, gridcolor: '#151924', tickfont: { color: '#94a3b8' } },
-                yaxis: { title: { text: 'Sigma σ (Å)', font: { family: 'JetBrains Mono', color: '#94a3b8', size: 10 } }, gridcolor: '#151924', tickfont: { color: '#94a3b8' } },
-                showlegend: false
-            };
-            Plotly.newPlot('landscapePlot', landTraces, landLayout, { responsive: true, displayModeBar: false });
-
-            renderQCList(line);
+            FitPlots.lineFit('localPlot', line);
+            FitPlots.residuals('residualPlot', line);
+            FitPlots.residualDistribution('landscapePlot', line);
+            FitPlots.verification('verificationPanel', line);
         }
 
-        function renderQCList(line) {
-            const qc = document.getElementById('qcChecklist'); qc.innerHTML = '';
-            const chi2 = line.reduced_chi2 || 0, snr = line.snr || 0;
-            const items = [];
-            if (snr >= 5.0) items.push({ icon: '✓', status: 'pass', text: `Sufficient Signal-to-Noise Ratio (SNR = ${snr.toFixed(2)} ≥ 5.0)` });
-            else items.push({ icon: '⚠', status: 'warn', text: `Low Signal-to-Noise Ratio (SNR = ${snr.toFixed(2)} < 5.0)` });
-
-            const deltaWl = Math.abs(line.center - line.rest_wavelength);
-            if (deltaWl <= 10.0) items.push({ icon: '✓', status: 'pass', text: `Center consistent with rest region (|Δλ| = ${deltaWl.toFixed(2)}Å ≤ 10Å)` });
-            else items.push({ icon: '⚠', status: 'warn', text: `Large central wavelength shift (|Δλ| = ${deltaWl.toFixed(2)}Å > 10Å)` });
-
-            if (chi2 < 0.1) items.push({ icon: '⚠', status: 'warn', text: `χ²red = ${chi2.toFixed(3)} — Unusually low; inspect possible flux error overestimation / overfitting.` });
-            else if (chi2 >= 0.1 && chi2 <= 3.0) items.push({ icon: '✓', status: 'pass', text: `χ²red = ${chi2.toFixed(3)} — Good statistical agreement with observed noise.` });
-            else items.push({ icon: '⚠', status: 'fail', text: `χ²red = ${chi2.toFixed(3)} — Elevated residuals; non-Gaussian or unmodeled component present.` });
-
-            items.push({ icon: '✓', status: 'pass', text: `Fitting window (${line.wing_window || 20}Å) covers line core and continuum wings.` });
-
-            items.forEach(it => {
-                const div = document.createElement('div'); div.className = 'qc-item';
-                div.innerHTML = `<span class="qc-icon ${it.status}">${it.icon}</span><span class="qc-text">${it.text}</span>`;
-                qc.appendChild(div);
-            });
-        }
     </script>
     <script>
         function toggleInfo(id, btn) {

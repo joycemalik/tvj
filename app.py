@@ -28,19 +28,32 @@ os.makedirs(PLOT_FOLDER,   exist_ok=True)
 DEMO_FILE = os.path.join(os.path.dirname(__file__), '70dcdr2dswp35476mxlo.txt')
 
 
+def _num(x):
+    """JSON-safe float: 6 significant figures (fluxes are ~1e-13), NaN/inf -> None."""
+    x = float(x)
+    return float(f'{x:.6g}') if np.isfinite(x) else None
+
+
 def _serialize(v):
-    """Recursively convert numpy scalars and dicts for JSON."""
+    """Recursively convert numpy scalars, arrays, dicts and lists for JSON."""
     if isinstance(v, np.ndarray):
-        return None                      # drop arrays
-    if isinstance(v, (np.integer,)):
+        return [_num(x) for x in v.ravel()]
+    if isinstance(v, (bool, np.bool_)):
+        return bool(v)
+    if isinstance(v, (int, np.integer)):
         return int(v)
-    if isinstance(v, (np.floating,)):
-        return float(v)
+    if isinstance(v, (float, np.floating)):
+        return _num(v)
     if isinstance(v, dict):
         return {k2: _serialize(v2) for k2, v2 in v.items()}
-    if isinstance(v, list):
+    if isinstance(v, (list, tuple)):
         return [_serialize(item) for item in v]
     return v
+
+
+def _serialize_record(record):
+    """Pipeline record -> JSON-safe dict (arrays kept for plotting)."""
+    return {k: _serialize(v) for k, v in record.items()}
 
 
 @app.route('/')
@@ -63,25 +76,24 @@ def about():
     return render_template('about.html')
 
 
+@app.route('/api/fvar_context')
+def fvar_context():
+    """Observation date, same-year light curve and F_var for one spectrum (?spectrum=<filename>)."""
+    from src.variability import spectrum_context
+    name = request.args.get('spectrum', '')
+    if not name:
+        return jsonify({'error': 'spectrum parameter required'}), 400
+    return jsonify(spectrum_context(name))
+
+
 @app.route('/api/fvar')
 def fvar_table():
     """Per-line, per-year F_var computed by run_variability.py."""
     from src.variability import load_fvar_table, FVAR_ERR_CUTOFF
-    tab = load_fvar_table()
-    if tab is None:
+    rows = load_fvar_table()
+    if rows is None:
         return jsonify({'error': 'outputs/fvar_by_year.csv not found — run `python run_variability.py`'}), 404
-
-    def _f(x):
-        return None if x is None or not np.isfinite(x) else float(x)
-
-    rows = [{
-        'line': r.line, 'year': int(r.year), 'n': int(r.n),
-        'jd_min': _f(r.jd_min), 'jd_span': _f(r.jd_span),
-        'f_mean': _f(r.f_mean), 'err_rms': _f(r.err_rms), 'ratio': _f(r.ratio),
-        'fvar': _f(r.fvar), 'fvar_err': _f(r.fvar_err),
-        'regime': r.regime if isinstance(r.regime, str) else '',
-    } for r in tab.itertuples(index=False)]
-    return jsonify({'cutoff': FVAR_ERR_CUTOFF, 'lines': list(dict.fromkeys(tab['line'])), 'rows': rows})
+    return jsonify({'cutoff': FVAR_ERR_CUTOFF, 'lines': list(dict.fromkeys(r['line'] for r in rows)), 'rows': rows})
 
 
 tasks = {}
@@ -138,39 +150,7 @@ def stream(task_id):
                     plot_path = save_publication_plots(record, output_dir=PLOT_FOLDER)
                     plot_filename = os.path.basename(plot_path)
                     
-                    clean = {}
-                    for k, v in record.items():
-                        if isinstance(v, np.ndarray):
-                            clean[k] = [round(float(x), 6) for x in v]
-                        elif k == 'lines':
-                            clean_lines = []
-                            for line in (v or []):
-                                def _clean_line(l):
-                                    cl = {}
-                                    for lk, lv in l.items():
-                                        if isinstance(lv, np.ndarray):
-                                            cl[lk] = [round(float(x), 6) for x in lv]
-                                        else:
-                                            ser = _serialize(lv)
-                                            if ser is not None:
-                                                cl[lk] = ser
-                                    return cl
-                                if 'components' in line and isinstance(line['components'], list):
-                                    for c in line['components']:
-                                        flat_comp = dict(line)
-                                        flat_comp.update(c)
-                                        flat_comp['parent'] = line.get('line_name', '')
-                                        flat_comp['component'] = c.get('name', '')
-                                        if 'components' in flat_comp:
-                                            del flat_comp['components']
-                                        clean_lines.append(_clean_line(flat_comp))
-                                else:
-                                    clean_lines.append(_clean_line(line))
-                            clean['lines'] = clean_lines
-                        else:
-                            serialized = _serialize(v)
-                            if serialized is not None:
-                                clean[k] = serialized
+                    clean = _serialize_record(record)
                     clean['plot_url'] = f'/plots/{plot_filename}'
                     
                     if not task['is_demo']:
@@ -224,45 +204,7 @@ def fit_spectrum():
         plot_path = save_publication_plots(record, output_dir=PLOT_FOLDER)
         plot_filename = os.path.basename(plot_path)
 
-        # Serialize – keep numeric arrays for full spectrum plotting in UI
-        clean = {}
-        for k, v in record.items():
-            if isinstance(v, np.ndarray):
-                clean[k] = [round(float(x), 6) for x in v]
-            elif k == 'lines':
-                # Serialize each line result dict individually
-                clean_lines = []
-                for line in (v or []):
-                    def _clean_line(l):
-                        cl = {}
-                        for lk, lv in l.items():
-                            if isinstance(lv, np.ndarray):
-                                cl[lk] = [round(float(x), 6) for x in lv]
-                            else:
-                                ser = _serialize(lv)
-                                if ser is not None:
-                                    cl[lk] = ser
-                        return cl
-
-                    # Flatten hierarchical components for UI graphing
-                    if 'components' in line and isinstance(line['components'], list):
-                        for c in line['components']:
-                            flat_comp = dict(line)  # copy parent attrs
-                            flat_comp.update(c)     # overwrite with component attrs
-                            flat_comp['parent'] = line.get('line_name', '')
-                            flat_comp['component'] = c.get('name', '')
-                            # Remove the raw components list to avoid circular/nested issues
-                            if 'components' in flat_comp:
-                                del flat_comp['components']
-                            clean_lines.append(_clean_line(flat_comp))
-                    else:
-                        clean_lines.append(_clean_line(line))
-                clean['lines'] = clean_lines
-            else:
-                serialized = _serialize(v)
-                if serialized is not None:
-                    clean[k] = serialized
-
+        clean = _serialize_record(record)
         clean['plot_url'] = f'/plots/{plot_filename}'
 
         if not is_demo:

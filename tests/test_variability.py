@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 
 from src.variability import fvar, fvar_by_year
-from src.refine import refine_line
+from src.refine import refine_line, runs_test
 
 
 def _by_hand(F, E):
@@ -77,6 +77,35 @@ class TestRefinement:
         assert r['center'] == pytest.approx(mu, abs=0.01)
         assert r['sigma'] == pytest.approx(s, rel=0.01)
         assert r['flux'] == pytest.approx(math.sqrt(2 * math.pi) * A * s, rel=0.01)
+
+    def test_verification_passes_for_correct_model(self):
+        wl = _wl()
+        rng = np.random.default_rng(7)
+        flux = 3e-13 + 6e-13 * np.exp(-0.5 * ((wl - 1215.0) / 6.0) ** 2) + rng.normal(0, 2e-14, wl.shape)
+        cfg = {'sigma': {'min': 4.25, 'max': 10.19}, 'refine': {'window': [1180, 1265]}}
+        r = refine_line(wl, flux, 1216.0, cfg, {'center': 1216.0, 'sigma': 6.0, 'amplitude': 6e-13})
+        v = r['verification']
+        assert v['status'] == 'VERIFIED', v['failed']
+        assert len(r['plot']['x']) == len(r['plot']['model']) == len(r['plot']['norm_resid'])
+
+    def test_verification_flags_wrong_profile(self):
+        wl = _wl()
+        rng = np.random.default_rng(8)
+        # Two well-separated peaks fitted with one Gaussian: residuals must show structure
+        flux = (3e-13 + 6e-13 * np.exp(-0.5 * ((wl - 1205.0) / 3.0) ** 2)
+                + 6e-13 * np.exp(-0.5 * ((wl - 1227.0) / 3.0) ** 2) + rng.normal(0, 1e-14, wl.shape))
+        cfg = {'sigma': {'min': 2.2, 'max': 10.19}, 'refine': {'window': [1180, 1255]}}
+        r = refine_line(wl, flux, 1216.0, cfg, {'center': 1216.0, 'sigma': 8.0, 'amplitude': 4e-13})
+        assert r['verification']['status'] == 'CHECK'
+        assert 'Goodness of fit' in r['verification']['failed']
+
+    def test_runs_test_known_values(self):
+        alternating = np.array([1, -1] * 10)          # far too many runs
+        runs, z, p = runs_test(alternating)
+        assert runs == 20 and z > 0 and p < 0.001
+        blocks = np.array([1] * 10 + [-1] * 10)        # far too few runs
+        runs, z, p = runs_test(blocks)
+        assert runs == 2 and z < 0 and p < 0.001
 
     def test_masked_airglow_spike_is_ignored(self):
         wl = _wl()

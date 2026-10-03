@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap">
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="/static/js/fitplots.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -99,7 +100,9 @@ body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-heigh
 
 /* Chart panels */
 .chart-panel{border:1px solid var(--rule);background:var(--paper);}
-.chart-header{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:var(--paper2);border-bottom:1px solid var(--rule);}
+.chart-header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 12px;background:var(--paper2);border-bottom:1px solid var(--rule);}
+.dl-btn{font-family:var(--mono);font-size:10px;padding:2px 7px;border:1px solid var(--rule2);background:var(--paper);color:var(--ink2);cursor:pointer;}
+.dl-btn:hover{border-color:var(--accent);color:var(--accent);}
 .chart-label{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);}
 .chart-sub{font-family:var(--mono);font-size:10px;color:var(--ink3);}
 .chart-wrap{background:var(--paper);}
@@ -118,13 +121,8 @@ body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-heigh
 .params-body{padding:4px 8px;}
 
 /* QC list */
-.qc-list{display:flex;flex-direction:column;gap:5px;padding:8px;}
-.qc-item{display:flex;align-items:flex-start;gap:8px;padding:5px 8px;background:var(--paper2);border:1px solid var(--rule);font-size:11px;}
-.qc-icon{font-size:12px;line-height:1.4;flex-shrink:0;}
-.qc-icon.pass{color:var(--green);}
-.qc-icon.warn{color:#7a5a00;}
-.qc-icon.fail{color:var(--accent2);}
-.qc-text{color:var(--ink2);line-height:1.45;font-family:var(--mono);font-size:10px;}
+.verif-tbl th{text-align:left;padding:6px 8px;background:var(--paper2);border-bottom:1px solid var(--rule2);color:var(--ink3);font-weight:500;font-family:var(--mono);}
+.verif-tbl td{padding:6px 8px;border-bottom:1px solid var(--rule);color:var(--ink);font-family:var(--mono);vertical-align:top;}
 
 /* Summary table */
 .summary-tbl{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;}
@@ -136,9 +134,6 @@ body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-heigh
 .badge-fail{font-family:var(--mono);font-size:9px;padding:2px 6px;border:1px solid var(--accent2);color:var(--accent2);}
 
 /* Pipeline flow */
-.pipeline-flow{font-family:var(--mono);font-size:10px;color:var(--ink3);display:flex;flex-direction:column;gap:4px;padding:8px;}
-.pipeline-flow .arrow{color:var(--accent);margin-right:4px;}
-.pipeline-flow .val{color:var(--ink);font-weight:500;}
 
 /* ── FOOTER ── */
 .site-footer{width:100%;background:var(--paper2);border-top:2px solid var(--ink);margin-top:4rem;}
@@ -183,7 +178,7 @@ body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-heigh
   <div>
     <div class="journal-tag">Diagnostic Viewer · IUE SWP · 3C 273</div>
     <h1>Profile Diagnostic Viewer <em>— Interactive Spectroscopic Pipeline</em></h1>
-    <div class="masthead-meta">Power-law continuum · Gaussian emission-line decomposition · 5,600 candidates · 900–1830 Å</div>
+    <div class="masthead-meta">Power-law continuum · grid-seeded weighted least-squares Gaussian fits · statistical verification · 994–1832 Å (rest frame)</div>
   </div>
 </div>
 
@@ -199,28 +194,6 @@ body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-heigh
 <!-- CONSOLE STRIP -->
 <div class="console-strip" id="consoleStrip">
   <div class="console-inner" id="consoleLog"></div>
-</div>
-
-<!-- ANALYSIS SUMMARY (always visible, loaded from API) -->
-<div class="analysis-summary">
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
-    <div class="section-head" style="margin:0;">3C 273 — Fractional variability F<sub>var</sub> per emission line, per year</div>
-    <button class="demo-btn" id="fvarExportBtn" onclick="exportFvarExcel()" disabled>Export F<sub>var</sub> to Excel</button>
-  </div>
-  <div class="se" style="margin:6px 0 8px;font-size:11px;color:var(--ink3);">
-    F<sub>var</sub> = √(σ²<sub>F</sub> − ΔF̄²) / F̄ from (JD − JD<sub>min</sub>, F, F<sub>err</sub>) of detected (≥3σ) line fluxes.
-    Error: √(1/2N)·ΔF̄²/(F̄²F<sub>var</sub>) when σ²<sub>F</sub>/ΔF̄² &lt; <span id="fvarCut">10</span>, else √(ΔF̄²/N)/F̄
-    (Vaughan et al. 2003; Sukanya et al. 2018). "not variable": scatter consistent with errors.
-  </div>
-  <div style="overflow-x:auto;max-height:340px;overflow-y:auto;">
-    <table class="summary-tbl" id="fvarTable">
-      <thead><tr>
-        <th>Line</th><th>Year</th><th>N</th><th>JD<sub>min</sub></th><th>JD span (d)</th>
-        <th>F̄</th><th>ΔF̄ (rms err)</th><th>σ²<sub>F</sub>/ΔF̄²</th><th>F<sub>var</sub></th><th>± err</th><th>Regime</th>
-      </tr></thead>
-      <tbody id="fvarBody"><tr><td colspan="11" style="color:var(--ink3);">Loading…</td></tr></tbody>
-    </table>
-  </div>
 </div>
 
 <!-- MAIN CONTENT -->
@@ -250,8 +223,8 @@ body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-heigh
     <!-- Graph 1: Full UV Overview -->
     <div class="chart-panel">
       <div class="chart-header">
-        <span class="chart-label">Graph 1 — Full UV Spectrum Overview (900–1830 Å)</span>
-        <span class="chart-sub">Observed · Power-Law Continuum · Continuum-Subtracted</span>
+        <span class="chart-label">Graph 1 — Rest-frame spectrum</span>
+        <span class="chart-sub">Observed flux · power-law continuum F = Aλ<sup>α</sup> · shaded: continuum windows · dotted: fitted line centres</span><span class="chart-sub"><button class="dl-btn" onclick="downloadGraph('overviewPlot','png')">PNG</button> <button class="dl-btn" onclick="downloadGraph('overviewPlot','svg')">SVG</button></span>
       </div>
       <div class="chart-wrap"><div id="overviewPlot" style="width:100%;height:320px;"></div></div>
     </div>
@@ -287,22 +260,22 @@ body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-heigh
         <div style="display:flex;flex-direction:column;gap:14px;">
           <div class="chart-panel">
             <div class="chart-header">
-              <span class="chart-label" id="localFitTitle">Graph 2 — Zoomed Line Fit</span>
-              <span class="chart-sub">Line window · Gaussian model · FWHM bar</span>
+              <span class="chart-label" id="localFitTitle">Graph 2 — Line fit</span>
+              <span class="chart-sub">Data ± 1σ pixel noise · Gaussian + local linear continuum (weighted least squares)</span><span class="chart-sub"><button class="dl-btn" onclick="downloadGraph('localPlot','png')">PNG</button> <button class="dl-btn" onclick="downloadGraph('localPlot','svg')">SVG</button></span>
             </div>
             <div class="chart-wrap"><div id="localPlot" style="width:100%;height:360px;"></div></div>
             <div class="chart-header" style="margin-top:0;">
-              <span class="chart-label">Graph 3 — Normalised Residuals [r = (F − F̂) / σ]</span>
-              <span class="chart-sub">±1σ · ±2σ bounds</span>
+              <span class="chart-label">Graph 3 — Normalised residuals (F − F<sub>model</sub>)/σ</span>
+              <span class="chart-sub">±1σ and ±2σ reference lines</span><span class="chart-sub"><button class="dl-btn" onclick="downloadGraph('residualPlot','png')">PNG</button> <button class="dl-btn" onclick="downloadGraph('residualPlot','svg')">SVG</button></span>
             </div>
             <div class="chart-wrap"><div id="residualPlot" style="width:100%;height:200px;"></div></div>
           </div>
           <div class="chart-panel">
             <div class="chart-header">
-              <span class="chart-label">Graph 4 — Model-Selection Landscape</span>
-              <span class="chart-sub">σ × Wing Window · ★ = selected model</span>
+              <span class="chart-label">Graph 4 — Residual distribution</span>
+              <span class="chart-sub">Histogram of normalised residuals vs. standard normal N(0,1)</span><span class="chart-sub"><button class="dl-btn" onclick="downloadGraph('landscapePlot','png')">PNG</button> <button class="dl-btn" onclick="downloadGraph('landscapePlot','svg')">SVG</button></span>
             </div>
-            <div class="chart-wrap"><div id="landscapePlot" style="width:100%;height:280px;"></div></div>
+            <div class="chart-wrap"><div id="landscapePlot" style="width:100%;height:260px;"></div></div>
           </div>
         </div>
 
@@ -348,30 +321,82 @@ body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-heigh
             </div>
           </div>
 
-          <!-- QC -->
-          <div class="params-section">
-            <div class="params-section-head">Quality Control</div>
-            <div class="qc-list" id="qcChecklist"></div>
-            <div class="params-section-head" style="margin-top:0;">Pipeline Search Flow</div>
-            <div class="pipeline-flow">
-              <div><span class="arrow">▶</span>Search space: <span class="val">5,600 candidate models</span></div>
-              <div><span class="arrow">▶</span>Stage 1: <span class="val">Coarse discrete grid</span></div>
-              <div><span class="arrow">▶</span>Stage 2: <span class="val">Scipy least-squares refinement</span></div>
-              <div><span class="arrow">▶</span>Composite score: <span class="val" id="valCompScore">—</span></div>
-            </div>
-            <table class="params-tbl" id="valScoreBreakdown" style="padding:0 8px 8px;"></table>
-          </div>
         </div>
       </div>
     </div>
 
+    <!-- Verification step -->
+    <div class="chart-panel" style="margin-top:14px;">
+      <div class="chart-header">
+        <span class="chart-label">Verification — statistical checks of the selected line fit</span>
+        <span class="chart-sub">Required checks must pass for VERIFIED; "info" rows are reported only</span>
+      </div>
+      <div id="verificationPanel" style="padding:8px 14px 12px;overflow-x:auto;"></div>
+    </div>
+
+    <!-- Variability context: this spectrum within its year's light curve -->
+    <div class="chart-panel" style="margin-top:14px;">
+      <div class="chart-header">
+        <span class="chart-label">Graph 5 — Variability context of this spectrum</span>
+        <span class="chart-sub">
+          <button class="dl-btn" onclick="downloadGraph('lightcurvePlot','png')">PNG</button>
+          <button class="dl-btn" onclick="downloadGraph('lightcurvePlot','svg')">SVG</button>
+        </span>
+      </div>
+      <div id="contextInfo" style="padding:8px 14px 0;font-size:12px;color:var(--ink2);"></div>
+      <div class="chart-wrap"><div id="lightcurvePlot" style="width:100%;height:280px;"></div></div>
+      <div style="padding:0 14px 12px;overflow-x:auto;">
+        <table class="summary-tbl" id="contextTable">
+          <thead><tr>
+            <th>Line</th><th>This spectrum F</th><th>Year F̄</th><th>(F − F̄)/F̄</th><th>N (year)</th>
+            <th>F<sub>var</sub> (year)</th><th>± err</th><th>Regime</th>
+          </tr></thead>
+          <tbody id="contextBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- All lines of this spectrum -->
+    <div class="chart-panel" style="margin-top:14px;">
+      <div class="chart-header">
+        <span class="chart-label">All lines in this spectrum — fit and same-year light curve</span>
+        <span class="chart-sub"><button class="dl-btn" onclick="downloadAllLines('png')">Download selected (PNG)</button>
+          <button class="dl-btn" onclick="downloadAllLines('svg')">Download selected (SVG)</button></span>
+      </div>
+      <div id="lineSelector" style="display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:10px 12px 0;font-size:11px;font-family:var(--mono);"></div>
+      <div id="allLinesGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:12px;padding:12px;"></div>
+    </div>
+
     <!-- Print action -->
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;">
+      <a class="demo-btn" id="figLink" href="#" download style="text-decoration:none;">Download all-lines figure (PNG)</a>
       <button class="demo-btn" onclick="exportSpectrumExcel()">Export to Excel</button>
       <button class="demo-btn" onclick="window.print()">Print Report</button>
     </div>
 
   </div><!-- end results-dashboard -->
+
+  <!-- Campaign reference table (all dated spectra), collapsed by default -->
+  <details class="analysis-summary" style="margin-top:18px;">
+    <summary style="cursor:pointer;" class="section-head">Campaign reference — F<sub>var</sub> per emission line, per year (all dated spectra)</summary>
+    <div class="se" style="margin:8px 0;font-size:11px;color:var(--ink3);">
+      Computed offline by <code>run_variability.py</code>: every spectrum in <code>spectrum/</code> is fitted with this
+      pipeline, dated from <code>jd.xlsx</code>, and the detected (≥3σ) fluxes of each line are grouped by calendar year.
+      F<sub>var</sub> = √(σ²<sub>F</sub> − ΔF̄²) / F̄; error √(1/2N)·ΔF̄²/(F̄²F<sub>var</sub>) when σ²<sub>F</sub>/ΔF̄² &lt;
+      <span id="fvarCut">10</span>, else √(ΔF̄²/N)/F̄ (Vaughan et al. 2003; Sukanya et al. 2018).
+      The fitted spectrum above is placed in this table in Graph 5.
+    </div>
+    <div style="margin-bottom:8px;"><button class="demo-btn" id="fvarExportBtn" onclick="exportFvarExcel()" disabled>Export F<sub>var</sub> to Excel</button></div>
+    <div style="overflow-x:auto;max-height:340px;overflow-y:auto;">
+      <table class="summary-tbl" id="fvarTable">
+        <thead><tr>
+          <th>Line</th><th>Year</th><th>N</th><th>JD<sub>min</sub></th><th>JD span (d)</th>
+          <th>F̄</th><th>ΔF̄ (rms err)</th><th>σ²<sub>F</sub>/ΔF̄²</th><th>F<sub>var</sub></th><th>± err</th><th>Regime</th>
+        </tr></thead>
+        <tbody id="fvarBody"><tr><td colspan="11" style="color:var(--ink3);">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </details>
 </div><!-- end main-content -->
 
 <!-- FOOTER -->
@@ -510,11 +535,15 @@ function renderDashboard(data, filename) {
   badge.textContent = ok ? '✓ VALIDATED' : 'LIMITED FIT';
   badge.className = 'status-badge ' + (ok ? 'status-ok' : 'status-fail');
 
+  document.getElementById('figLink').href = data.plot_url || '#';
+  lineSelection = null;
+  loadContext(data.spectrum_name || filename);
   drawOverview(data);
   buildSummaryTable(data.lines || []);
   buildLineTabs(data.lines || []);
 
-  let first = (data.lines || []).findIndex(l => l.line_name.includes('Lyman') || l.detected);
+  let first = (data.lines || []).findIndex(l => l.rest_wavelength === 1216.0);
+  if (first < 0) first = (data.lines || []).findIndex(l => l.detected);
   if (first < 0) first = 0;
   selectLine(first);
   showResults();
@@ -522,32 +551,7 @@ function renderDashboard(data, filename) {
 
 /* ── Overview plot ── */
 function drawOverview(data) {
-  const wl = data.wavelength || [], flux = data.observed_flux || [],
-        cont = data.continuum_fit || [], suby = data.subtracted_y || [];
-
-  const traces = [
-    { x: wl, y: flux,  mode: 'lines', name: 'Raw Observed',       line: { color: '#7a756e', width: 1 } },
-    { x: wl, y: cont,  mode: 'lines', name: 'Power-Law Continuum', line: { color: '#1a3a5c', width: 1.5, dash: 'dash' } },
-    { x: wl, y: suby,  mode: 'lines', name: 'Continuum-Subtracted', line: { color: '#4a6885', width: 1.2 } }
-  ];
-  const shapes = [], anns = [];
-  (data.lines || []).forEach(l => {
-    const col = l.detected ? '#1a3a5c' : '#c4bfb6';
-    shapes.push({ type:'line', x0:l.rest_wavelength, x1:l.rest_wavelength, y0:0, y1:1, yref:'paper', line:{color:col, width:1, dash:'dot'} });
-    anns.push({ x:l.rest_wavelength, y:0.96, yref:'paper', text:l.line_name, showarrow:false, font:{family:MONO, size:9, color:col} });
-  });
-  const mid = flux.slice(Math.floor(flux.length*0.05), Math.floor(flux.length*0.95));
-  const yMax = mid.length ? Math.max(...mid)*1.2 : 1;
-  const yMin = mid.length && Math.min(...mid) < 0 ? Math.min(...mid)*1.2 : -yMax*0.08;
-
-  const layout = mkLayout({
-    margin: { t:25, r:20, l:65, b:45 },
-    xaxis: { title:{ text:'Wavelength (Å)', font:{family:MONO,size:10,color:'#4a4640'} } },
-    yaxis: { range:[yMin,yMax], title:{ text:'Flux (erg cm⁻² s⁻¹ Å⁻¹)', font:{family:MONO,size:10,color:'#4a4640'} } },
-    legend: { orientation:'h', x:0, y:1.12, font:{family:MONO,size:9,color:'#1a1814'} },
-    shapes, annotations:anns
-  });
-  Plotly.newPlot('overviewPlot', traces, layout, { responsive:true, displayModeBar:false });
+  FitPlots.overview('overviewPlot', data);
 }
 
 /* ── Summary table ── */
@@ -615,179 +619,52 @@ function selectLine(idx) {
   document.querySelectorAll('#summaryTableBody tr').forEach((tr,i) => tr.classList.toggle('active-row', i===idx));
   const line = lines[idx];
   document.getElementById('localFitTitle').textContent =
-    `Graph 2 — Zoomed Line Fit — ${line.line_name} (λ${line.rest_wavelength.toFixed(0)} Å)`;
+    `Graph 2 — Line fit — ${line.line_name} (λ${line.rest_wavelength.toFixed(0)} Å)`;
   renderLineDetails(line);
 }
 
 /* ── Line detail plots + params ── */
-function gaussY(x, amp, mu, sig) { return amp * Math.exp(-0.5 * ((x - mu) / sig) ** 2); }
-
 function renderLineDetails(line) {
-  const wl   = currentRecord.wavelength   || [];
-  const suby = currentRecord.subtracted_y || [];
-  const noise = currentRecord.noise_level  || [];
-
-  const fmtX = v => v ? Number(v).toExponential(3) : '—';
-  const fmtN = (v,d=2) => (v!==undefined&&v!==null&&!isNaN(v)) ? Number(v).toFixed(d) : '—';
+  const fmtX = v => (v !== undefined && v !== null && isFinite(v) && v !== 0) ? Number(v).toExponential(3) : '—';
+  const fmtN = (v,d=2) => (v !== undefined && v !== null && isFinite(v)) ? Number(v).toFixed(d) : '—';
+  const pm = (v, e, d) => (e !== undefined && e !== null && isFinite(e)) ? `${fmtN(v,d)} ± ${fmtN(e,d)}` : fmtN(v,d);
+  const pmX = (v, e) => (e !== undefined && e !== null && isFinite(e)) ? `${fmtX(v)} ± ${fmtX(e)}` : fmtX(v);
 
   const center = line.center || line.rest_wavelength;
-  const sigma  = line.sigma  || 5;
-  const amp    = line.amplitude || 0;
-  const wing   = line.wing_window || 20;
-  const minWl  = line.min_wavelength || (center - wing/2);
-  const maxWl  = line.max_wavelength || (center + wing/2);
+  const sigma  = line.sigma;
+  const wing   = line.wing_window;
   const dWl    = center - line.rest_wavelength;
   const vel    = (dWl / line.rest_wavelength) * 299792.458;
 
-  /* Param cards */
-  document.getElementById('valOutAmp').textContent    = fmtX(amp);
-  document.getElementById('valOutCenter').textContent = fmtN(center,2);
+  document.getElementById('valOutAmp').textContent    = pmX(line.amplitude, line.amplitude_err);
+  document.getElementById('valOutCenter').textContent = pm(center, line.center_err, 2);
   document.getElementById('valOutWing').textContent   = fmtN(wing,0);
-  document.getElementById('valOutMin').textContent    = fmtN(minWl,2);
-  document.getElementById('valOutMax').textContent    = fmtN(maxWl,2);
-  document.getElementById('valOutSigma').textContent  = fmtN(sigma,2);
+  document.getElementById('valOutMin').textContent    = fmtN(line.min_wavelength,2);
+  document.getElementById('valOutMax').textContent    = fmtN(line.max_wavelength,2);
+  document.getElementById('valOutSigma').textContent  = pm(sigma, line.sigma_err, 2);
 
   document.getElementById('valRestWl').textContent    = `${line.rest_wavelength.toFixed(2)} Å`;
-  document.getElementById('valCenter').textContent    = `${fmtN(center,2)} Å`;
+  document.getElementById('valCenter').textContent    = `${pm(center, line.center_err, 2)} Å`;
   document.getElementById('valDeltaWl').textContent   = `${dWl>=0?'+':''}${fmtN(dWl,2)} Å`;
   document.getElementById('valVelOffset').textContent = `${fmtN(vel,1)} km/s`;
-  document.getElementById('valAmp').textContent       = fmtX(amp);
-  document.getElementById('valSigma').textContent     = `${fmtN(sigma,2)} Å`;
-  document.getElementById('valFWHM').textContent      = line.fwhm_ang ? `${fmtN(line.fwhm_ang,2)} Å` : `${fmtN(2.355*sigma,2)} Å`;
-  document.getElementById('valFWHMkms').textContent   = line.fwhm_kms ? `${fmtN(line.fwhm_kms,1)} km/s` : '—';
-  document.getElementById('valFWHM235').textContent   = `${fmtN(2.355*sigma,2)} Å`;
+  document.getElementById('valAmp').textContent       = pmX(line.amplitude, line.amplitude_err);
+  document.getElementById('valSigma').textContent     = `${pm(sigma, line.sigma_err, 2)} Å`;
+  document.getElementById('valFWHM').textContent      = `${fmtN(line.fwhm_ang,2)} Å`;
+  document.getElementById('valFWHMkms').textContent   = `${fmtN(line.fwhm_kms,0)} km/s (intrinsic ${fmtN(line.fwhm_kms_intrinsic,0)})`;
+  document.getElementById('valFWHM235').textContent   = `${fmtN(2.3548*sigma,2)} Å`;
   document.getElementById('valFlux').textContent      = fmtX(line.flux);
   document.getElementById('valFluxErr').textContent   = fmtX(line.flux_err);
   document.getElementById('valEW').textContent        = `${fmtN(line.ew,2)} Å`;
-  document.getElementById('valEWErr').textContent     = line.ew_err ? `${fmtN(line.ew_err,2)} Å` : '—';
+  document.getElementById('valEWErr').textContent     = `${fmtN(line.ew_err,2)} Å`;
   document.getElementById('valSNR').textContent       = fmtN(line.snr,2);
-  document.getElementById('valChi2').textContent      = fmtN(line.reduced_chi2,3);
+  document.getElementById('valChi2').textContent      = `${fmtN(line.reduced_chi2,3)} (dof ${line.dof ?? '—'})`;
   document.getElementById('valWingWindow').textContent= `${fmtN(wing,1)} Å`;
-  document.getElementById('valCompScore').textContent = fmtN(line.composite_score||line.quality_score,3);
 
-  /* Score breakdown */
-  const sb = document.getElementById('valScoreBreakdown');
-  sb.innerHTML = '';
-  if (line.score_components) {
-    const W = {chi2:0.25,peak:0.20,left:0.05,right:0.05,shape:0.15,wing:0.10,sigma:0.20};
-    const sc = line.score_components;
-    [
-      ['χ² contribution',   sc.chi2_score  * W.chi2 ],
-      ['Peak alignment',    sc.peak_score  * W.peak ],
-      ['Shape match',       sc.shape_score * W.shape],
-      ['Wing residuals',    sc.left_score  * W.left + sc.right_score * W.right],
-      ['σ prior',           sc.sigma_score * W.sigma],
-      ['Window prior',      sc.wing_score  * W.wing ]
-    ].forEach(([label, val]) => {
-      const r = document.createElement('tr');
-      r.innerHTML = `<td style="color:var(--ink3);width:65%;border:none;padding:2px 8px;">${label}</td><td style="color:var(--ink);text-align:right;border:none;padding:2px 8px;">${fmtN(val,3)}</td>`;
-      sb.appendChild(r);
-    });
-  }
-
-  /* ─ Local (zoomed) fit plot ─ */
-  const mask = wl.map((w,i) => w >= minWl && w <= maxWl ? i : -1).filter(i => i>=0);
-  const lwl  = mask.map(i => wl[i]);
-  const lsub = mask.map(i => suby[i]);
-  const lmod = lwl.map(w => gaussY(w, amp, center, sigma));
-
-  const fwhm = 2.355 * sigma;
-  const localTraces = [
-    { x:lwl, y:lsub, mode:'lines', name:'Continuum-Subtracted', line:{color:'#7a756e',width:1.2} },
-    { x:lwl, y:lmod, mode:'lines', name:'Gaussian Model',       line:{color:'#7a2020',width:2} }
-  ];
-  const localShapes = [
-    { type:'line', x0:center-fwhm/2, x1:center+fwhm/2, y0:amp/2, y1:amp/2, line:{color:'#2a5a2a',width:1.5} },
-    { type:'line', x0:minWl, x1:minWl, y0:0, y1:1, yref:'paper', line:{color:'#c4bfb6',width:1,dash:'dot'} },
-    { type:'line', x0:maxWl, x1:maxWl, y0:0, y1:1, yref:'paper', line:{color:'#c4bfb6',width:1,dash:'dot'} },
-    { type:'line', x0:center, x1:center, y0:0, y1:1, yref:'paper', line:{color:'#1a3a5c',width:1,dash:'dot'} }
-  ];
-  const localAnns = [
-    { x:center, y:0.95, yref:'paper', text:`λ ${center.toFixed(2)} Å`, showarrow:false, font:{family:MONO,size:9,color:'#1a3a5c'} },
-    { x:center, y:0.05, yref:'paper', text:`FWHM ${fmtN(fwhm,2)} Å`, showarrow:false, font:{family:MONO,size:9,color:'#2a5a2a'} }
-  ];
-
-  Plotly.newPlot('localPlot', localTraces,
-    mkLayout({ margin:{t:25,r:20,l:60,b:40}, shapes:localShapes, annotations:localAnns,
-      xaxis:{ title:{text:'Wavelength (Å)',font:{family:MONO,size:10}} },
-      yaxis:{ title:{text:'Continuum-Subtracted Flux',font:{family:MONO,size:10}} },
-      legend:{ font:{family:MONO,size:9} }
-    }), { responsive:true, displayModeBar:false });
-
-  /* ─ Residuals ─ */
-  const lnoise = mask.map(i => (noise[i] || 0));
-  const medNoise = lnoise.filter(v=>v>0).sort((a,b)=>a-b)[Math.floor(lnoise.length/2)] || 1e-15;
-  const lres = lsub.map((f,j) => {
-    const n = lnoise[j] > 0 ? lnoise[j] : medNoise;
-    return (f - lmod[j]) / n;
-  });
-
-  const nY = lres.length ? Math.max(Math.abs(Math.max(...lres)), Math.abs(Math.min(...lres))) * 1.3 : 3;
-
-  Plotly.newPlot('residualPlot', [
-    { x:lwl, y:lres, mode:'lines', name:'Residuals', line:{color:'#7a756e',width:1} },
-    { x:[lwl[0],lwl[lwl.length-1]], y:[1,1],   mode:'lines', name:'±1σ', line:{color:'#1a3a5c',width:1,dash:'dot'} },
-    { x:[lwl[0],lwl[lwl.length-1]], y:[-1,-1],  mode:'lines', showlegend:false, line:{color:'#1a3a5c',width:1,dash:'dot'} },
-    { x:[lwl[0],lwl[lwl.length-1]], y:[2,2],   mode:'lines', name:'±2σ', line:{color:'#7a2020',width:1,dash:'dash'} },
-    { x:[lwl[0],lwl[lwl.length-1]], y:[-2,-2],  mode:'lines', showlegend:false, line:{color:'#7a2020',width:1,dash:'dash'} }
-  ], mkLayout({ margin:{t:15,r:20,l:60,b:40},
-    xaxis:{ title:{text:'Wavelength (Å)',font:{family:MONO,size:10}} },
-    yaxis:{ range:[-nY,nY], title:{text:'(F − F̂) / σ',font:{family:MONO,size:10}} },
-    legend:{ font:{family:MONO,size:9} }
-  }), { responsive:true, displayModeBar:false });
-
-  /* ─ Model-selection landscape ─ */
-  const wings  = line.landscape_wing_windows || [];
-  const sigmas = line.landscape_sigmas       || [];
-  const chi2s  = line.landscape_chi2s        || [];
-
-  const landTraces = [];
-  if (wings.length && sigmas.length && chi2s.length) {
-    landTraces.push({ x:wings, y:sigmas, mode:'markers', marker:{
-      size:6, color:chi2s,
-      colorscale:[['0','#1a3a5c'],['0.5','#d4cfc6'],['1','#7a2020']],
-      showscale:true, colorbar:{title:{text:'χ²',font:{family:MONO,size:9}}, thickness:10, tickfont:{family:MONO,size:8}}
-    }, name:'Candidate models' });
-    landTraces.push({ x:[wing], y:[sigma], mode:'markers', marker:{size:14, color:'#1a3a5c', symbol:'star'}, name:'Selected' });
-  }
-
-  Plotly.newPlot('landscapePlot', landTraces,
-    mkLayout({ margin:{t:20,r:60,l:60,b:40},
-      xaxis:{ title:{text:'Wing Window (Å)',font:{family:MONO,size:10}} },
-      yaxis:{ title:{text:'Sigma σ (Å)',font:{family:MONO,size:10}} },
-      legend:{ font:{family:MONO,size:9} }
-    }), { responsive:true, displayModeBar:false });
-
-  /* ─ QC list ─ */
-  renderQC(line);
-}
-
-function renderQC(line) {
-  const el = document.getElementById('qcChecklist');
-  el.innerHTML = '';
-  const snr  = line.snr || 0;
-  const chi2 = line.reduced_chi2 || 0;
-  const dWl  = Math.abs((line.center||line.rest_wavelength) - line.rest_wavelength);
-  const items = [];
-
-  if (snr >= 3)   items.push({s:'pass', i:'✓', t:`Significance F/σF = ${snr.toFixed(2)} ≥ 3`});
-  else            items.push({s:'warn', i:'⚠', t:`Not detected: F/σF = ${snr.toFixed(2)} < 3`});
-
-  if (dWl <= 10)  items.push({s:'pass', i:'✓', t:`|Δλ| = ${dWl.toFixed(2)} Å ≤ 10 Å`});
-  else            items.push({s:'warn', i:'⚠', t:`Large shift |Δλ| = ${dWl.toFixed(2)} Å > 10 Å`});
-
-  if (chi2 <= 3.0) items.push({s:'pass', i:'✓', t:`χ²red = ${chi2.toFixed(3)} — acceptable fit`});
-  else             items.push({s:'fail', i:'⚠', t:`χ²red = ${chi2.toFixed(3)} — elevated residuals`});
-  if (line.at_bound) items.push({s:'warn', i:'⚠', t:'A fitted parameter sits at its allowed bound'});
-
-  items.push({s:'pass', i:'✓', t:`Window ${line.wing_window||20} Å covers core & wings`});
-
-  items.forEach(it => {
-    const d = document.createElement('div');
-    d.className = 'qc-item';
-    d.innerHTML = `<span class="qc-icon ${it.s}">${it.i}</span><span class="qc-text">${it.t}</span>`;
-    el.appendChild(d);
-  });
+  FitPlots.lineFit('localPlot', line);
+  FitPlots.residuals('residualPlot', line);
+  FitPlots.residualDistribution('landscapePlot', line);
+  FitPlots.verification('verificationPanel', line);
+  drawContextPlot(line);
 }
 
 /* ── Excel export: current spectrum (one row per line, reference column names) ── */
@@ -830,6 +707,129 @@ function exportSpectrumExcel() {
 }
 
 /* ── F_var per line per year (from /api/fvar) ── */
+/* ── Graph downloads (Plotly renders the current figure at 2× for print) ── */
+function downloadGraph(id, format, lineIdx) {
+  const el = document.getElementById(id);
+  if (!el || !el.data) return;
+  const spec = (currentRecord && currentRecord.spectrum_name || 'spectrum').replace(/\.txt$/i, '');
+  const idx = lineIdx === undefined ? selectedLineIndex : Number(lineIdx);
+  const line = currentRecord && currentRecord.lines && currentRecord.lines[idx];
+  const tag = id === 'overviewPlot' ? 'spectrum' : (line ? line.line_name.replace(/[^A-Za-z0-9]+/g, '_') : 'line');
+  const names = { overviewPlot: 'graph1_spectrum', localPlot: 'graph2_fit', residualPlot: 'graph3_residuals',
+                  landscapePlot: 'graph4_residual_distribution', lightcurvePlot: 'graph5_variability' };
+  if (id.startsWith('allFit')) names[id] = 'fit';
+  if (id.startsWith('allLc')) names[id] = 'lightcurve';
+  Plotly.downloadImage(el, { format, scale: format === 'png' ? 2 : 1, width: el.offsetWidth, height: el.offsetHeight,
+                             filename: `${spec}_${names[id] || id}${id === 'overviewPlot' ? '' : '_' + tag}` });
+}
+
+/* ── Variability context: this spectrum in its year's light curve ── */
+let contextData = null;
+async function loadContext(spectrumName) {
+  contextData = null;
+  const info = document.getElementById('contextInfo');
+  document.getElementById('contextBody').innerHTML = '';
+  info.textContent = 'Looking up observation date…';
+  try {
+    const res = await fetch('/api/fvar_context?spectrum=' + encodeURIComponent(spectrumName));
+    contextData = await res.json();
+  } catch (e) { contextData = { matched: false, reason: 'lookup failed' }; }
+  const c = contextData;
+  if (!c.matched || c.jd == null) {
+    info.innerHTML = `This spectrum cannot be placed in the campaign light curves: ${c.reason || 'no date'}.`;
+    FitPlots.lightCurve('lightcurvePlot', null, { year: '—' });
+    renderAllLines();
+    return;
+  }
+  info.innerHTML = `<strong>${c.spectrum}</strong> observed <strong>${c.date}</strong> (JD ${c.jd.toFixed(3)}), year <strong>${c.year}</strong>.
+    Graph 5 shows the selected line's detected fluxes from all ${c.year} spectra (same pipeline, <code>run_variability.py</code>);
+    the diamond is this spectrum. The table compares every line of this spectrum with its ${c.year} mean and F<sub>var</sub>.`;
+  const fx = v => v == null ? '—' : Number(v).toExponential(3), fn = (v, d) => v == null ? '—' : Number(v).toFixed(d);
+  document.getElementById('contextBody').innerHTML = c.lines.map(l => {
+    const live = (currentRecord.lines || []).find(x => x.line_name === l.line);
+    const F = live && live.detected ? live.flux : null;
+    const fv = l.fvar || {};
+    const dev = F != null && fv.f_mean ? (F - fv.f_mean) / fv.f_mean : null;
+    return `<tr><td style="font-weight:600;">${l.line}</td>
+      <td>${F != null ? fx(F) : 'not detected'}</td><td>${fx(fv.f_mean)}</td>
+      <td>${dev == null ? '—' : (dev >= 0 ? '+' : '') + (100 * dev).toFixed(1) + ' %'}</td>
+      <td>${fv.n ?? 0}</td><td style="font-weight:600;">${fn(fv.fvar, 4)}</td><td>${fn(fv.fvar_err, 4)}</td>
+      <td>${fv.regime || '—'}</td></tr>`;
+  }).join('');
+  const line = (currentRecord.lines || [])[selectedLineIndex];
+  if (line) drawContextPlot(line);
+  renderAllLines();
+}
+
+/* ── Small multiples: every line's fit + its same-year light curve ── */
+let lineSelection = null;   // Set of selected line indices; null = all
+
+function buildLineSelector() {
+  const lines = (currentRecord && currentRecord.lines) || [];
+  if (!lineSelection) lineSelection = new Set(lines.map((_, i) => i));
+  const sel = document.getElementById('lineSelector');
+  sel.innerHTML = '<span style="color:var(--ink3);">Show:</span>' + lines.map((l, i) =>
+    `<label style="cursor:pointer;white-space:nowrap;"><input type="checkbox" data-i="${i}" ${lineSelection.has(i) ? 'checked' : ''}> ${l.line_name.replace(/\s*\(.*\)/, '')}</label>`).join('') +
+    ' <button class="dl-btn" data-act="all">All</button> <button class="dl-btn" data-act="det">Detected</button> <button class="dl-btn" data-act="none">None</button>';
+  sel.querySelectorAll('input').forEach(cb => cb.onchange = () => {
+    cb.checked ? lineSelection.add(+cb.dataset.i) : lineSelection.delete(+cb.dataset.i);
+    renderAllLines();
+  });
+  sel.querySelectorAll('button').forEach(b => b.onclick = () => {
+    const a = b.dataset.act;
+    lineSelection = new Set(lines.map((l, i) => i).filter(i => a === 'all' || (a === 'det' && lines[i].detected)));
+    renderAllLines();
+  });
+}
+
+function renderAllLines() {
+  const grid = document.getElementById('allLinesGrid');
+  const lines = (currentRecord && currentRecord.lines) || [];
+  buildLineSelector();
+  const esc = s => String(s).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+  grid.innerHTML = lines.map((l, i) => {
+    if (!lineSelection.has(i)) return '';
+    const v = l.verification ? l.verification.status : '—';
+    const head = `${esc(l.line_name)} — ${l.detected ? `F = ${Number(l.flux).toExponential(2)} ± ${Number(l.flux_err).toExponential(1)}` : 'not detected'} · ${v}`;
+    return `<div style="border:1px solid var(--rule);">
+      <div class="chart-header"><span class="chart-label" style="font-size:11px;">${head}</span>
+        <span class="chart-sub"><button class="dl-btn" onclick="downloadGraph('allFit${i}','png','${i}')">fit PNG</button>
+        <button class="dl-btn" onclick="downloadGraph('allLc${i}','png','${i}')">light curve PNG</button></span></div>
+      <div id="allFit${i}" style="height:240px;"></div>
+      <div id="allLc${i}" style="height:180px;"></div></div>`;
+  }).join('');
+  if (!lineSelection.size) grid.innerHTML = '<p style="font-size:12px;color:var(--ink3);">No lines selected.</p>';
+  lines.forEach((l, i) => {
+    if (!lineSelection.has(i)) return;
+    FitPlots.lineFit(`allFit${i}`, l);
+    const c = contextData;
+    if (c && c.matched && c.jd != null) {
+      FitPlots.lightCurve(`allLc${i}`, c.lines.find(x => x.line === l.line_name), c, l.detected ? l.flux : null, l.flux_err);
+    } else {
+      FitPlots.lightCurve(`allLc${i}`, null, { year: '—' });
+    }
+  });
+}
+
+async function downloadAllLines(format) {
+  const ids = [];
+  (currentRecord.lines || []).forEach((l, i) => { if (lineSelection.has(i)) ids.push([`allFit${i}`, i], [`allLc${i}`, i]); });
+  for (const [id, i] of ids) {
+    const el = document.getElementById(id);
+    if (el && (el.data || []).length) {
+      downloadGraph(id, format, i);
+      await new Promise(r => setTimeout(r, 400));   // browsers throttle bursts of downloads
+    }
+  }
+}
+
+function drawContextPlot(line) {
+  const c = contextData;
+  if (!c || !c.matched || c.jd == null) return;
+  const cl = c.lines.find(l => l.line === line.line_name);
+  FitPlots.lightCurve('lightcurvePlot', cl, c, line.detected ? line.flux : null, line.flux_err);
+}
+
 let fvarRows = [];
 function renderFvar(data) {
   const body = document.getElementById('fvarBody');

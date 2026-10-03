@@ -1,94 +1,87 @@
+import math
 import os
-import numpy as np
+from typing import Any, Dict
+
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from typing import Dict, Any
+import numpy as np
 
-def save_publication_plots(record: Dict[str, Any], output_dir: str = "outputs/plots"):
+STYLE = {
+    'font.family': 'DejaVu Sans', 'font.size': 8, 'axes.linewidth': 0.8,
+    'xtick.direction': 'in', 'ytick.direction': 'in', 'xtick.top': True, 'ytick.right': True,
+    'legend.frameon': False, 'legend.fontsize': 7,
+}
+
+
+def save_publication_plots(record: Dict[str, Any], output_dir: str = "outputs/plots") -> str:
     """
-    Generates two publication-quality PNG plots for each spectrum:
-    1. Emission line fit plot (Observed spectrum, continuum model, subtracted flux, Gaussian fit)
-    2. Residual plot (Subtracted flux - Gaussian fit)
+    One PNG per spectrum: the rest-frame spectrum with its power-law continuum, then,
+    for every line with a least-squares fit, the data ± 1σ, local continuum, Gaussian
+    component(s) and total model, with the normalised residuals below.
     """
     os.makedirs(output_dir, exist_ok=True)
     spec_name = os.path.splitext(record['spectrum_name'])[0]
-    
-    wl = record['wavelength']
-    flux = record['observed_flux']
-    cont = record['continuum_fit']
-    sub = record['subtracted_y']
-    
-    lines = record.get('lines', [])
-    best_line = None
-    for l in lines:
-        if l.get('detected'):
-            if l.get('rest_wavelength', 0) == 1216.0 or best_line is None:
-                best_line = l
-    if not best_line and lines:
-        best_line = lines[0]
+    lines = [l for l in record.get('lines', []) if l.get('plot')]
 
-    if best_line:
-        amp = best_line.get('amplitude', 0)
-        center = best_line.get('center', 0)
-        sigma = best_line.get('sigma', 5.0)
-        min_wl = best_line.get('min_wavelength', 0)
-        max_wl = best_line.get('max_wavelength', 0)
-    else:
-        amp, center, sigma, min_wl, max_wl = 0, 0, 5.0, 0, 0
-    
-    # 1. Emission Fit Plot
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True, gridspec_kw={'height_ratios': [3, 1]})
-    
-    # Restrict plot zoom around emission line region
-    zoom_mask = (wl >= center - 40) & (wl <= center + 40)
-    if not np.any(zoom_mask):
-        zoom_mask = np.ones_like(wl, dtype=bool)
-        
-    wl_z = wl[zoom_mask]
-    flux_z = flux[zoom_mask]
-    cont_z = cont[zoom_mask]
-    sub_z = sub[zoom_mask]
-    
-    # Gaussian fit evaluation
-    g_fit_z = amp * np.exp(-((wl_z - center) ** 2) / (2.0 * (sigma ** 2)))
-    
-    # Top Panel: Spectrum, Continuum, Subtracted & Gaussian Fit
-    ax1.plot(wl_z, flux_z, label='Observed Spectrum', color='blue', alpha=0.6, lw=1.2)
-    ax1.plot(wl_z, cont_z, label='Continuum Fit (Power-Law)', color='green', linestyle='--', lw=1.5)
-    ax1.plot(wl_z, sub_z, label='Continuum-Subtracted Flux', color='orange', alpha=0.7, lw=1.2)
-    ax1.plot(wl_z, g_fit_z, label=f'Gaussian Fit (b={center:.2f}Å, σ={sigma:.2f}Å)', color='red', lw=2.0)
-    
-    ax1.axvline(min_wl, color='gray', linestyle=':', label='Fit Window Boundaries')
-    ax1.axvline(max_wl, color='gray', linestyle=':')
-    
-    ax1.set_ylabel('Flux (erg s⁻¹ cm⁻² Å⁻¹)', fontsize=12)
-    ax1.set_title(f"AGN Emission Line Fit: {spec_name} (Lyα)", fontsize=14, fontweight='bold')
-    ax1.legend(loc='upper right', fontsize=10)
-    ax1.grid(True, alpha=0.3)
-    
-    if best_line:
-        info_str = f"χ²_red: {float(best_line.get('reduced_chi2', 0)):.2f}\nSNR: {float(best_line.get('snr', 0)):.2f}\nFlux: {float(best_line.get('flux', 0)):.3e}\nFWHM: {float(best_line.get('fwhm_kms', 0)):.1f} km/s"
-    else:
-        info_str = "No detected lines"
-    ax1.text(0.02, 0.95, info_str, transform=ax1.transAxes, fontsize=10,
-             verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
-             
-    # Bottom Panel: Residuals
-    res_z = sub_z - g_fit_z
-    ax2.plot(wl_z, res_z, color='purple', lw=1.2, label='Residuals')
-    ax2.axhline(0, color='black', linestyle='--', alpha=0.7)
-    ax2.axvline(min_wl, color='gray', linestyle=':')
-    ax2.axvline(max_wl, color='gray', linestyle=':')
-    
-    ax2.set_xlabel('Wavelength (Å)', fontsize=12)
-    ax2.set_ylabel('Residuals', fontsize=12)
-    ax2.legend(loc='upper right', fontsize=10)
-    ax2.grid(True, alpha=0.3)
-    
-    plt.tight_layout()
-    plot_path = os.path.join(output_dir, f"{spec_name}_fit.png")
-    plt.savefig(plot_path, dpi=300)
-    plt.close()
-    
+    U = 1e-13
+    unit = r'$F_\lambda$ ($10^{-13}$ erg s$^{-1}$ cm$^{-2}$ Å$^{-1}$)'
+    ncol = 3
+    nrow = math.ceil(len(lines) / ncol)
+    with plt.rc_context(STYLE):
+        fig = plt.figure(figsize=(11, 3.0 + 3.4 * nrow))
+        outer = fig.add_gridspec(1 + nrow, ncol, height_ratios=[1.0] + [1.25] * nrow,
+                                 hspace=0.55, wspace=0.28)
+
+        ax0 = fig.add_subplot(outer[0, :])
+        wl, fl, cont = record['wavelength'], record['observed_flux'], record['continuum_fit']
+        good = fl != 0
+        ax0.plot(wl[good], fl[good] / U, color='k', lw=0.6, label='Observed')
+        ax0.plot(wl, cont / U, color='0.5', lw=0.9, ls='--',
+                 label=f"Power law $F = A\\lambda^\\alpha$ (α = {record.get('spectral_index', float('nan')):.3f})")
+        for l in lines:
+            if l.get('detected'):
+                ax0.axvline(l['center'], color='0.6', lw=0.5, ls=':')
+        ax0.set_xlabel('Rest wavelength (Å)')
+        ax0.set_ylabel(unit)
+        ax0.set_ylim(0, np.nanpercentile(fl[good], 99.5) / U * 1.15)
+        ax0.set_title(spec_name, fontsize=9, loc='left')
+        ax0.legend(loc='upper right')
+
+        for i, l in enumerate(lines):
+            r, c = divmod(i, ncol)
+            inner = outer[1 + r, c].subgridspec(2, 1, height_ratios=[3, 1], hspace=0.05)
+            p = l['plot']
+            x = np.asarray(p['x'])
+            ax = fig.add_subplot(inner[0])
+            axr = fig.add_subplot(inner[1], sharex=ax)
+            ax.errorbar(x, np.asarray(p['y']) / U, yerr=p['yerr'] / U, fmt='o', ms=2, color='k',
+                        ecolor='0.6', elinewidth=0.6, lw=0)
+            ax.plot(x, np.asarray(p['continuum']) / U, color='0.5', lw=0.8, ls='--')
+            for k, comp in enumerate(p['components']):
+                ax.plot(x, (np.asarray(comp['y']) + np.asarray(p['continuum'])) / U,
+                        color='#c0504d' if k == 0 else '0.5', lw=0.8, ls='-' if k == 0 else ':')
+            ax.plot(x, np.asarray(p['model']) / U, color='#1f4e8c', lw=1.2)
+            for lo, hi in p.get('mask_ranges', []):
+                ax.axvspan(lo, hi, color='0.92', zorder=0)
+            status = l.get('verification', {}).get('status', '')
+            det = '' if l.get('detected') else ', not detected'
+            ax.set_title(f"{l['line_name']} — {status}{det}\n"
+                         f"F = {l['flux']:.2e} ± {l['flux_err']:.1e} erg s$^{{-1}}$ cm$^{{-2}}$, "
+                         f"σ = {l['sigma']:.2f} Å, χ²$_\\nu$ = {l['reduced_chi2']:.2f}",
+                         fontsize=7, loc='left')
+            plt.setp(ax.get_xticklabels(), visible=False)
+            axr.axhline(0, color='k', lw=0.6)
+            for lev in (-2, -1, 1, 2):
+                axr.axhline(lev, color='0.6', lw=0.5, ls='--' if abs(lev) == 1 else ':')
+            axr.plot(x, p['norm_resid'], 'o', ms=2, color='k')
+            axr.set_ylim(-4.5, 4.5)
+            axr.set_xlabel('Rest wavelength (Å)')
+            if c == 0:
+                ax.set_ylabel(r'$F_\lambda$ ($10^{-13}$)')
+                axr.set_ylabel(r'$\Delta/\sigma$')
+
+        plot_path = os.path.join(output_dir, f"{spec_name}_fit.png")
+        fig.savefig(plot_path, dpi=150, bbox_inches='tight')
+        plt.close(fig)
     return plot_path

@@ -1,0 +1,5 @@
+# Extra packages for the offline batch tools (run_variability.py, analysis.py).
+# Not needed by the web app; kept separate so the serverless bundle stays small.
+-r requirements.txt
+pandas>=2.0
+openpyxl>=3.1

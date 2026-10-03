@@ -440,7 +440,8 @@ print("  Saved fig4_fwhm_ew_analysis.png")
 print("Generating Figure 5: F_var per line per year …")
 
 from src.variability import load_fvar_table
-fv_tab = load_fvar_table()
+fv_rows = load_fvar_table()
+fv_tab = pd.DataFrame(fv_rows).astype({'fvar': float, 'fvar_err': float}) if fv_rows else None
 if fv_tab is None:
     print("  outputs/fvar_by_year.csv not found — run `python run_variability.py` first; skipping Fig. 5")
 else:

@@ -423,7 +423,7 @@ sup.cite {
     <div><strong>Observatory:</strong> International Ultraviolet Explorer (IUE)</div>
     <div><strong>Instrument:</strong> Short-Wavelength Prime (SWP) Camera</div>
     <div><strong>Target:</strong> 3C 273 (quasar, z = 0.158)</div>
-    <div><strong>Campaign:</strong> 215 archival spectra, SWP 1979–1996</div>
+    <div><strong>Campaign:</strong> 255 archival SWP spectra, 1978–1996</div>
     <div><strong>Spectral Range:</strong> 1150–1830 Å (rest frame)</div>
     <div><strong>Resolution:</strong> R ≈ 300 (low-dispersion mode)</div>
     <div><strong>Primary Line:</strong> Lyman Alpha (Ly\(\alpha\)) at \(\lambda_0 = 1216\) Å</div>
@@ -434,23 +434,19 @@ sup.cite {
   <!-- ─── Abstract ─────────────────────────────────────────────── -->
   <div class="abstract">
     <div class="abstract-label">Abstract</div>
-    We present an automated spectral fitting pipeline for measuring the Lyman-Alpha
-    (Ly\(\alpha\), \(\lambda_0 = 1216\) Å) emission line in 215 archival
-    International Ultraviolet Explorer (IUE) Short-Wavelength Prime (SWP)
-    low-dispersion spectra of the bright quasar 3C&nbsp;273.
-    The pipeline performs power-law continuum modeling via log–log linear regression,
-    followed by a two-stage emission-line decomposition:
-    (1) a discrete multi-dimensional grid search scoring ~5,600 Gaussian candidates
-    using a five-criterion composite objective (reduced \(\chi^2\), peak alignment,
-    bilateral wing residuals, and signal-to-noise ratio), and
-    (2) a profile-weighted least-squares amplitude refinement.
-    Physical observables — integrated flux \(F\), equivalent width \(W_\lambda\),
-    full-width at half maximum (FWHM), and signal-to-noise ratio (SNR) — are
-    computed by trapezoidal integration over the fitting window.
-    Campaign-level variability is quantified by the fractional variability amplitude
-    \(F_\text{var}\) and the flux ratio \(R_\text{max}\).
-    This document describes every computational step, the mathematical formulations
-    employed, and the rationale for key design choices.
+    We present an automated spectral fitting pipeline for the UV emission lines
+    (Ly\(\beta\)+O&nbsp;VI, Ly\(\alpha\), N&nbsp;V, O&nbsp;I+Si&nbsp;II, C&nbsp;II, Si&nbsp;IV+O&nbsp;IV], C&nbsp;IV,
+    He&nbsp;II, O&nbsp;III]) in 255 archival International Ultraviolet Explorer (IUE)
+    Short-Wavelength Prime (SWP) low-dispersion spectra of the quasar 3C&nbsp;273.
+    The continuum is a power law fitted by log–log least squares in five line-free windows.
+    Each line is located on a coarse grid and then fitted by weighted least squares as a
+    Gaussian plus a local linear continuum (overlapping lines jointly), with DER_SNR pixel
+    noise and covariance-based uncertainties. Every fit is verified with a
+    goodness-of-fit test corrected for pixel correlation, a runs test, a normality test and a
+    model-independent flux check. Line variability is quantified by the fractional variability
+    amplitude \(F_\text{var}\) computed per line and per calendar year (Vaughan et al. 2003).
+    This document describes every computational step and the literature it rests on.
+
   </div>
 
 
@@ -473,11 +469,10 @@ sup.cite {
     <p>
       The Short-Wavelength Prime (SWP) camera covers 1150–1975 Å in low-dispersion
       mode at a resolving power of \(R \approx 300\) (\(\Delta\lambda \approx 4\)–6 Å),
-      capturing the Lyman-Alpha emission line at its redshifted observed wavelength
-      near \(\lambda_\text{obs} \approx 1409\) Å. However, because this pipeline
-      works in the <em>rest frame</em> (spectra are not redshift-corrected in the
-      archive files we process), the line appears near \(\lambda \approx 1214\)–\(1218\) Å
-      in the extracted 1-D text files.<sup class="cite">[3]</sup>
+      capturing Lyman-Alpha at its redshifted observed wavelength
+      \(\lambda_\text{obs} \approx 1408\) Å. The campaign files have been divided by
+      \(1+z\), so this pipeline works in the <em>rest frame</em> and the line appears near
+      1213–1218 Å.
     </p>
 
     <p>
@@ -486,7 +481,7 @@ sup.cite {
       (b) variability analysis of the accretion disc,
       and (c) quantifying the relationship between continuum and emission-line
       fluxes on year-to-decade timescales.<sup class="cite">[4,5]</sup>
-      Automated, reproducible fitting across all 215 SWP spectra requires
+      Automated, reproducible fitting across all 255 SWP spectra requires
       a pipeline robust to varying S/N, continuum slope, and line asymmetry.
     </p>
   </div>
@@ -502,7 +497,7 @@ sup.cite {
     <p>
       The pipeline is implemented in Python and exposed through a Flask web application.
       Each spectrum file (two-column ASCII: wavelength in Å, flux in erg s⁻¹ cm⁻² Å⁻¹)
-      is processed independently. The seven principal stages are:
+      is processed independently. The eight principal stages are:
     </p>
 
     <div class="pipeline">
@@ -534,32 +529,40 @@ sup.cite {
       <div class="pipe-step">
         <div class="pipe-num">4</div>
         <div class="pipe-body">
-          <div class="pipe-title">Coarse Grid Search — Candidate Engine</div>
-          <div class="pipe-desc">Enumerate ~5,600 Gaussian candidates on a discrete \((\mu, \sigma, A)\) grid. Score each with a 5-criterion composite objective. Retain the top-20 candidates ranked by composite score.</div>
+          <div class="pipe-title">Seed Grid Search</div>
+          <div class="pipe-desc">Evaluate Gaussians on a coarse \((\mu, \sigma, W)\) grid inside the per-line ranges (§5) and rank them with the composite score (§6). The best-ranked candidate is only a starting point.</div>
         </div>
       </div>
 
       <div class="pipe-step">
         <div class="pipe-num">5</div>
         <div class="pipe-body">
-          <div class="pipe-title">Stage-B Amplitude Refinement</div>
-          <div class="pipe-desc">For each top candidate, re-estimate amplitude \(A\) via profile-weighted least squares, suppressing the contribution of the bright core where photon noise is highest.</div>
+          <div class="pipe-title">Weighted Least-Squares Refinement</div>
+          <div class="pipe-desc">Fit Gaussian(s) plus a local linear continuum to the observed flux with <code>scipy.optimize.least_squares</code> (§7). Overlapping lines (Ly\(\alpha\) + N&nbsp;V) are fitted together. Parameter uncertainties come from the covariance matrix.</div>
         </div>
       </div>
 
       <div class="pipe-step">
         <div class="pipe-num">6</div>
         <div class="pipe-body">
-          <div class="pipe-title">Physical Statistics Computation</div>
-          <div class="pipe-desc">Compute flux, flux error, SNR, EW, EW error, FWHM (Å &amp; km/s), reduced \(\chi^2\), and wing wavelengths for each candidate using the refined amplitude.</div>
+          <div class="pipe-title">Physical Statistics</div>
+          <div class="pipe-desc">Line flux \(\sqrt{2\pi}A\sigma\) with propagated error, equivalent width, FWHM (observed and instrument-corrected), significance and \(\chi^2_\text{red}\) (§8).</div>
         </div>
       </div>
 
       <div class="pipe-step">
         <div class="pipe-num">7</div>
         <div class="pipe-body">
-          <div class="pipe-title">Quality Evaluation &amp; Selection</div>
-          <div class="pipe-desc">Accept the highest-ranked candidate passing the quality thresholds (SNR ≥ 5, \(\chi^2_\text{red} &lt; 5\), peak offset &lt; 3 Å). Fall back to rank-1 if none pass.</div>
+          <div class="pipe-title">Detection &amp; Verification</div>
+          <div class="pipe-desc">A line is detected when \(F/\sigma_F \ge 3\). Every refined fit is then verified with goodness-of-fit, residual randomness, residual normality and a model-independent flux check (§9).</div>
+        </div>
+      </div>
+
+      <div class="pipe-step">
+        <div class="pipe-num">8</div>
+        <div class="pipe-body">
+          <div class="pipe-title">Variability</div>
+          <div class="pipe-desc">Detected fluxes are joined to observation dates and \(F_\text{var}\) is computed per line per calendar year (§10).</div>
         </div>
       </div>
 
@@ -575,18 +578,19 @@ sup.cite {
     <h2>Data Ingestion &amp; Pre-processing</h2>
 
     <p>
-      Each IUE SWP spectrum is stored as a two-column plain-text file extracted from the
-      MAST archive. Column 1 is the vacuum wavelength \(\lambda\) in Ångströms (Å);
-      column 2 is the calibrated flux density \(F(\lambda)\) in units of
-      \(10^{-14}\) erg s\(^{-1}\) cm\(^{-2}\) Å\(^{-1}\).
-      Lines beginning with <code>#</code> or containing non-numeric content are skipped.
+      Each IUE SWP low-dispersion spectrum is a two-column text file: wavelength \(\lambda\) (Å)
+      and flux density \(F_\lambda\) (erg s\(^{-1}\) cm\(^{-2}\) Å\(^{-1}\)). The 255 campaign
+      files are <strong>rest-frame</strong> spectra: they were divided by \(1+z\) with
+      \(z = 0.158\) for 3C&nbsp;273. Two facts confirm this: the pixel spacing is
+      \(1.448\) Å \(= 1.676/(1+z)\) Å, where 1.676 Å is the SWP MXLO sampling in the observed
+      frame, and geocoronal Ly\(\alpha\) airglow (1215.67 Å observed) appears at
+      \(1215.67/1.158 = 1049.8\) Å.
     </p>
 
     <p>
-      A typical SWP low-dispersion spectrum contains approximately 400–500 data points
-      spanning 1150–1830 Å, sampled at \(\Delta\lambda \approx 1.5\)–2 Å per pixel.
-      No rebinning or interpolation is applied; the pipeline operates on the native
-      pixel grid throughout.
+      Usable data run from 993.6 Å to ≈1832 Å (pixels with zero flux at the blue edge are
+      ignored). No rebinning is applied. Observation dates (JD) are taken from the SWP log
+      <code>jd.xlsx</code>; five spectra (251–255) have no recorded date.
     </p>
 
     <div class="callout">
@@ -618,10 +622,12 @@ sup.cite {
     </div>
 
     <p>
-      Ordinary least squares is applied to \((\ln\lambda_i, \ln F_i)\) pairs drawn
-      from two <em>line-free</em> continuum windows: 1150–1175 Å and 1300–1350 Å.
-      These windows bracket the Ly\(\alpha\) emission feature and are chosen to be
-      free of strong emission lines.<sup class="cite">[7]</sup>
+      Ordinary least squares is applied to \((\ln\lambda_i, \ln F_i)\) for all pixels in five
+      line-free rest-frame windows: 1100–1150, 1325–1370, 1425–1475, 1590–1620 and 1660–1700 Å.
+      These are the windows of the campaign tables; with them the spectral indices reproduce the
+      tabulated values for all 255 spectra (maximum difference \(5\times10^{-5}\)).
+      The 1325–1370 Å window contains the weak C&nbsp;II λ1335 blend, which is undetected in
+      most epochs.<sup class="cite">[7]</sup>
     </p>
 
     <h3>Least-Squares Solution</h3>
@@ -648,11 +654,29 @@ sup.cite {
       \[F_\text{sub}(\lambda) = F(\lambda) - \hat{F}_c(\lambda)\]
     </div>
 
+    <h3>Uncertainties</h3>
+
     <p>
-      For Spectrum 70, the fit yields \(\hat{A} \approx 1.4\times10^{-4}\),
-      \(\hat{\alpha} \approx -1.73\), confirming the standard steep UV spectral slope
-      of 3C&nbsp;273.
+      With residual variance \(s^2 = \sum (y_i - \hat\alpha x_i - \ln\hat A)^2/(n-2)\) and
+      \(S_{xx} = \sum (x_i - \bar x)^2\), the standard errors of the OLS estimators are<sup class="cite">[10]</sup>
     </p>
+
+    <div class="math-block">
+      <span class="math-label">(Eq. 3a)</span>
+      \[
+      \sigma_{\hat\alpha} = \sqrt{\frac{s^2}{S_{xx}}}, \qquad
+      \sigma_{\ln\hat A} = \sqrt{s^2\left(\frac{1}{n} + \frac{\bar x^2}{S_{xx}}\right)}, \qquad
+      \sigma_{\hat A} = \hat A\,\sigma_{\ln\hat A}.
+      \]
+    </div>
+
+    <p>
+      The campaign tables list \(\sigma_A\) values that are \(\sqrt{n}\) (≈12) times larger,
+      consistent with the \(1/n\) term being omitted; the pipeline reports Eq. 3a.
+      For Spectrum 70: \(\hat\alpha = -0.933 \pm 0.055\),
+      \(\hat A = (1.57 \pm 0.62)\times10^{-10}\).
+    </p>
+
   </div>
 
 
@@ -768,131 +792,116 @@ sup.cite {
   ══════════════════════════════════════════════════════════════ -->
   <div class="section">
     <span class="section-number">§ 6</span>
-    <h2>Composite Scoring Function</h2>
+    <h2>Composite Scoring Function (seed selection)</h2>
 
     <p>
-      Each candidate \((A, \mu, \sigma, W)\) receives a composite score
-      \(S \in [0, 1]\) as a weighted sum of five orthogonal quality criteria.
-      Higher \(S\) is better.
+      Each grid candidate \((\mu, \sigma, W)\), with its amplitude from linear least squares,
+      receives a composite score \(S \in [0, 1]\). The score only chooses the starting point of the
+      least-squares refinement (§7); the reported parameters and errors come from that fit.
+      Weights as implemented in <code>src/candidate_engine.py</code>:
     </p>
 
     <div class="math-block">
       <span class="math-label">(Eq. 6)</span>
       \[
-      S = w_{\chi^2}\,s_{\chi^2} + w_\text{peak}\,s_\text{peak}
-          + w_\text{left}\,s_\text{left} + w_\text{right}\,s_\text{right}
-          + w_\text{SNR}\,s_\text{SNR}
+      S = 0.35\,s_{\chi^2} + 0.20\,s_\text{peak} + 0.15\,s_\text{left} + 0.10\,s_\text{right}
+          + 0.12\,s_W + 0.08\,s_\sigma
       \]
     </div>
 
     <table class="score-table">
       <thead>
-        <tr>
-          <th>Criterion</th><th>Weight</th><th>Component Formula</th><th>Rationale</th>
-        </tr>
+        <tr><th>Criterion</th><th>Weight</th><th>Component Formula</th><th>Rationale</th></tr>
       </thead>
       <tbody>
         <tr>
-          <td>Reduced \(\chi^2\)</td>
-          <td class="w">0.35</td>
+          <td>Reduced \(\chi^2\)</td><td class="w">0.35</td>
           <td>\(s_{\chi^2} = \exp\!\bigl[-\tfrac{1}{2}\bigl(\tfrac{\max(\chi^2_\text{red}-1,\,0)}{1.5}\bigr)^2\bigr]\)</td>
           <td>Only a poor fit (\(\chi^2_\text{red} &gt; 1\)) is penalised; a low \(\chi^2_\text{red}\) is accepted</td>
         </tr>
         <tr>
-          <td>Peak alignment</td>
-          <td class="w">0.25</td>
-          <td>\(s_\text{peak} = 0.6\,e^{-(\mu-\lambda_\text{peak})^2/(2\cdot3^2)} + 0.4\,e^{-(\mu-1216)^2/(2\cdot5^2)}\)</td>
-          <td>Soft blend: 60% toward observed peak (σ=3 Å), 40% toward rest wavelength (σ=5 Å)</td>
+          <td>Peak alignment</td><td class="w">0.20</td>
+          <td>\(s_\text{peak} = 0.6\,e^{-(\mu-\lambda_\text{peak})^2/(2\cdot3^2)} + 0.4\,e^{-(\mu-\lambda_0)^2/(2\cdot5^2)}\)</td>
+          <td>Towards this spectrum's observed peak and the rest wavelength \(\lambda_0\)</td>
         </tr>
         <tr>
-          <td>Left-wing residuals</td>
-          <td class="w">0.20</td>
+          <td>Blue-side residuals</td><td class="w">0.15</td>
           <td>\(s_\text{left} = \exp\!\bigl[-\sqrt{\langle r_\text{left}^2\rangle}/\sigma_n\bigr]\)</td>
-          <td>RMS residual on the blue side of the line center, normalised by noise</td>
+          <td>RMS residual blueward of \(\mu\), in units of the noise</td>
         </tr>
         <tr>
-          <td>Right-wing residuals</td>
-          <td class="w">0.10</td>
+          <td>Red-side residuals</td><td class="w">0.10</td>
           <td>\(s_\text{right} = \exp\!\bigl[-\sqrt{\langle r_\text{right}^2\rangle}/\sigma_n\bigr]\)</td>
-          <td>As above for the red side; lower weight because red wing is cleaner in Ly\(\alpha\)</td>
+          <td>As above, redward of \(\mu\)</td>
         </tr>
         <tr>
-          <td>SNR</td>
-          <td class="w">0.10</td>
-          <td>\(s_\text{SNR} = \exp\!\bigl[-\tfrac{1}{2}\bigl(\tfrac{A/\sigma_n - \text{SNR}_\text{target}}{0.5\,\text{SNR}_\text{target}}\bigr)^2\bigr]\)</td>
-          <td>Soft prior favouring candidates near the expected SNR target (≈7); prevents preference for noise spikes</td>
+          <td>Window prior</td><td class="w">0.12</td>
+          <td>\(s_W = \exp[-\tfrac12((W - W_0)/\sigma_W)^2]\)</td>
+          <td>Soft preference inside the configured window range (Ly\(\alpha\): \(W_0 = 18\), \(\sigma_W = 2.5\) Å)</td>
+        </tr>
+        <tr>
+          <td>Width prior</td><td class="w">0.08</td>
+          <td>\(s_\sigma = \exp[-\tfrac12((\sigma - \sigma_0)/\sigma_\sigma)^2]\)</td>
+          <td>Soft preference near the campaign mean (Ly\(\alpha\): \(\sigma_0 = 6.3\), \(\sigma_\sigma = 1.5\) Å)</td>
         </tr>
       </tbody>
     </table>
 
     <p>
-      There is no penalty for a low \(\chi^2_\text{red}\): with the coarse IUE sampling,
-      values well below 1 occur for legitimate fits (approved fits reach 0.05).
-      The grid score only seeds the final weighted least-squares fit, whose
-      \(\chi^2_\text{red}\) uses an independent DER_SNR pixel-noise estimate (Stoehr et al. 2008).
-    </p>
-
-    <p>
-      An additional diagnostic shape metric \(J_\text{shape}\) is computed:
-    </p>
-
-    <div class="math-block">
-      <span class="math-label">(Eq. 7)</span>
-      \[
-      J_\text{shape} = \chi^2_\text{core} + 1.5\,\chi^2_\text{wing} + R_\text{profile}
-      \]
-    </div>
-
-    <p>
-      where \(\chi^2_\text{core}\) and \(\chi^2_\text{wing}\) are mean-normalised
-      \(\chi^2\) values within and beyond \(|\lambda - \mu| \leq \sigma\),
-      and \(R_\text{profile}\) is the mean squared difference between the
-      normalised observed profile and the normalised model profile.
-      \(J_\text{shape}\) is returned for diagnostics but does not enter the
-      composite score directly.
+      There is no penalty for a low \(\chi^2_\text{red}\): with the coarse IUE sampling, values
+      well below 1 occur for legitimate fits (approved fits reach 0.05).
     </p>
   </div>
 
 
   <!-- ══════════════════════════════════════════════════════════
-       §7  Stage-B Amplitude Refinement
+       §7  Stage B: Weighted Least-Squares Refinement
   ══════════════════════════════════════════════════════════════ -->
   <div class="section">
     <span class="section-number">§ 7</span>
-    <h2>Stage B: Profile-Weighted Amplitude Estimation</h2>
+    <h2>Stage B: Weighted Least-Squares Refinement</h2>
 
     <p>
-      After the coarse grid selects the top-20 candidate \((\mu, \sigma)\) pairs,
-      the amplitude \(A\) is re-estimated analytically via a <em>profile-weighted</em>
-      least-squares formulation. The motivation: a simple least-squares solution
-      \(A = \langle F_\text{sub} / G \rangle\) is dominated by the bright core of the
-      emission line where noise is largest relative to the sensitivity of the fit
-      to \(A\).<sup class="cite">[10]</sup>
-    </p>
-
-    <p>
-      Define the unnormalised Gaussian template:
-      \(g_i = \exp[-(\lambda_i - \mu)^2 / (2\sigma^2)]\).
-      A suppression weight is applied:
-      \(w_i = 1 - g_i\), which is zero at the peak (\(g_i = 1\))
-      and approaches one far in the wings (\(g_i \to 0\)).
-      The weighted least-squares amplitude is:
+      The grid candidate seeds a continuous fit of the observed flux over a per-line window
+      (e.g. 1180–1265 Å for Ly\(\alpha\) + N&nbsp;V, 998–1085 Å for Ly\(\beta\) + O&nbsp;VI,
+      1510–1590 Å for C&nbsp;IV). The model contains the line, any overlapping companion line
+      and a local linear continuum, all fitted simultaneously:
     </p>
 
     <div class="math-block">
       <span class="math-label">(Eq. 8)</span>
       \[
-      \hat{A} = \frac{\displaystyle\sum_{i \in W} w_i\, g_i\, F_{\text{sub},i}}
-                     {\displaystyle\sum_{i \in W} w_i\, g_i^2}
+      M(\lambda) = \sum_{k} A_k \exp\!\left[-\frac{(\lambda-\mu_k)^2}{2\sigma_k^2}\right]
+                  + c_0 + c_1(\lambda - \bar\lambda),
+      \qquad
+      \chi^2 = \sum_i \left(\frac{F_i - M(\lambda_i)}{\sigma_\text{pix}}\right)^2 .
       \]
     </div>
 
     <p>
-      where the sum runs over all pixels \(i\) inside the fitting window \(W = [\mu - W/2,\; \mu + W/2]\).
-      If the denominator vanishes or the resulting \(\hat{A} \leq 0\)
-      (unphysical due to noise), the algorithm falls back to the grid-search amplitude.
-      This estimator gives more weight to the wing region, which carries the sharpest
-      constraints on the Gaussian profile shape.
+      \(\chi^2\) is minimised with the trust-region reflective algorithm
+      (<code>scipy.optimize.least_squares</code>)<sup class="cite">[8]</sup> under bounds
+      \(A_k \ge 0\), \(|\mu_k - \lambda_{0,k}| \le 8\) Å and
+      \(\sigma_\text{min} \le \sigma_k \le \sigma_\text{max}\) (§5). Fluxes are fitted in units of
+      \(10^{-13}\) so all parameters have comparable scale. Masked ranges (geocoronal airglow at
+      1043–1056 Å) are excluded. Fitting the continuum together with the line avoids the bias of
+      subtracting a baseline that itself contains line flux.
+    </p>
+
+    <h3>7.1 Pixel noise</h3>
+    <p>
+      \(\sigma_\text{pix}\) is the DER_SNR estimate<sup class="cite">[16]</sup>
+      \(\sigma = 1.482602/\sqrt{6}\;\text{median}\,|2F_i - F_{i-2} - F_{i+2}|\),
+      evaluated on the fit residuals \(F_i - M(\lambda_i)\) so that the curvature of the line
+      itself does not inflate it. Because the weights are uniform, the best-fit parameters do not
+      depend on \(\sigma_\text{pix}\); it sets \(\chi^2\) and the uncertainties.
+    </p>
+
+    <h3>7.2 Uncertainties</h3>
+    <p>
+      The covariance matrix is \(C = (J^\mathsf{T}J)^{-1}\,\max(1, \chi^2_\text{red})\), where
+      \(J\) is the Jacobian of the normalised residuals; scaling by \(\chi^2_\text{red}\) when it
+      exceeds 1 inflates errors for imperfect models.<sup class="cite">[10]</sup>
     </p>
   </div>
 
@@ -904,176 +913,60 @@ sup.cite {
     <span class="section-number">§ 8</span>
     <h2>Physical Statistics Computation</h2>
 
-    <p>
-      Once the best-fit parameters \((\hat{A}, \hat{\mu}, \hat{\sigma})\) are determined
-      and the fitting window \([\lambda_\text{min},\, \lambda_\text{max}]\) is set by
-      the wing window \(W\):
-    </p>
-
+    <h3>8.1 Integrated flux and its error</h3>
     <div class="math-block">
       <span class="math-label">(Eq. 9)</span>
       \[
-      \lambda_\text{min} = \hat{\mu} - W/2, \qquad \lambda_\text{max} = \hat{\mu} + W/2
+      F = \sqrt{2\pi}\,A\,\sigma, \qquad
+      \sigma_F^2 = 2\pi\left(\sigma^2 C_{AA} + A^2 C_{\sigma\sigma} + 2A\sigma\,C_{A\sigma}\right)
       \]
     </div>
-
     <p>
-      all statistics are evaluated over the \(n\) pixels in
-      \(\mathcal{W} = \{\lambda_i : \lambda_\text{min} \leq \lambda_i \leq \lambda_\text{max}\}\).
+      This is the full Gaussian flux, independent of any window. For comparison with the campaign
+      tables, <code>flux_window</code> also reports the Gaussian integrated only over
+      \([\mu - W/2, \mu + W/2]\) (the convention of the reference tool), which captures
+      \(\operatorname{erf}\!\left(W/(2\sqrt2\,\sigma)\right)\) of the line, i.e. 72–92 % for the
+      approved Ly\(\alpha\) windows.
     </p>
 
-    <div class="callout">
-      <strong>Wing-window convention:</strong> \(W\) is the <em>full</em> window width.
-      The half-width is \(W/2\). This follows the convention of the reference
-      Angular spectral analysis tool and is verified against approved fits
-      (e.g., Spectrum 15: \(\hat{\mu}=1215\) Å, \(W=20\) Å, \(\lambda_\text{min}=1205\) Å,
-      \(\lambda_\text{max}=1225\) Å).
-    </div>
-
-    <h3>8.1 Integrated Flux</h3>
-
-    <p>
-      The emission-line flux is computed by trapezoidal integration of the
-      <em>fitted Gaussian model</em> over the window:
-    </p>
-
+    <h3>8.2 Significance</h3>
     <div class="math-block">
       <span class="math-label">(Eq. 10)</span>
-      \[
-      F = \int_{\lambda_\text{min}}^{\lambda_\text{max}}
-          G(\lambda;\,\hat{A}, \hat{\mu}, \hat{\sigma})\; d\lambda
-        \approx \sum_{i=1}^{n-1} \frac{G_i + G_{i+1}}{2}\,(\lambda_{i+1} - \lambda_i)
-      \]
+      \[ \text{SNR} = F / \sigma_F \]
     </div>
+    <p>A line is <em>detected</em> when \(F/\sigma_F \ge 3\).</p>
 
-    <p>
-      Units: erg s\(^{-1}\) cm\(^{-2}\).
-      For a perfect Gaussian sampled finely, this converges to
-      \(F = \hat{A}\,\hat{\sigma}\sqrt{2\pi}\).
-    </p>
-
-    <h3>8.2 Flux Error</h3>
-
-    <p>
-      The flux uncertainty is estimated from the noise level and the window size,
-      following the formulation of the reference Angular tool:
-    </p>
-
+    <h3>8.3 Equivalent width</h3>
     <div class="math-block">
       <span class="math-label">(Eq. 11)</span>
-      \[
-      \sigma_F = \sqrt{n}\;\hat{\sigma}_\text{noise}\;\delta_\text{res}\;\bar{F}_c
-      \]
+      \[ W_\lambda = \frac{F}{F_c(\mu)}, \qquad \sigma_{W} = \frac{\sigma_F}{F_c(\mu)} \]
     </div>
+    <p>where \(F_c(\mu) = c_0 + c_1(\mu - \bar\lambda)\) is the fitted local continuum at the line
+    centre.<sup class="cite">[11]</sup></p>
 
-    <p>
-      where \(n\) is the number of pixels in the window, \(\hat{\sigma}_\text{noise}\)
-      is the normalised noise estimate from Eq.&nbsp;5, \(\delta_\text{res} = 1.676\)
-      is the IUE SWP low-dispersion resolution factor (pixels per resolution element),
-      and \(\bar{F}_c = \langle F_c \rangle\) is the mean continuum level.
-    </p>
-
-    <h3>8.3 Signal-to-Noise Ratio</h3>
-
-    <p>
-      The SNR is defined as the ratio of integrated flux to flux error:
-    </p>
-
+    <h3>8.4 FWHM</h3>
     <div class="math-block">
       <span class="math-label">(Eq. 12)</span>
       \[
-      \text{SNR} = \frac{F}{\sigma_F}
+      \text{FWHM} = 2\sqrt{2\ln 2}\,\sigma, \qquad
+      \text{FWHM}_v = \frac{\text{FWHM}}{\mu}\,c, \qquad
+      \text{FWHM}_\text{int} = \sqrt{\text{FWHM}^2 - \text{FWHM}_\text{inst}^2}
       \]
     </div>
-
     <p>
-      This is a <em>detection} significance</em>, not a per-pixel S/N.
-      The SNR for the Ly\(\alpha\) emission in Spectrum 70 is approximately 9.6
-      (reference: 8.94).
+      with \(\text{FWHM}_\text{inst} = 6/(1+z) = 5.18\) Å (IUE SWP low dispersion,
+      rest frame).<sup class="cite">[14,21]</sup> Both observed and intrinsic widths are reported.
     </p>
 
-    <h3>8.4 Equivalent Width</h3>
-
-    <p>
-      The rest-frame equivalent width (EW) measures the width of a hypothetical
-      rectangular band in the continuum that would contain the same flux as the
-      emission line:<sup class="cite">[11]</sup>
-    </p>
-
+    <h3>8.5 Reduced chi-squared</h3>
     <div class="math-block">
       <span class="math-label">(Eq. 13)</span>
-      \[
-      W_\lambda = \int_{\lambda_\text{min}}^{\lambda_\text{max}}
-                  \frac{F_\text{sub}(\lambda)}{F_c(\lambda)}\; d\lambda
-      \approx \sum_{i=1}^{n-1} \frac{1}{2}\left(\frac{F_{\text{sub},i}}{F_{c,i}}
-              + \frac{F_{\text{sub},i+1}}{F_{c,i+1}}\right)(\lambda_{i+1} - \lambda_i)
-      \]
+      \[ \chi^2_\text{red} = \chi^2 / \nu, \qquad \nu = n_\text{pix} - n_\text{par} \]
     </div>
-
     <p>
-      The EW error propagates the fractional flux error:
-    </p>
-
-    <div class="math-block">
-      <span class="math-label">(Eq. 14)</span>
-      \[
-      \sigma_{W_\lambda} = |W_\lambda| \cdot \frac{\sigma_F}{F}
-      \]
-    </div>
-
-    <h3>8.5 Full-Width at Half Maximum</h3>
-
-    <p>
-      The FWHM of a Gaussian with standard deviation \(\hat{\sigma}\) is:
-    </p>
-
-    <div class="math-block">
-      <span class="math-label">(Eq. 15)</span>
-      \[
-      \text{FWHM}_\lambda = 2\sqrt{2\ln 2}\;\hat{\sigma} \approx 2.3548\;\hat{\sigma} \quad[\text{Å}]
-      \]
-    </div>
-
-    <p>
-      Converting to velocity width via the Doppler formula:
-    </p>
-
-    <div class="math-block">
-      <span class="math-label">(Eq. 16)</span>
-      \[
-      \text{FWHM}_{v} = \frac{\text{FWHM}_\lambda}{\hat{\mu}}\, c \quad [\text{km s}^{-1}]
-      \]
-    </div>
-
-    <p>
-      where \(c = 299{,}792.458\) km s\(^{-1}\).
-      For Spectrum 70: \(\hat{\sigma} = 6.0\) Å gives
-      \(\text{FWHM}_\lambda = 14.13\) Å and
-      \(\text{FWHM}_v \approx 3{,}487\) km s\(^{-1}\) (reference: 3,487.6 km s\(^{-1}\)).
-    </p>
-
-    <h3>8.6 Reduced Chi-Squared</h3>
-
-    <p>
-      Within the fitting window, the reduced chi-squared measures goodness of fit:
-    </p>
-
-    <div class="math-block">
-      <span class="math-label">(Eq. 17)</span>
-      \[
-      \chi^2_\text{red} = \frac{1}{\nu}\sum_{i \in \mathcal{W}}
-                          \left(\frac{F_{\text{sub},i} - G(\lambda_i;\hat{A},\hat{\mu},\hat{\sigma})}
-                                {\sigma_n}\right)^2,
-      \quad \nu = n - 3
-      \]
-    </div>
-
-    <p>
-      where \(\nu = n - 3\) is the number of degrees of freedom (three free parameters:
-      \(A, \mu, \sigma\)) and \(\sigma_n\) is the absolute noise level from Eq.&nbsp;5.
-      Values near 1.0 indicate a statistically good fit; \(\chi^2_\text{red} \gg 1\)
-      implies systematic residuals (poor fit) and \(\chi^2_\text{red} \ll 1\)
-      implies noise overestimation or overfitting.
+      \(n_\text{par}\) counts every fitted parameter (3 per Gaussian + 2 continuum terms).
+      \(\chi^2_\text{red} \approx 1\) means the residuals match the pixel noise; a low value is
+      not penalised. Its formal significance is tested in §9.
     </p>
   </div>
 
@@ -1117,10 +1010,65 @@ sup.cite {
 
     <p>
       A low \(\chi^2_\text{red}\) is not penalised. Detection uses the flux significance
-      \(F/\sigma_F\) of the least-squares fit, where \(\sigma_F\) is propagated from the
-      parameter covariance including the \(A\)–\(\sigma\) correlation:
-      \(\sigma_F^2 = 2\pi(\sigma^2\sigma_A^2 + A^2\sigma_\sigma^2 + 2A\sigma\,\mathrm{cov}_{A\sigma})\).
+      \(F/\sigma_F\) of the least-squares fit (Eq. 9).
     </p>
+
+    <h3>9.1 Verification step</h3>
+    <p>
+      Every refined fit is checked with standard statistical tests. A fit is <strong>VERIFIED</strong>
+      when all required checks pass; otherwise it is flagged <strong>CHECK</strong> together with the
+      failed tests. A failed check does not discard the measurement; it states that a single Gaussian
+      does not fully describe that profile.
+    </p>
+
+    <table class="data-table">
+      <thead><tr><th>Check</th><th>Statistic</th><th>Pass criterion</th><th>Reference</th></tr></thead>
+      <tbody>
+        <tr><td>Goodness of fit</td>
+            <td>\(p = P(\chi^2_{\nu'} \ge \chi^2/c)\), \(\nu' = \nu/c\), \(c = (1+\rho^2)/(1-\rho^2)\)</td>
+            <td>\(p \ge 0.01\)</td><td>[10, 20]</td></tr>
+        <tr><td>Residual randomness</td>
+            <td>Wald–Wolfowitz runs test on the signs of \((F-M)/\sigma\)</td>
+            <td>\(p \ge 0.01\)</td><td>[18]</td></tr>
+        <tr><td>Residual normality</td>
+            <td>Shapiro–Wilk test of \((F-M)/\sigma\)</td>
+            <td>\(p \ge 0.01\)</td><td>[19]</td></tr>
+        <tr><td>Model-independent flux</td>
+            <td>\(z = (F_\text{direct} - F_\text{Gauss})/(\sigma_\text{pix}\,\Delta\lambda\sqrt{n})\) over \(\mu \pm 3\sigma\)</td>
+            <td>\(|z| \le 2\)</td><td>direct integration</td></tr>
+        <tr><td>Detection</td><td>\(F/\sigma_F\)</td><td>\(\ge 3\)</td><td>—</td></tr>
+        <tr><td>Parameter bounds</td><td>\(\sigma\), \(\mu\) not at configured limits</td><td>inside</td><td>§5</td></tr>
+        <tr><td>Resolved (info)</td><td>FWHM vs. instrumental FWHM</td><td>FWHM &gt; 5.18 Å</td><td>[14]</td></tr>
+      </tbody>
+    </table>
+
+    <p>
+      \(\rho\) is the lag-1 autocorrelation of the pixel noise, measured per spectrum in the
+      line-free continuum windows (typically \(\rho \approx 0.5\), because the MXLO spectra are
+      resampled). For AR(1) noise the variance of \(\chi^2\) is inflated by \(c\); comparing
+      \(\chi^2/c\) with \(\nu/c\) degrees of freedom is Satterthwaite's moment-matching
+      approximation.<sup class="cite">[20]</sup> \(F_\text{direct}\) is the trapezoidal integral of
+      data minus fitted continuum and companion lines.
+    </p>
+
+    <div class="callout">
+      <strong>What the checks show.</strong> Over all 1,057 detected line fits in the 255 spectra,
+      86 % of Si&nbsp;IV + O&nbsp;IV] fits verify, while a single Gaussian fails the goodness-of-fit test for
+      65 % of the Ly\(\alpha\) and N&nbsp;V fits, and 37 % of C&nbsp;IV fits show systematic residual
+      structure (runs test). This is expected: quasar broad emission lines are generally not Gaussian, and C&nbsp;IV
+      is often asymmetric.<sup class="cite">[21]</sup> Fluxes remain the best-fit estimates with
+      their stated errors; the model-independent flux check passes for 98.8 % of them.
+    </div>
+
+    <h3>9.2 Diagnostic graphs</h3>
+    <ol>
+      <li><strong>Rest-frame spectrum</strong>: observed flux, power-law continuum, shaded continuum windows, fitted line centres.</li>
+      <li><strong>Line fit</strong>: data with ±1σ pixel-noise error bars, local continuum, each Gaussian component and the total model; masked pixels shaded.</li>
+      <li><strong>Normalised residuals</strong> \((F - M)/\sigma\) with ±1σ and ±2σ reference lines.</li>
+      <li><strong>Residual distribution</strong>: histogram of normalised residuals with the standard normal N(0,1).</li>
+    </ol>
+    <p>The same panels are written for every line to a publication figure (PNG) per spectrum.</p>
+
   </div>
 
 
@@ -1132,9 +1080,9 @@ sup.cite {
     <h2>Campaign Variability Statistics</h2>
 
     <p>
-      Over 215 IUE SWP epochs spanning 1979–1996, the Ly\(\alpha\) flux of 3C&nbsp;273
+      Over 250 dated IUE SWP epochs spanning 1978–1996, the emission-line fluxes of 3C&nbsp;273
       varies on timescales of weeks to years, driven by changes in the accretion rate
-      and BLR response. Two standard variability metrics are computed:<sup class="cite">[12,13]</sup>
+      and BLR response. Two standard variability metrics are computed:<sup class="cite">[3,12,13]</sup>
     </p>
 
     <h3>10.1 Fractional Variability Amplitude \(F_\text{var}\)</h3>
@@ -1206,42 +1154,25 @@ sup.cite {
     <span class="section-number">§ 11</span>
     <h2>Worked Example: Spectrum 70 (SWP 35476)</h2>
 
-    <p>
-      Spectrum 70 (IUE image SWP&nbsp;35476, file
-      <code>70dcdr2dswp35476mxlo.txt</code>) is used as the primary
-      validation case. The table below compares the pipeline output
-      to the reference values from human-approved measurements:
-    </p>
+    <p>Ly\(\alpha\) in <code>70dcdr2dswp35476mxlo.txt</code>, fitted jointly with N&nbsp;V over 1180–1265 Å (51 degrees of freedom):</p>
 
     <table class="data-table">
-      <thead>
-        <tr>
-          <th>Quantity</th><th>Pipeline</th><th>Reference</th><th>Units</th><th>Status</th>
-        </tr>
-      </thead>
+      <thead><tr><th>Quantity</th><th>Value</th><th>Units</th></tr></thead>
       <tbody>
-        <tr><td>Line Center \(\hat{\mu}\)</td><td class="val">1214.73</td><td>1214.50</td><td>Å</td><td>✓ &lt;0.25 Å offset</td></tr>
-        <tr><td>FWHM (Å)</td><td class="val">14.13</td><td>14.13</td><td>Å</td><td>✓ Exact</td></tr>
-        <tr><td>FWHM (km/s)</td><td class="val">3,487</td><td>3,487.6</td><td>km s⁻¹</td><td>✓ &lt;0.1% error</td></tr>
-        <tr><td>Min \(\lambda\)</td><td class="val">1207.73</td><td>1207.00</td><td>Å</td><td>✓ &lt;0.8 Å offset</td></tr>
-        <tr><td>Max \(\lambda\)</td><td class="val">1221.73</td><td>1222.00</td><td>Å</td><td>✓ &lt;0.3 Å offset</td></tr>
-        <tr><td>Wing Window \(W\)</td><td class="val">14</td><td>15</td><td>Å</td><td>△ Grid search limitation</td></tr>
-        <tr><td>Flux \(F\)</td><td class="val">7.76 × 10⁻¹²</td><td>5.25 × 10⁻¹²</td><td>erg s⁻¹ cm⁻²</td><td>△ ~48% high</td></tr>
-        <tr><td>Flux Error \(\sigma_F\)</td><td class="val">8.11 × 10⁻¹³</td><td>5.87 × 10⁻¹³</td><td>erg s⁻¹ cm⁻²</td><td>△ Propagated from flux</td></tr>
-        <tr><td>SNR</td><td class="val">9.56</td><td>8.94</td><td>—</td><td>✓ &lt;7% error</td></tr>
-        <tr><td>EW \(W_\lambda\)</td><td class="val">37.29</td><td>40.49</td><td>Å</td><td>✓ &lt;8% error</td></tr>
-        <tr><td>EW Error</td><td class="val">3.90</td><td>4.53</td><td>Å</td><td>✓ Within 14%</td></tr>
-        <tr><td>Reduced \(\chi^2\)</td><td class="val">0.052</td><td>0.18</td><td>—</td><td>△ Under-estimated noise</td></tr>
+        <tr><td>Continuum \(\alpha\), \(A\)</td><td class="val">−0.933 ± 0.055, (1.57 ± 0.62)×10⁻¹⁰</td><td>—</td></tr>
+        <tr><td>Line centre \(\mu\)</td><td class="val">1214.77 ± 0.20</td><td>Å</td></tr>
+        <tr><td>\(\sigma\)</td><td class="val">5.97 ± 0.23</td><td>Å</td></tr>
+        <tr><td>FWHM (observed / intrinsic)</td><td class="val">3470 / 3226</td><td>km s⁻¹</td></tr>
+        <tr><td>Flux \(F = \sqrt{2\pi}A\sigma\)</td><td class="val">(9.25 ± 0.33)×10⁻¹²</td><td>erg s⁻¹ cm⁻²</td></tr>
+        <tr><td>Window flux (W = 18 Å)</td><td class="val">5.56×10⁻¹²</td><td>erg s⁻¹ cm⁻²</td></tr>
+        <tr><td>Significance \(F/\sigma_F\)</td><td class="val">27.7</td><td>—</td></tr>
+        <tr><td>EW</td><td class="val">32.6 ± 1.2</td><td>Å</td></tr>
+        <tr><td>\(\chi^2_\text{red}\)</td><td class="val">0.96 (p = 0.53, ρ = 0.49)</td><td>—</td></tr>
+        <tr><td>Runs test / Shapiro–Wilk</td><td class="val">p = 0.15 / p = 0.81</td><td>—</td></tr>
+        <tr><td>Direct vs. Gaussian flux (μ ± 3σ)</td><td class="val">9.33 vs 9.22 ×10⁻¹² (z = 0.48)</td><td>—</td></tr>
+        <tr><td>Verification</td><td class="val">VERIFIED</td><td>—</td></tr>
       </tbody>
     </table>
-
-    <p class="caption">
-      <span class="fig-label">Table 1.</span>
-      Comparison of pipeline output vs. human-approved reference measurements for Spectrum 70 (Ly\(\alpha\)).
-      Residual discrepancies in flux and \(\chi^2_\text{red}\) are attributed to differences in
-      amplitude estimation method and noise normalisation; wing window discrepancy (14 vs. 15 Å)
-      results from the current grid using only the first entry in the wing grid.
-    </p>
   </div>
 
 
@@ -1264,11 +1195,11 @@ sup.cite {
     </p>
 
     <p>
-      The low-dispersion resolution factor used in flux error estimation is
-      \(\delta_\text{res} = 1.676\) pixels per resolution element, derived from
-      the SWP camera's known dispersion and the digital sampling interval.
-      This factor appears explicitly in the reference Angular spectral analysis tool
-      and is adopted directly in Eq.&nbsp;11.
+      Two numbers matter for this pipeline. (i) Resolution: ≈6 Å FWHM in the observed frame,
+      5.18 Å in these rest-frame spectra; it is the lower limit for line widths and is removed in
+      quadrature from the reported intrinsic FWHM. (ii) Sampling: 1.676 Å per MXLO pixel observed,
+      1.448 Å rest frame. Neighbouring pixels are correlated (lag-1 \(\rho \approx 0.5\)), which is
+      accounted for in the goodness-of-fit test (§9.1).<sup class="cite">[14]</sup>
     </p>
 
     <p>
@@ -1312,6 +1243,26 @@ sup.cite {
           <td>Flux, EW, SNR, FWHM, \(\chi^2_\text{red}\)</td>
         </tr>
         <tr>
+          <td><code>src/refine.py</code></td>
+          <td>Weighted least-squares refinement, DER_SNR noise, verification checks (§7, §9.1)</td>
+          <td>Parameters ± errors, plot arrays, verification</td>
+        </tr>
+        <tr>
+          <td><code>src/variability.py</code></td>
+          <td>\(F_\text{var}\) per line per year (§10)</td>
+          <td>Per-year table with piecewise errors</td>
+        </tr>
+        <tr>
+          <td><code>run_variability.py</code></td>
+          <td>Batch fit of all spectra + JD join</td>
+          <td><code>outputs/*.csv</code>, <code>variability_results.xlsx</code></td>
+        </tr>
+        <tr>
+          <td><code>static/js/fitplots.js</code></td>
+          <td>Shared browser graphs (§9.2)</td>
+          <td>Graphs 1–4, verification table</td>
+        </tr>
+        <tr>
           <td><code>src/quality.py</code></td>
           <td>Quality evaluation (§9)</td>
           <td>Quality score, acceptance flag, status message</td>
@@ -1334,11 +1285,11 @@ sup.cite {
         <tr>
           <td><code>src/plotting.py</code></td>
           <td>Publication-quality diagnostic plots</td>
-          <td>4-panel PNG figure</td>
+          <td>PNG: spectrum + fit and residual panels for every line</td>
         </tr>
         <tr>
           <td><code>config/Lya.yaml</code></td>
-          <td>Ly\(\alpha\) line parameters and grid definitions</td>
+          <td>Per-line ranges (σ, wing window, centre), refine window, masks; one YAML per line</td>
           <td>Search bounds, quality thresholds, priors</td>
         </tr>
         <tr>
@@ -1370,23 +1321,20 @@ sup.cite {
 
       <div class="ref-item">
         <span class="ref-key">[1]</span>
-        <span>Ulrich, M.-H., et al. (1980). "A coordinated study of 3C 273 in the ultraviolet."
-        <em>Monthly Notices of the Royal Astronomical Society</em>, 192, 561–575.</span>
+        <span>Ulrich, M.-H., et al. (1980). "Detailed ultraviolet observations of the quasar 3C 273 with IUE."
+        <em>Monthly Notices of the Royal Astronomical Society</em>, 192, 561–580.</span>
       </div>
 
       <div class="ref-item">
         <span class="ref-key">[2]</span>
         <span>Türler, M., Courvoisier, T. J.-L., &amp; Paltani, S. (1999).
-        "Modelling the submillimetre-to-radio variability of 3C 273."
+        "Modelling the submillimetre-to-radio flaring behaviour of 3C 273."
         <em>Astronomy &amp; Astrophysics</em>, 349, 45–54.</span>
       </div>
 
       <div class="ref-item">
         <span class="ref-key">[3]</span>
-        <span>Rodriguez-Pascual, P. M., et al. (1997).
-        "Steps Toward Determination of the Size and Structure of the Broad-Line Region in Active Galactic Nuclei.
-        XI. Intensive Monitoring of NGC 4151."
-        <em>Astrophysical Journal Supplement Series</em>, 110, 9–20.</span>
+        <span>Rodríguez-Pascual, P. M., et al. (1997). "Steps toward determination of the size and structure of the broad-line region in active galactic nuclei. IX. Ultraviolet observations of Fairall 9." <em>Astrophysical Journal Supplement Series</em>, 110, 9–20. (Introduces the fractional rms variability amplitude F<sub>var</sub>.)</span>
       </div>
 
       <div class="ref-item">
@@ -1397,9 +1345,9 @@ sup.cite {
 
       <div class="ref-item">
         <span class="ref-key">[5]</span>
-        <span>Kinney, A. L., Rivolo, A. R., &amp; Koratkar, A. P. (1991).
-        "Properties of emission lines in the ultraviolet: The IUE data base."
-        <em>Astrophysical Journal</em>, 375, 532–544.</span>
+        <span>Kinney, A. L., Rivolo, A. R., &amp; Koratkar, A. P. (1990).
+        "A study of the Baldwin effect in the IUE data set."
+        <em>Astrophysical Journal</em>, 357, 338.</span>
       </div>
 
       <div class="ref-item">
@@ -1411,8 +1359,7 @@ sup.cite {
       <div class="ref-item">
         <span class="ref-key">[7]</span>
         <span>Cristiani, S. &amp; Vio, R. (1990).
-        "Continuum and emission-line variability of 3C 273."
-        <em>Astronomy &amp; Astrophysics</em>, 227, 385–393.</span>
+        <em>Astronomy &amp; Astrophysics</em>, 227, 385.</span>
       </div>
 
       <div class="ref-item">
@@ -1439,7 +1386,7 @@ sup.cite {
         <span class="ref-key">[11]</span>
         <span>Draine, B. T. (2011).
         <em>Physics of the Interstellar and Intergalactic Medium</em>.
-        Princeton University Press. §7.4 — Equivalent widths.</span>
+        Princeton University Press. (Equivalent widths.)</span>
       </div>
 
       <div class="ref-item">
@@ -1483,6 +1430,30 @@ sup.cite {
         (cited as provided by the project team).</span>
       </div>
 
+      <div class="ref-item">
+        <span class="ref-key">[18]</span>
+        <span>Wald, A. &amp; Wolfowitz, J. (1940). "On a test whether two samples are from the same population."
+        <em>Annals of Mathematical Statistics</em>, 11, 147–162.</span>
+      </div>
+
+      <div class="ref-item">
+        <span class="ref-key">[19]</span>
+        <span>Shapiro, S. S. &amp; Wilk, M. B. (1965). "An analysis of variance test for normality (complete samples)."
+        <em>Biometrika</em>, 52, 591–611.</span>
+      </div>
+
+      <div class="ref-item">
+        <span class="ref-key">[20]</span>
+        <span>Satterthwaite, F. E. (1946). "An approximate distribution of estimates of variance components."
+        <em>Biometrics Bulletin</em>, 2, 110–114.</span>
+      </div>
+
+      <div class="ref-item">
+        <span class="ref-key">[21]</span>
+        <span>Peterson, B. M., et al. (2004). "Central masses and broad-line region sizes of active galactic nuclei. II."
+        <em>Astrophysical Journal</em>, 613, 682–699.</span>
+      </div>
+
     </div>
   </div>
 
@@ -1493,7 +1464,7 @@ sup.cite {
   <div class="footer-body">
     <div>
       <span class="footer-brand-name">3C 273 · Lyα Spectroscopic Pipeline</span>
-      <p class="footer-brand-desc">Automated spectroscopic fitting pipeline for 215 archival IUE SWP ultraviolet observations of the quasar 3C 273. Power-law continuum modeling, single-Gaussian emission-line decomposition over 5,600 candidate models, and quality-controlled flux, EW, SNR, FWHM measurements.</p>
+      <p class="footer-brand-desc">Automated spectroscopic fitting pipeline for 255 archival IUE SWP ultraviolet spectra of the quasar 3C 273: power-law continuum, weighted least-squares Gaussian fits with statistical verification, and per-year fractional variability.</p>
     </div>
     <div>
       <span class="footer-section-label">Navigate</span>
@@ -1508,7 +1479,7 @@ sup.cite {
       <span class="footer-section-label">Pipeline</span>
       <div class="footer-meta-list">
         <span>IUE SWP · 900–1830 Å</span>
-        <span>215 archival spectra</span>
+        <span>255 archival spectra</span>
         <span>Lyα λ1216 Å</span>
         <span>Flux · EW · FWHM · SNR · χ²</span>
         <span>F<sub>var</sub> · R<sub>max</sub></span>

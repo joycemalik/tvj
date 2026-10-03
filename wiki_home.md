@@ -36,20 +36,15 @@ Upload any IUE SWP `.txt` spectrum (two columns: wavelength Å, flux) or click *
 ## Architecture at a Glance
 
 ```
-IUE SWP spectrum (.txt)
-   → Power-law continuum (OLS log-log)
-   → 5,600-candidate Gaussian grid (σ × wing window)
-   → Stage-B amplitude refinement (analytic weighted LS)
-   → Composite scoring (χ², peak, wings, SNR)
-   → Scipy least-squares refinement
-   → Physical statistics (flux, EW, FWHM, SNR, χ²_red)
-   → Quality gates → ACCEPTED / REJECTED
-```
-
-Composite score formula:
-
-```
-S = 0.35·s_χ² + 0.25·s_peak + 0.20·s_left + 0.10·s_right + 0.10·s_SNR
+IUE SWP rest-frame spectrum (.txt)
+   → Power-law continuum (log-log OLS, 5 line-free windows, with standard errors)
+   → Per-spectrum peak + coarse (μ, σ, W) seed grid
+   → Weighted least-squares fit: Gaussian(s) + local linear continuum (Lyα + N V jointly)
+   → Flux √(2π)Aσ ± covariance error, EW, FWHM (observed / intrinsic), χ²_red
+   → Detection F/σ_F ≥ 3
+   → Verification: χ² p-value (pixel-correlation corrected), runs test, Shapiro–Wilk,
+     model-independent flux check
+   → F_var per line per calendar year (Vaughan et al. 2003)
 ```
 
 ---
@@ -58,15 +53,15 @@ S = 0.35·s_χ² + 0.25·s_peak + 0.20·s_left + 0.10·s_right + 0.10·s_SNR
 
 | Line | Rest λ (Å) | Config |
 |---|---|---|
+| Lyman Beta + O VI | 1025.7 | `config/LyB.yaml` (airglow 1043–1056 Å masked) |
 | Lyman Alpha | 1216.0 | `config/Lya.yaml` |
 | N V | 1240.0 | `config/NV.yaml` |
+| O I + Si II | 1305.0 | `config/OI.yaml` |
 | C II | 1335.0 | `config/CII.yaml` |
-| Si IV | 1397.0 | `config/SiIV.yaml` |
+| Si IV + O IV] | 1400.0 | `config/SiIV.yaml` |
 | C IV | 1549.0 | `config/CIV.yaml` |
 | He II | 1640.0 | `config/HeII.yaml` |
-| O III] | 1663.0 | `config/OIII.yaml` |
-| Al III | 1857.0 | `config/AlIII.yaml` |
-| C III] | 1909.0 | `config/CIII.yaml` |
+| O III] | 1665.0 | `config/OIII.yaml` |
 
 ---
 
@@ -85,7 +80,7 @@ S = 0.35·s_χ² + 0.25·s_peak + 0.20·s_left + 0.10·s_right + 0.10·s_SNR
 ## Data
 
 IUE SWP archival observations of quasar **3C273** (z = 0.1583).  
-215 spectra · 900–1830 Å · primary target: Lyα λ1216 Å  
+255 rest-frame spectra · 994–1832 Å · dates from `jd.xlsx` (SWP log)  
 Courtesy of **NASA/ESA MAST**.
 
 ---
