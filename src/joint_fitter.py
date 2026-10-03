@@ -244,8 +244,11 @@ def apply_joint_fitting(
       where joint_fit_applied is True if any group had > 1 line.
     """
     # Only consider detected lines for overlap analysis
-    detected_idx    = [i for i, r in enumerate(line_results) if r.get('detected', False)]
-    not_detected_idx = [i for i, r in enumerate(line_results) if not r.get('detected', False)]
+    # Lines already refined by src/refine.py were fitted with their overlapping
+    # companions and a local continuum; this cruder joint fit must not overwrite them.
+    eligible = [r.get('detected', False) and not r.get('refined', False) for r in line_results]
+    detected_idx    = [i for i, ok in enumerate(eligible) if ok]
+    not_detected_idx = [i for i, ok in enumerate(eligible) if not ok]
 
     detected_results = [line_results[i] for i in detected_idx]
 

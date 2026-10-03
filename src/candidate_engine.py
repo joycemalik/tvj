@@ -29,6 +29,7 @@ except ImportError:
     _HAS_SCIPY = False
 
 from src.statistics import compute_statistics, estimate_noise, local_baseline
+from src.refine import apply_masks
 
 
 # ---------------------------------------------------------------------------
@@ -114,16 +115,11 @@ def _score_candidate(
     model     = amp * g_raw
     residuals = sub_y_w - model
 
-    # 1. chi2 score
-    # Sharper Gaussian (sigma=0.5 vs old 1.5) so chi2 discriminates sigma/wing strongly.
-    # Overfitting penalty: chi2 << 0.15 is treated as badly as chi2=1.6 (not free lunch).
+    # 1. chi2 score — only a poor fit (chi2 >> 1) is penalised; a low chi2
+    # is not treated as overfitting (approved fits reach chi2_red = 0.05).
     dof      = max(len(wl_w) - 3, 1)
     chi2_red = float(np.sum((residuals / noise) ** 2) / dof)
-    if chi2_red < 0.15:
-        eff_chi2 = 1.0 + (0.15 - chi2_red) * 10.0   # steep linear rise
-    else:
-        eff_chi2 = chi2_red
-    chi2_score = float(np.exp(-0.5 * ((eff_chi2 - 1.0) / 1.5) ** 2))
+    chi2_score = float(np.exp(-0.5 * (max(chi2_red - 1.0, 0.0) / 1.5) ** 2))
 
     # 2. Peak alignment
     d_obs  = abs(center - obs_peak_wl)
@@ -200,9 +196,12 @@ def generate_candidates(
     # 1. Locate observed emission peak (using smoothed sub_y to suppress
     #    noise spikes and asymmetric absorption near the line core).
     # ------------------------------------------------------------------
+    # Pixels inside configured mask ranges (e.g. geocoronal airglow) are never used.
+    usable = apply_masks(wavelength, config.get('mask_ranges'))
+
     search_radius = float(config.get('peak_search_radius', 15.0))
     peak_region   = ((wavelength >= rest_wl - search_radius) &
-                     (wavelength <= rest_wl + search_radius))
+                     (wavelength <= rest_wl + search_radius) & usable)
 
     # Smooth sub_y with a ~3-pixel Gaussian kernel before peak detection.
     # This prevents noise spikes / power-law slope from shifting the apparent
@@ -281,15 +280,21 @@ def generate_candidates(
     else:
         sigma_grid = [float(s) for s in DEFAULT_SIGMA_VALS]
 
-    # Wing grid: full list
-    wing_grid = ([float(w) for w in wing_cfg['grid']]
-                 if 'grid' in wing_cfg else [float(w) for w in DEFAULT_WING_VALS])
+    # Wing grid: explicit list, or min/max/step range (full window width)
+    if 'grid' in wing_cfg:
+        wing_grid = [float(w) for w in wing_cfg['grid']]
+    elif 'min' in wing_cfg or 'max' in wing_cfg:
+        w_min, w_max = float(wing_cfg.get('min', 10.0)), float(wing_cfg.get('max', 24.0))
+        w_step = float(wing_cfg.get('step', 1.0))
+        wing_grid = [round(float(w), 6) for w in np.arange(w_min, w_max + w_step * 0.5, w_step)]
+    else:
+        wing_grid = [float(w) for w in DEFAULT_WING_VALS]
 
-    # Priors (read from config for scorer)
-    wing_prior_center  = float(wing_cfg.get('prior_center',  19.0))
-    wing_prior_std     = float(wing_cfg.get('prior_std',      2.0))
-    sigma_prior_center = float(sigma_cfg.get('prior_center',  5.0))
-    sigma_prior_std    = float(sigma_cfg.get('prior_std',     1.0))
+    # Priors: default to the middle of the configured range, half-range wide
+    wing_prior_center  = float(wing_cfg.get('prior_center', 0.5 * (wing_grid[0] + wing_grid[-1])))
+    wing_prior_std     = float(wing_cfg.get('prior_std', max(0.5 * (wing_grid[-1] - wing_grid[0]), 1.0)))
+    sigma_prior_center = float(sigma_cfg.get('prior_center', 0.5 * (sigma_grid[0] + sigma_grid[-1])))
+    sigma_prior_std    = float(sigma_cfg.get('prior_std', max(0.5 * (sigma_grid[-1] - sigma_grid[0]), 0.5)))
     snr_target         = float(config.get('snr_target', 7.0))
 
     total = len(wing_grid) * len(sigma_grid) * len(center_grid)
@@ -307,7 +312,7 @@ def generate_candidates(
         for sigma in sigma_grid:
             for center in center_grid:
                 wl_mask = ((wavelength >= center - half_wing) &
-                           (wavelength <= center + half_wing))
+                           (wavelength <= center + half_wing) & usable)
                 if np.sum(wl_mask) < 4:
                     continue
 

@@ -21,35 +21,6 @@ def local_baseline(wavelength: np.ndarray, obs_flux: np.ndarray, center: float,
     return bl_lo + slope * (wl_win - wl_lo)
 
 
-def fractional_variability(flux, err) -> Dict[str, float]:
-    """
-    Fractional rms variability amplitude and its error, Vaughan et al. 2003
-    (MNRAS 345, 1271) eqs. 10 and B2, plus Rmax = Fmax/Fmin with propagated error.
-    Fvar is NaN when the excess variance is not positive (no intrinsic variability detected).
-    """
-    F = np.asarray(flux, dtype=float)
-    E = np.asarray(err, dtype=float)
-    ok = np.isfinite(F) & np.isfinite(E)
-    F, E = F[ok], E[ok]
-    n = len(F)
-    nan = float('nan')
-    if n < 2:
-        return dict(n=n, mean=nan, excess_var=nan, fvar=nan, fvar_err=nan, rmax=nan, rmax_err=nan)
-    xbar = float(np.mean(F))
-    s2 = float(np.var(F, ddof=1))
-    mse = float(np.mean(E ** 2))
-    excess = s2 - mse
-    if excess > 0 and xbar != 0:
-        fvar = math.sqrt(excess) / xbar
-        fvar_err = math.sqrt((math.sqrt(1.0 / (2 * n)) * mse / (xbar ** 2 * fvar)) ** 2
-                             + (math.sqrt(mse / n) / xbar) ** 2)
-    else:
-        fvar = fvar_err = nan
-    i_max, i_min = int(np.argmax(F)), int(np.argmin(F))
-    rmax = float(F[i_max] / F[i_min]) if F[i_min] != 0 else nan
-    rmax_err = rmax * math.sqrt((E[i_min] / F[i_min]) ** 2 + (E[i_max] / F[i_max]) ** 2)
-    return dict(n=n, mean=xbar, mean_err=float(np.mean(E)), excess_var=excess,
-                fvar=fvar, fvar_err=fvar_err, rmax=rmax, rmax_err=rmax_err)
 
 def estimate_noise(residuals: np.ndarray, n_iters: int = SIGMA_CLIP_ITERS, threshold: float = SIGMA_CLIP_THRESHOLD) -> float:
     """

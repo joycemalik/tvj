@@ -78,7 +78,7 @@ S = 0.35·s_χ² + 0.25·s_peak + 0.20·s_left + 0.10·s_right + 0.10·s_SNR
 | `/v2` | V2 — Diagnostic Studio |
 | `/v3` | V3 — Campaign Viewer |
 | `/about` | Scientific documentation |
-| `/api/analysis_summary` | Campaign Fvar, Rmax, mean flux/SNR/EW/FWHM |
+| `/api/fvar` | F_var per emission line per calendar year (`python run_variability.py`) |
 
 ---
 

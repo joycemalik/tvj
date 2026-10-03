@@ -1,22 +1,28 @@
 line_name: "O I + Si II"
 rest_wavelength: 1305.0       # Angstrom (O I 1302.2 + Si II 1304.4 blend)
 
-amplitude:
-  steps: 8
-
 center:
   range: 6.0
   step: 0.5
 
+# sigma floor = IUE instrumental sigma: 6 Å FWHM observed / (1+z) / 2.3548 = 2.2 Å.
+# sigma ceiling = FWHM 28 Å — blend of two components ~2 Å apart plus broad wings.
+# Sigma is continuous inside [min, max]; the step only seeds src/refine.py.
 sigma:
-  grid: [3, 4, 5, 6, 7, 8, 9, 10]
-  min: 1.5
-  max: 18.0
+  min: 2.2
+  max: 12.0
+  step: 0.5
 
 wing_window:
-  grid: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+  min: 10
+  max: 20
+  step: 1
 
 peak_search_radius: 12.0
+
+refine:
+  window: [1280, 1325]
+  center_tol: 8.0
 
 snr_min: 3.0
 snr_max: 15.0

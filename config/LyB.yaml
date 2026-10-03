@@ -1,0 +1,46 @@
+line_name: "Lyman Beta + O VI"
+rest_wavelength: 1025.72      # Angstrom (Lyβ 1025.72 + O VI 1031.93, 1037.62)
+
+# The Lyβ + O VI blend is unresolved at IUE resolution and fitted as one Gaussian
+# whose centroid may fall anywhere between Lyβ and O VI (center_tol below).
+components:
+  - name: "Ly_beta"
+    rest_wavelength: 1025.72
+  - name: "OVI_1032"
+    rest_wavelength: 1031.93
+  - name: "OVI_1038"
+    rest_wavelength: 1037.62
+
+# Geocoronal Lyα airglow (1215.67 Å observed) lands at 1215.67/1.158 = 1049.8 Å
+# in these rest-frame spectra and is often the brightest pixel near Lyβ.
+mask_ranges:
+  - [1043.0, 1056.0]
+
+center:
+  range: 8.0
+  step: 0.5
+
+# sigma floor = IUE instrumental sigma (2.2 Å); ceiling FWHM 33 Å for a blend
+# spanning 12 Å of component separation plus broad wings.
+sigma:
+  min: 2.2
+  max: 14.0
+  step: 0.5
+
+wing_window:
+  min: 10
+  max: 24
+  step: 1
+
+# Narrower than Lyα: data start at 993.6 Å (SWP blue edge).
+peak_search_radius: 10.0
+
+# Local linear continuum fitted jointly over 998–1085 Å (airglow masked);
+# the global power-law windows start at 1150 Å and do not constrain this region.
+refine:
+  window: [998, 1085]
+  center_tol: 10.0
+
+snr_min: 3.0
+snr_max: 15.0
+chi2_red_max: 5.0

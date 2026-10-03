@@ -17,6 +17,7 @@ from typing import Dict, Any, Optional
 
 from src.candidate_engine import generate_candidates
 from src.quality import evaluate_fit_quality
+from src.refine import refine_line
 
 
 def fit_single_line(
@@ -100,28 +101,24 @@ def fit_single_line(
     if not candidates:
         return _not_detected_record(line_name, rest_wl, reason="No valid fitting candidates found")
 
-    # ---- Select best candidate: first check quality, else take rank-1 ----
-    snr_min  = float(line_config.get('snr_min', 5.0))
+    snr_min  = float(line_config.get('snr_min', 3.0))
     snr_max  = float(line_config.get('snr_max', 15.0))
     chi2_max = float(line_config.get('chi2_red_max', 5.0))
 
-    best = None
-    for cand in candidates:
-        obs_peak = cand.get('observed_peak_wl', rest_wl)
-        _, is_ok, _ = evaluate_fit_quality(
-            stats=cand,
-            observed_peak_wl=obs_peak,
-            snr_min=snr_min,
-            snr_max=snr_max,
-            chi2_max=chi2_max,
-        )
-        if is_ok:
-            best = cand
-            break
-
-    # Fall back to rank-1 if none passed quality (we still report with status REJECTED)
-    if best is None:
-        best = candidates[0]
+    # ---- Grid rank-1 seeds a continuous weighted least-squares refinement ----
+    seed = candidates[0]
+    best = dict(seed)
+    best['flux_window'] = seed.get('flux')
+    best['flux_window_err'] = seed.get('flux_err')
+    refined = refine_line(wavelength, subtracted_y + continuum_fit, rest_wl, line_config, seed)
+    if refined is not None:
+        best.update(refined)
+        # Reference-style window re-centred on the refined line centre
+        half = float(best.get('wing_window', 0.0)) / 2.0
+        best['min_wavelength'] = best['center'] - half
+        best['max_wavelength'] = best['center'] + half
+    else:
+        best['refined'] = False
 
     # ---- Final quality evaluation on the chosen candidate ----
     obs_peak      = best.get('observed_peak_wl', rest_wl)

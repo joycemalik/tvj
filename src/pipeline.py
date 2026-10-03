@@ -34,7 +34,7 @@ import numpy as np
 from typing import Dict, Any, Optional, List
 
 from src.reader import load_spectrum
-from src.continuum import fit_continuum
+from src.continuum import fit_continuum, continuum_fit_errors
 from src.line_fitter import fit_single_line, load_line_config
 from src.joint_fitter import apply_joint_fitting
 from src.statistics import estimate_noise
@@ -253,10 +253,14 @@ def run_single_spectrum_pipeline(
             if r.get('rest_wavelength', 0) == 1216.0 or best_line is None:
                 best_line = r
 
+    alpha_err, amp_err = continuum_fit_errors(wavelength, flux, continuum_windows)
     record: Dict[str, Any] = {
         'spectrum_name':       spectrum_name,
         'continuum_amplitude': float(amp_cont),
+        'continuum_amplitude_err': float(amp_err),
         'spectral_index':      float(spec_idx_cont),
+        'spectral_index_err':  float(alpha_err),
+        'continuum_windows':   continuum_windows,
         'lines':               line_results,
         'global_reduced_chi2': float(global_chi2),
         'joint_fit_applied':   bool(joint_fit_applied),

@@ -4,69 +4,42 @@ from typing import Dict, Any, Tuple
 def evaluate_fit_quality(
     stats: Dict[str, Any],
     observed_peak_wl: float,
-    snr_min: float = 5.0,
-    snr_max: float = 15.0,    # raised from 12.0 — spectrum 17 has SNR=12.35 and is approved
+    snr_min: float = 3.0,
+    snr_max: float = 15.0,
     chi2_max: float = 5.0,
 ) -> Tuple[float, bool, str]:
     """
-    Evaluates fit quality using multi-criteria scoring.
+    Detection and quality flags for a fitted line.
 
-    Criteria:
-      1. Reduced χ² — must be < chi2_max (ideally near 1.0)
-      2. SNR — must be >= snr_min; snr_max is a soft warning, NOT hard rejection
-         (High SNR is always a good detection; we only reject if too low.)
-      3. Center alignment — fitted center must be within ±3 Å of observed peak
+    Detection: significance = flux / flux_err >= snr_min (3σ by default).
+    Warnings (do not reject): reduced χ² above chi2_max, a width or centre at
+    its configured bound, centre more than 3 Å from the observed peak.
+    A low reduced χ² is not penalised.
 
-    Returns:
-      quality_score (0.0 to 1.0), is_acceptable (bool), status_message (str)
+    Returns quality_score (0..1), detected (bool), status message.
     """
-    reasons  = []
-    penalty  = 0.0
+    snr    = float(stats.get('snr', 0.0))
+    chi2   = float(stats.get('reduced_chi2', 999.0))
+    center = float(stats.get('center', 0.0))
 
-    chi2   = stats.get('reduced_chi2', 999.0)
-    snr    = stats.get('snr', 0.0)
-    center = stats.get('center', 0.0)
-
-    # ---- 1. Chi-squared ----
+    warnings = []
+    penalty = 0.0
     if chi2 > chi2_max:
         penalty += 0.3
-        reasons.append(f"Reduced χ² too high ({chi2:.2f} > {chi2_max})")
-    elif chi2 < 0.10:
-        penalty += 0.1
-        reasons.append(f"Reduced χ² abnormally low ({chi2:.2f}) — possible overfitting")
-
-    # ---- 2. SNR ----
-    # Only penalise LOW SNR — a high SNR is a strong detection, never penalised
-    if snr < snr_min:
-        penalty += 0.4
-        reasons.append(f"SNR too low ({snr:.2f} < {snr_min})")
-    elif snr > snr_max:
-        # Soft flag only — does not mark as rejected
-        reasons.append(f"SNR unusually high ({snr:.2f}) — verify no artefact")
-
-    # ---- 3. Peak alignment ----
+        warnings.append(f"reduced χ² {chi2:.2f} > {chi2_max}")
+    if stats.get('at_bound'):
+        penalty += 0.2
+        warnings.append("parameter at its allowed bound")
+    # The least-squares centre carries its own error; the grid peak is only a seed.
     peak_diff = abs(center - observed_peak_wl)
-    if peak_diff > 3.0:        # relaxed from 2.0 Å
-        penalty += 0.3
-        reasons.append(f"Peak misalignment ({peak_diff:.2f} Å from observed peak)")
+    if peak_diff > 3.0 and not stats.get('refined'):
+        penalty += 0.2
+        warnings.append(f"centre {peak_diff:.2f} Å from observed peak")
 
-    score = max(0.0, 1.0 - penalty)
+    if snr < snr_min:
+        return 0.0, False, f"NOT_DETECTED: significance {snr:.2f} < {snr_min}"
 
-    if snr < 3.0:
-        is_acceptable = False
-        status = f"NOT_DETECTED: SNR too low ({snr:.2f} < 3.0)"
-    elif snr < 5.0:
-        is_acceptable = False
-        status = f"MARGINAL: SNR {snr:.2f} < 5.0"
-    else:
-        # SNR >= 5.0
-        if chi2 > chi2_max or peak_diff > 3.0:
-            is_acceptable = False
-            status = f"REJECTED: {', '.join(reasons)}"
-        else:
-            is_acceptable = True
-            status = "ACCEPTED"
-            if reasons:
-                status += f" (Warnings: {', '.join(reasons)})"
-
-    return score, is_acceptable, status
+    status = "ACCEPTED"
+    if warnings:
+        status += f" (Warnings: {', '.join(warnings)})"
+    return max(0.0, 1.0 - penalty), True, status

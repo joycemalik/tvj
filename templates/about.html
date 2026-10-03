@@ -429,6 +429,7 @@ sup.cite {
     <div><strong>Primary Line:</strong> Lyman Alpha (Ly\(\alpha\)) at \(\lambda_0 = 1216\) Å</div>
     <div><strong>Pipeline Version:</strong> Step 4A — Shape-Objective Candidate Engine</div>
   </div>
+  
 
   <!-- ─── Abstract ─────────────────────────────────────────────── -->
   <div class="abstract">
@@ -526,7 +527,7 @@ sup.cite {
         <div class="pipe-num">3</div>
         <div class="pipe-body">
           <div class="pipe-title">Observed Peak Location</div>
-          <div class="pipe-desc">Locate the brightest pixel within ±15 Å of \(\lambda_0 = 1216\) Å in the continuum-subtracted spectrum. This observed peak \(\lambda_\text{peak}\) anchors the center grid.</div>
+          <div class="pipe-desc">For each spectrum and each line, locate the brightest pixel of the smoothed continuum-subtracted spectrum within a per-line radius of the rest wavelength (Ly\(\alpha\) ±15 Å, Ly\(\beta\) ±10 Å, others 10–15 Å), skipping masked pixels such as geocoronal Ly\(\alpha\) airglow at 1049.8 Å. This per-spectrum peak \(\lambda_\text{peak}\) anchors the center grid, so the starting position follows each spectrum.</div>
         </div>
       </div>
 
@@ -700,37 +701,41 @@ sup.cite {
       <tbody>
         <tr>
           <td>Center \(\mu\)</td>
-          <td>\(\lambda_\text{peak} \pm 5\) Å, step 0.5 Å</td>
-          <td class="val">20 values</td>
-          <td>Anchored to observed peak; allows for small redshift offsets</td>
+          <td>\(\lambda_\text{peak} \pm\) range (Ly\(\alpha\): ±5 Å), step 0.25–0.5 Å</td>
+          <td class="val">per line</td>
+          <td>Anchored to this spectrum's observed peak; refined continuously within ±8 Å of rest</td>
         </tr>
         <tr>
           <td>Width \(\sigma\)</td>
-          <td>Fixed integer grid: {4, 5, 6, 7, 8, 9, 10} Å</td>
-          <td class="val">7 values</td>
-          <td>Derived from approved fits: \(\sigma \approx 4.5\)–5.6 Å for IUE Ly\(\alpha\)</td>
+          <td>Continuous range \([\sigma_\text{min}, \sigma_\text{max}]\); Ly\(\alpha\): 4.25–10.19 Å</td>
+          <td class="val">bounds</td>
+          <td>Ly\(\alpha\) FWHM 10–24 Å (\(\sigma = \text{FWHM}/2\sqrt{2\ln 2}\)); approved fits 10.6–20.0 Å; floor = IUE resolution</td>
         </tr>
         <tr>
           <td>Amplitude \(A\)</td>
-          <td>\([0.4\,A_\text{peak},\; 2.0\,A_\text{peak}]\), 20 linear steps</td>
-          <td class="val">20 values</td>
-          <td>Broad range accommodating under- and over-exposure</td>
+          <td>Least-squares, \(A \ge 0\)</td>
+          <td class="val">continuous</td>
+          <td>Fitted jointly with \(\mu\), \(\sigma\) and a local linear continuum</td>
         </tr>
         <tr>
           <td>Wing window \(W\)</td>
-          <td>Fixed at first grid entry (14 Å full-width) during search</td>
-          <td class="val">1 value</td>
-          <td>Fitting window width; optimized separately in quality evaluation</td>
+          <td>Range 10–24 Å (Ly\(\alpha\)), step 1 Å</td>
+          <td class="val">15 values</td>
+          <td>Full width of the reference-style integration window; approved windows 13–23 Å</td>
         </tr>
       </tbody>
     </table>
 
     <p>
-      The grid yields \(20 \times 7 \times 20 = 2{,}800\) combinations per
-      center position, or approximately 5,600 total candidates across the center grid.
-      For each candidate the half-wing
-      \(h = W/2 = 7\) Å defines the wavelength window
-      \([\mu - h,\; \mu + h]\) over which the model is evaluated.
+      <strong>Why these ranges.</strong> A Gaussian has FWHM \(= 2\sqrt{2\ln 2}\,\sigma \approx 2.3548\,\sigma\),
+      so the Ly\(\alpha\) FWHM range of 10–24 Å corresponds to \(\sigma = 4.25\)–10.19 Å
+      (2500–5900 km s\(^{-1}\) at 1216 Å). This brackets the approved fits (FWHM 10.6–20.0 Å,
+      2600–4950 km s\(^{-1}\)) and published broad-line widths of 3C 273
+      (Paltani &amp; Türler 2005). No line can appear narrower than the instrument:
+      the IUE SWP low-dispersion resolution is ≈6 Å FWHM observed, i.e. 6/(1+z) = 5.2 Å in these
+      de-redshifted spectra (z = 0.158), giving the floor \(\sigma \ge 2.2\) Å used for the weaker lines.
+      The grid only seeds the fit: \(\sigma\) may take any value between its bounds in the
+      least-squares refinement.
     </p>
 
     <h3>5.4 Noise Estimation (Robust MAD)</h3>
@@ -790,8 +795,8 @@ sup.cite {
         <tr>
           <td>Reduced \(\chi^2\)</td>
           <td class="w">0.35</td>
-          <td>\(s_{\chi^2} = \exp\!\bigl[-\tfrac{1}{2}\bigl(\tfrac{\chi^2_\text{eff}-1}{2}\bigr)^2\bigr]\)</td>
-          <td>Gaussian bell centred at \(\chi^2_\text{red}=1\); overfitting (\(\chi^2_\text{red}&lt;0.15\)) penalised by reflection</td>
+          <td>\(s_{\chi^2} = \exp\!\bigl[-\tfrac{1}{2}\bigl(\tfrac{\max(\chi^2_\text{red}-1,\,0)}{1.5}\bigr)^2\bigr]\)</td>
+          <td>Only a poor fit (\(\chi^2_\text{red} &gt; 1\)) is penalised; a low \(\chi^2_\text{red}\) is accepted</td>
         </tr>
         <tr>
           <td>Peak alignment</td>
@@ -821,11 +826,10 @@ sup.cite {
     </table>
 
     <p>
-      The \(\chi^2\) effective value applies an overfitting penalty:
-      for \(\chi^2_\text{red} &lt; 0.15\), the effective value is
-      \(\chi^2_\text{eff} = 1 + 4(0.15 - \chi^2_\text{red})\),
-      ensuring that an implausibly good fit (which often indicates the model
-      is chasing noise structure) is also penalised.
+      There is no penalty for a low \(\chi^2_\text{red}\): with the coarse IUE sampling,
+      values well below 1 occur for legitimate fits (approved fits reach 0.05).
+      The grid score only seeds the final weighted least-squares fit, whose
+      \(\chi^2_\text{red}\) uses an independent DER_SNR pixel-noise estimate (Stoehr et al. 2008).
     </p>
 
     <p>
@@ -1091,50 +1095,31 @@ sup.cite {
       </thead>
       <tbody>
         <tr>
-          <td>Reduced \(\chi^2\)</td>
-          <td>\(\chi^2_\text{red} > 5.0\)</td>
-          <td>REJECTED</td>
-          <td class="val">−0.30 to quality score</td>
-        </tr>
-        <tr>
-          <td>Reduced \(\chi^2\) (low)</td>
-          <td>\(\chi^2_\text{red} < 0.10\)</td>
-          <td>Warning: overfitting</td>
-          <td class="val">−0.10 to quality score</td>
-        </tr>
-        <tr>
-          <td>SNR (low)</td>
-          <td>\(\text{SNR} < 5.0\)</td>
-          <td>REJECTED / MARGINAL</td>
-          <td class="val">−0.40 to quality score</td>
-        </tr>
-        <tr>
-          <td>SNR (very low)</td>
-          <td>\(\text{SNR} < 3.0\)</td>
+          <td>Significance</td>
+          <td>\(F / \sigma_F < 3\)</td>
           <td>NOT_DETECTED</td>
-          <td class="val">Hard rejection</td>
+          <td class="val">excluded from \(F_\text{var}\)</td>
         </tr>
         <tr>
-          <td>Peak alignment</td>
-          <td>\(|\hat{\mu} - \lambda_\text{peak}| > 3.0\) Å</td>
-          <td>REJECTED</td>
+          <td>Reduced \(\chi^2\) (high)</td>
+          <td>\(\chi^2_\text{red} > 5.0\)</td>
+          <td>Warning</td>
           <td class="val">−0.30 to quality score</td>
+        </tr>
+        <tr>
+          <td>Parameter at bound</td>
+          <td>\(\sigma\) or \(\mu\) at its configured limit</td>
+          <td>Warning</td>
+          <td class="val">−0.20 to quality score</td>
         </tr>
       </tbody>
     </table>
 
     <p>
-      The overall quality score is \(\max(0,\; 1 - \text{total penalty})\).
-      Note that a <em>high</em> SNR is never penalised; only low SNR triggers rejection.
-      This is physically motivated: bright emission lines with SNR\(>15\) are
-      always genuine detections, even if their SNR is unusually high by typical standards.
-    </p>
-
-    <p>
-      Among the 20 ranked candidates, the first one satisfying all quality criteria
-      is selected as the final result. If none pass, the rank-1 candidate is returned
-      with status REJECTED (reporting the failure reason) so the UI can still display
-      the best available fit.
+      A low \(\chi^2_\text{red}\) is not penalised. Detection uses the flux significance
+      \(F/\sigma_F\) of the least-squares fit, where \(\sigma_F\) is propagated from the
+      parameter covariance including the \(A\)–\(\sigma\) correlation:
+      \(\sigma_F^2 = 2\pi(\sigma^2\sigma_A^2 + A^2\sigma_\sigma^2 + 2A\sigma\,\mathrm{cov}_{A\sigma})\).
     </p>
   </div>
 
@@ -1170,9 +1155,27 @@ sup.cite {
       where \(S^2 = \frac{1}{N-1}\sum(F_i - \bar{F})^2\) is the sample variance,
       \(\langle\sigma_\text{err}^2\rangle = \frac{1}{N}\sum\sigma_{F,i}^2\)
       is the mean squared measurement error, and \(\bar{F}\) is the mean flux.
-      When \(S^2 &lt; \langle\sigma_\text{err}^2\rangle\) (i.e., no significant variability),
-      the absolute value is taken and \(F_\text{var}\) is reported as an upper limit.
+      When \(S^2 \le \langle\sigma_\text{err}^2\rangle\) the scatter is consistent with the
+      measurement errors alone and \(F_\text{var}\) is undefined ("not variable").
     </p>
+
+    <p>
+      \(F_\text{var}\) is computed separately for every emission line and every calendar year,
+      using the light curve \((\text{JD} - \text{JD}_\text{min},\ F,\ F_\text{err})\) of the
+      detected (\(F/\sigma_F \ge 3\)) fluxes; observation dates come from the SWP log (<code>jd.xlsx</code>).
+      Its uncertainty follows Vaughan et al. (2003) and Sukanya et al. (2018):
+    </p>
+
+    <div class="math-block">
+      <span class="math-label">(Eq. 18a)</span>
+      \[
+      \mathrm{err}(F_\text{var}) \approx
+      \begin{cases}
+        \sqrt{\dfrac{1}{2N}}\;\dfrac{\langle\sigma_\text{err}^2\rangle}{\bar{F}^2 F_\text{var}}, & S^2/\langle\sigma_\text{err}^2\rangle &lt; 10 \quad (S^2 \approx \sigma_\text{err}^2)\\[2ex]
+        \sqrt{\dfrac{\langle\sigma_\text{err}^2\rangle}{N}}\;\dfrac{1}{\bar{F}}, & S^2/\langle\sigma_\text{err}^2\rangle \ge 10 \quad (S^2 \gg \sigma_\text{err}^2)
+      \end{cases}
+      \]
+    </div>
 
     <h3>10.2 Flux Ratio \(R_\text{max}\)</h3>
 
@@ -1459,6 +1462,25 @@ sup.cite {
         "The New IUE Extraction System: Improved Data for the IUE Final Archive."
         <em>Astronomical Journal</em>, 111, 517–528.
         [NEWSIPS pipeline documentation]</span>
+      </div>
+
+      <div class="ref-item">
+        <span class="ref-key">[15]</span>
+        <span>Paltani, S. &amp; Türler, M. (2005).
+        "The mass of the black hole in 3C 273."
+        <em>Astronomy &amp; Astrophysics</em>, 435, 811–820.</span>
+      </div>
+
+      <div class="ref-item">
+        <span class="ref-key">[16]</span>
+        <span>Stoehr, F., et al. (2008). "DER_SNR: A Simple &amp; General Spectroscopic Signal-to-Noise Measurement Algorithm."
+        <em>ASP Conference Series</em>, 394, 505.</span>
+      </div>
+
+      <div class="ref-item">
+        <span class="ref-key">[17]</span>
+        <span>Sukanya et al. (2018) — source of the piecewise \(F_\text{var}\) error approximation used here
+        (cited as provided by the project team).</span>
       </div>
 
     </div>

@@ -1,34 +1,40 @@
 line_name: "N V"
 rest_wavelength: 1240.0       # Angstrom (doublet 1238.8 + 1242.8, blended)
 
+# The 4 Å doublet separation is below the ~5.2 Å rest-frame IUE resolution,
+# so the blend is fitted as one Gaussian.
 model: "tied_components"
 components:
   - name: "NV_1238"
     rest_wavelength: 1238.821
   - name: "NV_1242"
     rest_wavelength: 1242.804
-constraints:
-  shared_velocity: true
-  shared_sigma: true
-  wavelength_separation: "fixed"
-
-amplitude:
-  steps: 8
 
 center:
-  range: 6.0                  # ±6 Å — wider to catch doublet blend centroid
+  range: 6.0
   step: 0.5
 
+# sigma: floor = instrumental sigma (5.2 Å FWHM / 2.3548 = 2.2 Å);
+# ceiling = FWHM ~28 Å (~6800 km/s), generous for a broad doublet blend.
 sigma:
-  grid: [3, 4, 5, 6, 7, 8, 9, 10, 11]
-  min: 1.5
-  max: 20.0
+  min: 2.2
+  max: 12.0
+  step: 0.5
 
 wing_window:
-  grid: [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
+  min: 10
+  max: 22
+  step: 1
 
 peak_search_radius: 12.0
 
-snr_min: 3.0                  # N V is weaker than Lyα — lower threshold
+# N V sits on the red wing of Lyα: fitted jointly with Lyα as a companion.
+refine:
+  window: [1180, 1265]
+  center_tol: 8.0
+  companions:
+    - {rest: 1216.0, sigma_min: 4.25, sigma_max: 10.19, sigma_seed: 6.3}
+
+snr_min: 3.0
 snr_max: 15.0
 chi2_red_max: 5.0

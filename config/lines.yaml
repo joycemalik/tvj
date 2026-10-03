@@ -15,6 +15,13 @@
 # ---------------------------------------------------------------------------
 lines:
 
+  - name: "Lyman Beta + O VI"
+    rest_wavelength: 1025.72
+    config: "config/LyB.yaml"
+    model_type: "multi_component_blend"
+    components: [1025.72, 1031.93, 1037.62]
+    enabled: true
+
   - name: "Lyman Alpha"
     rest_wavelength: 1216.0
     config: "config/Lya.yaml"

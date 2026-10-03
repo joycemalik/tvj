@@ -1,22 +1,28 @@
 line_name: "Si IV + O IV]"
 rest_wavelength: 1400.0       # Angstrom (Si IV 1393.8 + 1402.8, O IV] 1402.0 blend)
 
-amplitude:
-  steps: 8
-
 center:
-  range: 8.0                  # ±8 Å — wide blend spanning ~1390-1410 Å
+  range: 8.0
   step: 0.5
 
+# sigma floor = IUE instrumental sigma: 6 Å FWHM observed / (1+z) / 2.3548 = 2.2 Å.
+# sigma ceiling = FWHM 33 Å — blend spans ~9 Å of component separation plus broad wings.
+# Sigma is continuous inside [min, max]; the step only seeds src/refine.py.
 sigma:
-  grid: [4, 5, 6, 7, 8, 9, 10, 11, 12]
-  min: 2.0
-  max: 22.0
+  min: 2.2
+  max: 14.0
+  step: 0.5
 
 wing_window:
-  grid: [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
+  min: 12
+  max: 24
+  step: 1
 
 peak_search_radius: 15.0
+
+refine:
+  window: [1370, 1430]
+  center_tol: 8.0
 
 snr_min: 3.0
 snr_max: 15.0

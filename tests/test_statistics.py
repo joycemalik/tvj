@@ -96,15 +96,15 @@ class TestBlueRedWings:
 
 
 class TestReducedChi2:
-    def test_near_perfect_fit_gives_low_chi2(self):
-        # wing=20 (full width) → half=10 → window [1205, 1225]
-        center, amp, sigma, wing = 1215.0, 8.0e-13, 5.0, 20.0
-        wl, sub_y, cont = _synthetic_spectrum(center, amp, sigma, half_wing=wing/2, n_pts=500)
+    def test_refined_fit_of_pure_gaussian_has_chi2_near_one(self):
+        from src.refine import refine_line
+        wl = np.arange(1150.0, 1290.0, 1.448)
         rng = np.random.default_rng(42)
-        sub_y = sub_y + rng.normal(0, 1e-15, sub_y.shape)
-        stats = compute_statistics(wl, sub_y, cont, amplitude=amp,
-                                   center=center, sigma=sigma, wing_window=wing)
-        assert stats['reduced_chi2'] < 10.0
+        noise = 2e-15
+        flux = 3e-13 + 8e-13 * np.exp(-0.5 * ((wl - 1215.0) / 5.0) ** 2) + rng.normal(0, noise, wl.shape)
+        cfg = {'sigma': {'min': 2.2, 'max': 10.0}, 'refine': {'window': [1180, 1250]}}
+        r = refine_line(wl, flux, 1216.0, cfg, {'center': 1215.0, 'sigma': 5.0, 'amplitude': 8e-13})
+        assert 0.4 < r['reduced_chi2'] < 2.0
 
 
 class TestNoiseEstimator:

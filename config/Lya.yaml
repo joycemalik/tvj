@@ -27,37 +27,49 @@ center:
   range: 5.0          # Search +-5 A around observed emission peak
   step: 0.25          # Grid step for search (A) — 0.25 is sufficient resolution
 
+# ===========================================================================
+# WIDTH AND WINDOW RANGES (continuous min–max, not a fixed list)
+# ===========================================================================
+# For a Gaussian, FWHM = 2*sqrt(2 ln 2)*sigma = 2.3548*sigma.
+#
+# FWHM 10–24 Å (rest frame):
+#   - approved Lyα fits span FWHM 10.6–20.0 Å (2600–4950 km/s);
+#   - 3C 273 broad Lyα widths ~3000–4500 km/s (Paltani & Türler 2005, A&A 435, 811);
+#   - floor: no line can look narrower than the instrument. IUE SWP low-dispersion
+#     resolution is ~6 Å FWHM observed (IUE NEWSIPS manual §2.3.2.1), i.e.
+#     6/(1+z) = 5.2 Å in these de-redshifted spectra (z = 0.158).
+# sigma = FWHM / 2.3548  ->  4.25–10.19 Å. Sigma is continuous inside these
+# bounds: the grid below only seeds the least-squares refinement (src/refine.py).
+# Wing window (full width of the reference-style integration window) 10–24 Å:
+#   approved windows span 13–23 Å, hand-entered ones go down to 10 Å.
+# ===========================================================================
 sigma:
-  # Data-driven bounds from 215-spectrum campaign (Approved_From_Jasil dataset):
-  #   sigma range = 4.5 to 8.5 A  (derived from FWHM_kms and center)
-  #   mean = 6.32 A, std = 0.72 A
-  # Hard bounds allow margin below/above campaign range.
-  min: 3.5            # Hard lower bound (A)
-  max: 9.5            # Hard upper bound (A)
-  step: 0.2           # Grid step (A) — 30 values across range
-  #
-  # Sigma prior for composite score (soft Gaussian prior):
-  # Mean of 215-spectrum campaign: 6.32 A, std: 0.72 A
-  prior_center: 6.5   # A — slight upward shift to allow sigma=7-8 to compete via chi2
-  prior_std:    1.5   # A — wide prior: chi2 from sub_y drives sigma; prior prevents extremes
-
+  min: 4.25           # Å  (FWHM 10 Å)
+  max: 10.19          # Å  (FWHM 24 Å)
+  step: 0.2           # seed-grid step only
+  prior_center: 6.3   # campaign mean sigma (seed scoring only)
+  prior_std:    1.5
 
 wing_window:
-  # FULL window widths (A) to evaluate.
-  # Campaign dataset: wing min=13, max=23, mean=16.8, std=2.04
-  # Grid covers 13-24 spanning the full observed range.
-  grid: [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
-  #
-  # Wing prior for composite score (soft Gaussian prior):
-  # Shifted to 18 (reference set mean is ~19); wider std so 17-22 compete fairly.
-  prior_center: 18.0  # A (full width) — balanced: allows 17-21 to compete via chi2
-  prior_std:    2.5   # A — wing=13 heavily penalized; wing=17-20 compete; wing=21+ moderately penalized
+  min: 10             # Å, full width
+  max: 24
+  step: 1
+  prior_center: 18.0
+  prior_std:    2.5
 
-
-# Peak search radius (A around rest_wavelength to locate emission peak)
+# Per-spectrum peak search: brightest smoothed pixel within ±radius of the rest
+# wavelength; the peak position therefore differs from spectrum to spectrum.
 peak_search_radius: 15.0
 
-# Quality thresholds
-snr_min: 5.0
+# Least-squares refinement: Lyα and N V overlap, so both are fitted together
+# with a local linear continuum over 1180–1265 Å.
+refine:
+  window: [1180, 1265]
+  center_tol: 8.0
+  companions:
+    - {rest: 1240.0, sigma_min: 2.2, sigma_max: 12.0, sigma_seed: 6.0}
+
+# Detection: flux / flux_err >= snr_min. Low reduced χ² is not penalised.
+snr_min: 3.0
 snr_max: 20.0
 chi2_red_max: 5.0

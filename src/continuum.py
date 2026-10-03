@@ -71,5 +71,33 @@ def fit_continuum(
     
     continuum_fit = amplitude * (wavelength ** spectral_index)
     subtracted_y = flux - continuum_fit
-    
+
     return amplitude, spectral_index, continuum_fit, subtracted_y
+
+
+def continuum_fit_errors(
+    wavelength: np.ndarray,
+    flux: np.ndarray,
+    window_ranges: Union[str, List[Tuple[float, float]]],
+) -> Tuple[float, float]:
+    """
+    Standard errors of the log-log OLS power-law fit ln F = α ln λ + ln A:
+      σ_α   = √(s² / Sxx)
+      σ_lnA = √(s² (1/n + x̄²/Sxx)),  σ_A = A σ_lnA
+    with s² = Σ residual² / (n − 2), Sxx = Σ (x − x̄)², x = ln λ.
+    Returns (σ_α, σ_A).
+    """
+    ranges = parse_window_ranges(window_ranges) if isinstance(window_ranges, str) else window_ranges
+    m = np.zeros_like(wavelength, dtype=bool)
+    for r_min, r_max in ranges:
+        m |= (wavelength >= r_min) & (wavelength <= r_max) & (flux > 0)
+    if m.sum() < 3:
+        return float('nan'), float('nan')
+    x, y = np.log(wavelength[m]), np.log(flux[m])
+    n = len(x)
+    sxx = float(np.sum((x - x.mean()) ** 2))
+    alpha, ln_a = np.polyfit(x, y, 1)
+    s2 = float(np.sum((y - (alpha * x + ln_a)) ** 2) / (n - 2))
+    se_alpha = float(np.sqrt(s2 / sxx))
+    se_ln_a = float(np.sqrt(s2 * (1.0 / n + x.mean() ** 2 / sxx)))
+    return se_alpha, float(np.exp(ln_a) * se_ln_a)

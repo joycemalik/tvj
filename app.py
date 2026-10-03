@@ -63,40 +63,25 @@ def about():
     return render_template('about.html')
 
 
-@app.route('/api/analysis_summary')
-def analysis_summary():
-    try:
-        import pandas as pd
-        excel_file = os.path.join(os.path.dirname(__file__), 'Approved_From_Jasil_ALL_COLUMNS.xlsx')
-        if not os.path.exists(excel_file):
-            excel_file = os.path.join(os.path.dirname(__file__), 'Ly.xlsx')
-        df_raw = pd.read_excel(excel_file)
-        df = df_raw.dropna(subset=['Spectrum']).copy()
-        df['Emission Line'] = df['Emission Line'].astype(str).str.strip().str.upper()
-        ly_df = df[df['Emission Line'] == 'LYMAN ALPHA'].copy()
-        # One measurement per spectrum: duplicated rows would bias the variance
-        ly_df['_file'] = ly_df['Spectrum'].astype(str).str.split().str[-1].str.lower()
-        ly_df = ly_df.drop_duplicates('_file')
+@app.route('/api/fvar')
+def fvar_table():
+    """Per-line, per-year F_var computed by run_variability.py."""
+    from src.variability import load_fvar_table, FVAR_ERR_CUTOFF
+    tab = load_fvar_table()
+    if tab is None:
+        return jsonify({'error': 'outputs/fvar_by_year.csv not found — run `python run_variability.py`'}), 404
 
-        from src.statistics import fractional_variability
-        v = fractional_variability(ly_df['Flux'].values, ly_df['Flux Error'].values)
+    def _f(x):
+        return None if x is None or not np.isfinite(x) else float(x)
 
-        def _r(x, nd=4):
-            return None if not np.isfinite(x) else round(float(x), nd)
-
-        return jsonify({
-            'total_spectra': int(len(ly_df)),
-            'fvar': _r(v['fvar']),
-            'fvar_err': _r(v['fvar_err']),
-            'rmax': _r(v['rmax']),
-            'rmax_err': _r(v['rmax_err']),
-            'mean_flux': round(v['mean'] * 1e13, 3),
-            'mean_snr': round(float(np.nanmean(ly_df['SNR'])), 2),
-            'mean_ew': round(float(np.nanmean(ly_df['EW'])), 2),
-            'mean_fwhm_kms': round(float(np.nanmean(ly_df['FWHM (km/s)'])), 1)
-        })
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    rows = [{
+        'line': r.line, 'year': int(r.year), 'n': int(r.n),
+        'jd_min': _f(r.jd_min), 'jd_span': _f(r.jd_span),
+        'f_mean': _f(r.f_mean), 'err_rms': _f(r.err_rms), 'ratio': _f(r.ratio),
+        'fvar': _f(r.fvar), 'fvar_err': _f(r.fvar_err),
+        'regime': r.regime if isinstance(r.regime, str) else '',
+    } for r in tab.itertuples(index=False)]
+    return jsonify({'cutoff': FVAR_ERR_CUTOFF, 'lines': list(dict.fromkeys(tab['line'])), 'rows': rows})
 
 
 tasks = {}

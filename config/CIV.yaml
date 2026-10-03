@@ -1,22 +1,28 @@
 line_name: "C IV"
 rest_wavelength: 1549.0       # Angstrom (C IV doublet 1548.2 + 1550.8, blended)
 
-amplitude:
-  steps: 8
-
 center:
   range: 6.0
   step: 0.5
 
+# sigma floor = IUE instrumental sigma: 6 Å FWHM observed / (1+z) / 2.3548 = 2.2 Å.
+# sigma ceiling = FWHM 33 Å (~6400 km/s); 3C 273 C IV FWHM ~3500–5000 km/s (Paltani & Türler 2005).
+# Sigma is continuous inside [min, max]; the step only seeds src/refine.py.
 sigma:
-  grid: [4, 5, 6, 7, 8, 9, 10, 11, 12]
-  min: 2.0
-  max: 22.0
+  min: 2.2
+  max: 14.0
+  step: 0.5
 
 wing_window:
-  grid: [14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
+  min: 14
+  max: 25
+  step: 1
 
 peak_search_radius: 15.0
+
+refine:
+  window: [1510, 1590]
+  center_tol: 8.0
 
 snr_min: 3.0
 snr_max: 15.0

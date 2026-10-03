@@ -544,12 +544,14 @@ function computeVariabilityStats(obs){
   if(pairs.length<2)return null;
   const F=pairs.map(o=>o.flux),sigma=pairs.map(o=>o.fluxError),n=F.length;
   const xbar=F.reduce((a,b)=>a+b,0)/n,xe=sigma.reduce((a,b)=>a+b,0)/n;
+  // S: sample variance; H: mean square measurement error (Vaughan et al. 2003)
   const S=F.reduce((acc,f)=>acc+(f-xbar)**2,0)/(n-1),H=sigma.reduce((acc,e)=>acc+e*e,0)/n;
-  const Fvar=Math.sqrt(Math.abs(S-H))/xbar;
-  const L=sigma.reduce((acc,e)=>acc+(e-xe)**2,0)/(n-1);
-  const ErrorFvar=(S===L)?Math.sqrt(1/(2*n))*(L/(xbar**2*Fvar)):Math.sqrt(L/n)*(1/xbar);
+  // Excess variance <= 0 means the scatter is consistent with the errors: F_var undefined
+  const Fvar=(S>H&&xbar>0)?Math.sqrt(S-H)/xbar:null;
+  // Piecewise error: S/H < 10 -> sqrt(1/2N)·H/(x̄²F_var); else sqrt(H/N)/x̄
+  const ErrorFvar=Fvar==null?null:(S/H<10?Math.sqrt(1/(2*n))*H/(xbar**2*Fvar):Math.sqrt(H/n)/xbar);
   const Fmax=Math.max(...F),Fmin=Math.min(...F),idxMax=F.indexOf(Fmax),idxMin=F.indexOf(Fmin);
-  const Rmax=Fmax/Fmin,RmaxErr=Math.sqrt((sigma[idxMin]/Fmin)**2+(sigma[idxMax]/Fmax)**2);
+  const Rmax=Fmax/Fmin,RmaxErr=Rmax*Math.sqrt((sigma[idxMin]/Fmin)**2+(sigma[idxMax]/Fmax)**2);
   return{xbar,xe,Fvar,ErrorFvar,Fmax,Fmin,Rmax,RmaxErr,n};
 }
 function renderStats(obs){

@@ -118,10 +118,19 @@ except Exception as e:
 # 3. FVAR & RMAX CALCULATIONS
 # ─────────────────────────────────────────────
 def compute_fvar_rmax(flux_arr, err_arr):
-    """Fvar ± err (Vaughan et al. 2003) and Rmax ± err."""
-    from src.statistics import fractional_variability
-    v = fractional_variability(flux_arr, err_arr)
-    return v['fvar'], v['fvar_err'], v['rmax'], v['rmax_err'], v['mean'], v.get('mean_err', np.nan)
+    """Fvar ± err (src/variability.fvar) and Rmax = Fmax/Fmin ± propagated error."""
+    from src.variability import fvar
+    F = np.asarray(flux_arr, dtype=float)
+    E = np.asarray(err_arr, dtype=float)
+    ok = np.isfinite(F) & np.isfinite(E)
+    F, E = F[ok], E[ok]
+    v = fvar(F, E)
+    if len(F) < 2:
+        return v['fvar'], v['fvar_err'], np.nan, np.nan, v['f_mean'], np.nan
+    i_max, i_min = int(np.argmax(F)), int(np.argmin(F))
+    rmax = F[i_max] / F[i_min]
+    rmax_err = rmax * math.sqrt((E[i_min] / F[i_min]) ** 2 + (E[i_max] / F[i_max]) ** 2)
+    return v['fvar'], v['fvar_err'], rmax, rmax_err, v['f_mean'], float(np.mean(E))
 
 ly_fvar, ly_fvar_err, ly_rmax, ly_rmax_err, ly_mean, ly_merr = \
     compute_fvar_rmax(ly_df['Flux'].values, ly_df['Flux Error'].values)
@@ -428,59 +437,32 @@ print("  Saved fig4_fwhm_ew_analysis.png")
 # ─────────────────────────────────────────────
 # 9. FIGURE 5 — FVAR & RMAX SUMMARY
 # ─────────────────────────────────────────────
-print("Generating Figure 5: Fvar & Rmax summary …")
+print("Generating Figure 5: F_var per line per year …")
 
-fig5, axes5 = plt.subplots(1, 3, figsize=(15, 5))
-fig5.suptitle('3C 273 — Variability Statistics (Lyman-α, IUE-SWP)',
-              fontsize=12, fontweight='bold')
-
-# Fvar bar
-ax = axes5[0]
-ax.bar(['Lyman-α'], [ly_fvar], yerr=[ly_fvar_err],
-       color=COLORS[0], alpha=0.8, capsize=8, width=0.4,
-       edgecolor='navy', linewidth=1.2)
-ax.set_ylabel('Fractional Variability (Fvar)', fontsize=10)
-ax.set_title(f'Fvar = {ly_fvar:.4f} ± {ly_fvar_err:.4f}', fontsize=10)
-ax.set_ylim(0, max(ly_fvar + 3*ly_fvar_err, 0.25))
-ax.tick_params(which='both', direction='in')
-ax.text(0, ly_fvar + ly_fvar_err + 0.005,
-        f'{ly_fvar:.4f}', ha='center', va='bottom', fontsize=9, fontweight='bold')
-
-# Rmax bar
-ax = axes5[1]
-ax.bar(['Lyman-α'], [ly_rmax], yerr=[ly_rmax_err],
-       color=COLORS[1], alpha=0.8, capsize=8, width=0.4,
-       edgecolor='saddlebrown', linewidth=1.2)
-ax.set_ylabel('Flux Maximum Ratio (Rmax)', fontsize=10)
-ax.set_title(f'Rmax = {ly_rmax:.4f} ± {ly_rmax_err:.4f}', fontsize=10)
-ax.set_ylim(0, ly_rmax + 3*ly_rmax_err + 0.5)
-ax.tick_params(which='both', direction='in')
-ax.text(0, ly_rmax + ly_rmax_err + 0.02,
-        f'{ly_rmax:.4f}', ha='center', va='bottom', fontsize=9, fontweight='bold')
-
-# Flux max vs min illustration
-ax = axes5[2]
-ax.errorbar(obs, flux, yerr=flux_err, fmt='o', color=COLORS[0],
-            markersize=3, capsize=2, elinewidth=0.7, alpha=0.6)
-idx_max = np.nanargmax(flux)
-idx_min = np.nanargmin(flux)
-ax.scatter(obs[idx_max], flux[idx_max], s=120, color='red', zorder=5,
-           label=f'Fmax = {flux[idx_max]:.2f}', edgecolors='darkred', linewidth=1.5)
-ax.scatter(obs[idx_min], flux[idx_min], s=120, color='blue', zorder=5,
-           label=f'Fmin = {flux[idx_min]:.2f}', edgecolors='navy', linewidth=1.5)
-ax.axhline(np.nanmean(flux), color='gray', linestyle='--', linewidth=1, alpha=0.8,
-           label=f'Mean = {np.nanmean(flux):.2f}')
-ax.set_xlabel('Observation Number', fontsize=9)
-ax.set_ylabel(r'Flux (×10⁻¹³ erg cm⁻² s⁻¹ Å⁻¹)', fontsize=9)
-ax.set_title('Flux Range (Fmax/Fmin = Rmax)', fontsize=10)
-ax.legend(fontsize=8)
-ax.tick_params(which='both', direction='in')
-
-plt.tight_layout()
-plt.savefig(f'{OUTPUT_DIR}/fig5_fvar_rmax.png',
-            dpi=150, bbox_inches='tight')
-plt.close()
-print("  Saved fig5_fvar_rmax.png")
+from src.variability import load_fvar_table
+fv_tab = load_fvar_table()
+if fv_tab is None:
+    print("  outputs/fvar_by_year.csv not found — run `python run_variability.py` first; skipping Fig. 5")
+else:
+    fv_ok = fv_tab[np.isfinite(fv_tab['fvar'])]
+    lines5 = list(dict.fromkeys(fv_tab['line']))
+    fig5, ax = plt.subplots(figsize=(12, 5))
+    fig5.suptitle('3C 273 — Fractional variability F_var per calendar year (IUE-SWP)',
+                  fontsize=12, fontweight='bold')
+    for i, ln in enumerate(lines5):
+        g = fv_ok[fv_ok['line'] == ln]
+        if g.empty:
+            continue
+        ax.errorbar(g['year'] + 0.08 * (i - len(lines5) / 2), g['fvar'], yerr=g['fvar_err'],
+                    fmt='o-', ms=4, capsize=2, lw=1, color=COLORS[i % len(COLORS)], label=ln)
+    ax.set_xlabel('Year', fontsize=10)
+    ax.set_ylabel('F_var', fontsize=10)
+    ax.legend(fontsize=8, ncol=3)
+    ax.tick_params(which='both', direction='in')
+    plt.tight_layout()
+    plt.savefig(f'{OUTPUT_DIR}/fig5_fvar_by_year.png', dpi=150, bbox_inches='tight')
+    plt.close()
+    print("  Saved fig5_fvar_by_year.png")
 
 # ─────────────────────────────────────────────
 # 10. FIGURE 6 — EMISSION LINE PROFILE (Model)

@@ -503,7 +503,7 @@ A spectrum passes all gates → status `ACCEPTED`. Any failed gate → status `R
 | GET | `/stream/<task_id>` | SSE stream: pipeline logs + result JSON |
 | POST | `/fit` | Synchronous fit endpoint (returns full JSON) |
 | GET | `/plots/<filename>` | Serve generated plot images |
-| GET | `/api/analysis_summary` | Campaign-level statistics (Fvar, Rmax, means) |
+| GET | `/api/fvar` | F_var per emission line per calendar year (from `python run_variability.py`) |
 
 ---
 

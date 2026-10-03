@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap">
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -202,15 +203,23 @@ body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-heigh
 
 <!-- ANALYSIS SUMMARY (always visible, loaded from API) -->
 <div class="analysis-summary">
-  <div class="section-head">3C273 Lyman Alpha — Campaign Overview</div>
-  <div class="stats-row">
-    <div class="stat-cell"><div class="sl">Total Spectra</div><div class="sv" id="anTotal">—</div></div>
-    <div class="stat-cell"><div class="sl">Mean Flux (×10⁻¹³)</div><div class="sv" id="anFlux">—</div></div>
-    <div class="stat-cell"><div class="sl">Fvar</div><div class="sv" id="anFvar">—</div><div class="se" id="anFvarE">fractional variability</div></div>
-    <div class="stat-cell"><div class="sl">Rmax</div><div class="sv" id="anRmax">—</div><div class="se">flux ratio max/min</div></div>
-    <div class="stat-cell"><div class="sl">Mean SNR</div><div class="sv" id="anSnr">—</div></div>
-    <div class="stat-cell"><div class="sl">Mean EW (Å)</div><div class="sv" id="anEw">—</div></div>
-    <div class="stat-cell"><div class="sl">Mean FWHM (km/s)</div><div class="sv" id="anFwhm">—</div></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+    <div class="section-head" style="margin:0;">3C 273 — Fractional variability F<sub>var</sub> per emission line, per year</div>
+    <button class="demo-btn" id="fvarExportBtn" onclick="exportFvarExcel()" disabled>Export F<sub>var</sub> to Excel</button>
+  </div>
+  <div class="se" style="margin:6px 0 8px;font-size:11px;color:var(--ink3);">
+    F<sub>var</sub> = √(σ²<sub>F</sub> − ΔF̄²) / F̄ from (JD − JD<sub>min</sub>, F, F<sub>err</sub>) of detected (≥3σ) line fluxes.
+    Error: √(1/2N)·ΔF̄²/(F̄²F<sub>var</sub>) when σ²<sub>F</sub>/ΔF̄² &lt; <span id="fvarCut">10</span>, else √(ΔF̄²/N)/F̄
+    (Vaughan et al. 2003; Sukanya et al. 2018). "not variable": scatter consistent with errors.
+  </div>
+  <div style="overflow-x:auto;max-height:340px;overflow-y:auto;">
+    <table class="summary-tbl" id="fvarTable">
+      <thead><tr>
+        <th>Line</th><th>Year</th><th>N</th><th>JD<sub>min</sub></th><th>JD span (d)</th>
+        <th>F̄</th><th>ΔF̄ (rms err)</th><th>σ²<sub>F</sub>/ΔF̄²</th><th>F<sub>var</sub></th><th>± err</th><th>Regime</th>
+      </tr></thead>
+      <tbody id="fvarBody"><tr><td colspan="11" style="color:var(--ink3);">Loading…</td></tr></tbody>
+    </table>
   </div>
 </div>
 
@@ -258,8 +267,10 @@ body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-heigh
             <tr>
               <th>Line</th><th>Rest λ (Å)</th><th>Fitted λ (Å)</th><th>Δλ (Å)</th>
               <th>v (km/s)</th><th>σ (Å)</th><th>FWHM (km/s)</th>
-              <th>Flux</th><th>Flux Err</th><th>EW (Å)</th><th>EW Err</th>
-              <th>SNR</th><th>χ²<sub>red</sub></th><th>Status</th>
+              <th>Flux</th><th>Flux Err</th><th>EW (Å)</th><th>EW Err</th><th>SNR</th>
+              <th>Window (Å)</th><th>Min λ</th><th>Max λ</th><th>Reduced χ²</th>
+              <th>Spectral Index</th><th>Error Spectral Index</th><th>Amplitude</th><th>Error Amplitude</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody id="summaryTableBody"></tbody>
@@ -355,7 +366,8 @@ body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-heigh
     </div>
 
     <!-- Print action -->
-    <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;">
+      <button class="demo-btn" onclick="exportSpectrumExcel()">Export to Excel</button>
       <button class="demo-btn" onclick="window.print()">Print Report</button>
     </div>
 
@@ -569,7 +581,14 @@ function buildSummaryTable(lines) {
       <td>${l.detected ? fmtN(l.ew,2) : '—'}</td>
       <td>${l.detected ? fmtN(l.ew_err,2) : '—'}</td>
       <td>${l.detected ? fmtN(l.snr,2) : '—'}</td>
-      <td>${l.detected ? fmtN(l.reduced_chi2,3) : '—'}</td>
+      <td>${fmtN(l.wing_window,0)}</td>
+      <td>${fmtN(l.min_wavelength,2)}</td>
+      <td>${fmtN(l.max_wavelength,2)}</td>
+      <td>${fmtN(l.reduced_chi2,3)}</td>
+      <td>${fmtN(currentRecord.spectral_index,4)}</td>
+      <td>${fmtN(currentRecord.spectral_index_err,4)}</td>
+      <td>${fmtX(currentRecord.continuum_amplitude)}</td>
+      <td>${fmtX(currentRecord.continuum_amplitude_err)}</td>
       <td><span class="${bCls}">${bTxt}</span></td>`;
     tbody.appendChild(tr);
   });
@@ -751,15 +770,15 @@ function renderQC(line) {
   const dWl  = Math.abs((line.center||line.rest_wavelength) - line.rest_wavelength);
   const items = [];
 
-  if (snr >= 5)   items.push({s:'pass', i:'✓', t:`SNR = ${snr.toFixed(2)} ≥ 5.0`});
-  else            items.push({s:'warn', i:'⚠', t:`Low SNR = ${snr.toFixed(2)} < 5.0`});
+  if (snr >= 3)   items.push({s:'pass', i:'✓', t:`Significance F/σF = ${snr.toFixed(2)} ≥ 3`});
+  else            items.push({s:'warn', i:'⚠', t:`Not detected: F/σF = ${snr.toFixed(2)} < 3`});
 
   if (dWl <= 10)  items.push({s:'pass', i:'✓', t:`|Δλ| = ${dWl.toFixed(2)} Å ≤ 10 Å`});
   else            items.push({s:'warn', i:'⚠', t:`Large shift |Δλ| = ${dWl.toFixed(2)} Å > 10 Å`});
 
-  if (chi2 < 0.1)       items.push({s:'warn', i:'⚠', t:`χ²red = ${chi2.toFixed(3)} — unusually low, check noise`});
-  else if (chi2 <= 3.0) items.push({s:'pass', i:'✓', t:`χ²red = ${chi2.toFixed(3)} — good statistical agreement`});
-  else                  items.push({s:'fail', i:'⚠', t:`χ²red = ${chi2.toFixed(3)} — elevated residuals`});
+  if (chi2 <= 3.0) items.push({s:'pass', i:'✓', t:`χ²red = ${chi2.toFixed(3)} — acceptable fit`});
+  else             items.push({s:'fail', i:'⚠', t:`χ²red = ${chi2.toFixed(3)} — elevated residuals`});
+  if (line.at_bound) items.push({s:'warn', i:'⚠', t:'A fitted parameter sits at its allowed bound'});
 
   items.push({s:'pass', i:'✓', t:`Window ${line.wing_window||20} Å covers core & wings`});
 
@@ -771,22 +790,84 @@ function renderQC(line) {
   });
 }
 
-/* ── Campaign-level analysis summary (from API) ── */
+/* ── Excel export: current spectrum (one row per line, reference column names) ── */
+function exportSpectrumExcel() {
+  if (!currentRecord || !window.XLSX) return;
+  const name = document.getElementById('resFilename').textContent || 'spectrum';
+  const r = currentRecord;
+  const rows = (r.lines || []).map(l => ({
+    'Spectrum': name,
+    'Emission Line': l.line_name,
+    'Detected': l.detected ? 'yes' : 'no',
+    'Status': l.fit_status || '',
+    'Line Center (Å)': l.center,
+    'Line Center Error (Å)': l.center_err,
+    'Sigma (Å)': l.sigma,
+    'Sigma Error (Å)': l.sigma_err,
+    'Flux': l.flux,
+    'Flux Error': l.flux_err,
+    'Flux in Window': l.flux_window,
+    'SNR': l.snr,
+    'EW': l.ew,
+    'EW Error': l.ew_err,
+    'FWHM (Å)': l.fwhm_ang,
+    'FWHM (km/s)': l.fwhm_kms,
+    'FWHM intrinsic (km/s)': l.fwhm_kms_intrinsic,
+    'Wing Window': l.wing_window,
+    'Min λ': l.min_wavelength,
+    'Max λ': l.max_wavelength,
+    'Reduced χ²': l.reduced_chi2,
+    'Spectral Index': r.spectral_index,
+    'Error Spectral Index': r.spectral_index_err,
+    'Amplitude': r.continuum_amplitude,
+    'Error Amplitude': r.continuum_amplitude_err,
+    'Line Amplitude': l.amplitude,
+    'Line Amplitude Error': l.amplitude_err,
+  }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Line fits');
+  XLSX.writeFile(wb, name.replace(/\.txt.*$/i, '') + '_fit.xlsx');
+}
+
+/* ── F_var per line per year (from /api/fvar) ── */
+let fvarRows = [];
+function renderFvar(data) {
+  const body = document.getElementById('fvarBody');
+  const fx = v => v == null ? '—' : Number(v).toExponential(3);
+  const fn = (v, d) => v == null ? '—' : Number(v).toFixed(d);
+  document.getElementById('fvarCut').textContent = data.cutoff;
+  fvarRows = data.rows;
+  body.innerHTML = data.rows.map(r => `<tr>
+    <td style="font-weight:600;">${r.line}</td><td>${r.year}</td><td>${r.n}</td>
+    <td>${fn(r.jd_min,2)}</td><td>${fn(r.jd_span,1)}</td>
+    <td>${fx(r.f_mean)}</td><td>${fx(r.err_rms)}</td><td>${fn(r.ratio,2)}</td>
+    <td style="font-weight:600;">${fn(r.fvar,4)}</td><td>${fn(r.fvar_err,4)}</td><td>${r.regime}</td></tr>`).join('');
+  document.getElementById('fvarExportBtn').disabled = false;
+}
+
+function exportFvarExcel() {
+  if (!fvarRows.length || !window.XLSX) return;
+  const rows = fvarRows.map(r => ({
+    'Line': r.line, 'Year': r.year, 'N': r.n, 'JD min': r.jd_min, 'JD span (d)': r.jd_span,
+    'F avg': r.f_mean, 'F err (rms)': r.err_rms, 'S²/σ²err': r.ratio,
+    'Fvar': r.fvar, 'Fvar error': r.fvar_err, 'Error regime': r.regime }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Fvar by year');
+  XLSX.writeFile(wb, '3C273_Fvar_by_year.xlsx');
+}
+
 window.addEventListener('DOMContentLoaded', async () => {
+  const body = document.getElementById('fvarBody');
   try {
-    const res  = await fetch('/api/analysis_summary');
+    const res  = await fetch('/api/fvar');
     const data = await res.json();
-    if (data && !data.error) {
-      document.getElementById('anTotal').textContent = data.total_spectra;
-      document.getElementById('anFlux').textContent  = data.mean_flux;
-      document.getElementById('anFvar').textContent  = data.fvar;
-      document.getElementById('anRmax').textContent  = data.rmax;
-      document.getElementById('anSnr').textContent   = data.mean_snr;
-      document.getElementById('anEw').textContent    = data.mean_ew;
-      document.getElementById('anFwhm').textContent  = data.mean_fwhm_kms;
+    if (!res.ok || data.error) {
+      body.innerHTML = `<tr><td colspan="11" style="color:var(--ink3);">${data.error || 'F_var table unavailable'}</td></tr>`;
+      return;
     }
+    renderFvar(data);
   } catch (e) {
-    console.warn('Analysis summary fetch failed:', e);
+    body.innerHTML = '<tr><td colspan="11" style="color:var(--ink3);">F_var table unavailable</td></tr>';
   }
 });
 </script>
