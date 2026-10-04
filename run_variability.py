@@ -85,11 +85,8 @@ def main():
     table = fvar_by_year(used)
     table.to_csv(os.path.join(OUT, 'fvar_by_year.csv'), index=False)
 
-    xlsx = os.path.join(OUT, 'variability_results.xlsx')
-    with pd.ExcelWriter(xlsx) as xw:
-        table.to_excel(xw, sheet_name='Fvar by year', index=False)
-        curves.to_excel(xw, sheet_name='Light curves', index=False)
-        fits.assign(date=fits['date'].dt.strftime('%Y-%m-%d')).to_excel(xw, sheet_name='Line fits', index=False)
+    from src.excel_export import write_variability_workbook
+    write_variability_workbook(os.path.join(OUT, 'variability_results.xlsx'), fits, table, curves)
 
     with pd.option_context('display.width', 200, 'display.max_rows', 500):
         print(table.to_string(index=False, float_format=lambda v: f'{v:.4g}'))

@@ -76,6 +76,16 @@ def about():
     return render_template('about.html')
 
 
+@app.route('/download/variability_results.xlsx')
+def download_variability_workbook():
+    """Organised campaign workbook written by run_variability.py."""
+    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'outputs')
+    if not os.path.exists(os.path.join(out, 'variability_results.xlsx')):
+        return jsonify({'error': 'run `python run_variability.py` first'}), 404
+    return send_from_directory(out, 'variability_results.xlsx', as_attachment=True,
+                               download_name='3C273_variability_results.xlsx')
+
+
 @app.route('/api/fvar_context')
 def fvar_context():
     """Observation date, same-year light curve and F_var for one spectrum (?spectrum=<filename>)."""

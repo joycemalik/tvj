@@ -155,6 +155,47 @@
       xaxis: axis('(F − F<sub>model</sub>) / σ', { range: [-lim, lim] }) }), CFG);
   }
 
+  /* Okabe & Ito (2008) colour-blind-safe palette, one colour per line */
+  const LINE_COLOURS = ['#0072B2', '#D55E00', '#009E73', '#CC79A7', '#E69F00', '#56B4E9', '#882255', '#117733', '#999933'];
+  function lineColour(i) { return LINE_COLOURS[i % LINE_COLOURS.length]; }
+
+  /* Full-spectrum decomposition: observed spectrum + every selected line's Gaussian fit */
+  function decomposition(el, data, selected) {
+    const wl = data.wavelength || [], flux = data.observed_flux || [], cont = data.continuum_fit || [];
+    if (!wl.length) return message(el, 'No spectrum data.');
+    const good = wl.map((w, i) => flux[i] !== 0);
+    const traces = [
+      { x: wl.filter((_, i) => good[i]), y: flux.filter((_, i) => good[i]), mode: 'lines', name: 'Observed',
+        line: { color: T.data, width: 0.9 } },
+      { x: wl, y: cont, mode: 'lines', name: 'Power-law continuum', line: { color: T.cont, width: 1, dash: 'dash' } },
+    ];
+    const ann = [];
+    (data.lines || []).forEach((l, i) => {
+      if (selected && !selected.has(i)) return;
+      const p = l.plot;
+      if (!p || !p.components.length) return;
+      const col = lineColour(i);
+      const name = shortName(l.line_name) + (l.detected ? '' : ' (not detected)');
+      const y = p.components[0].y.map((v, k) => v + p.continuum[k]);
+      traces.push({ x: p.x, y, mode: 'lines', name, line: { color: col, width: 1.8, dash: l.detected ? 'solid' : 'dot' } });
+      traces.push({ x: p.x.concat(p.x.slice().reverse()), y: y.concat(p.continuum.slice().reverse()),
+        fill: 'toself', fillcolor: hexA(col, 0.18), line: { width: 0 }, hoverinfo: 'skip', showlegend: false, mode: 'none' });
+      ann.push({ x: l.center, y: Math.max(...y), yanchor: 'bottom', text: shortName(l.line_name), showarrow: false,
+        font: { size: 9, color: col } });
+    });
+    const sorted = traces[0].y.slice().sort((a, b) => a - b);
+    const hi = sorted[Math.floor(sorted.length * 0.995)] || 1;
+    Plotly.newPlot(el, traces, layout('Rest wavelength (Å)', FLUX_UNIT, {
+      annotations: ann, margin: { t: 40, r: 15, l: 70, b: 45 },
+      yaxis: axis(FLUX_UNIT, { range: [0, hi * 1.2] }),
+      legend: { orientation: 'h', x: 0, y: -0.22, font: { size: 10, color: T.ink } },
+    }), CFG);
+  }
+  function hexA(hex, a) {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+  }
+
   /* Graph 5: same-year light curve of one line, this spectrum highlighted */
   function lightCurve(el, ctxLine, ctx, thisFlux, thisErr) {
     const pts = (ctxLine && ctxLine.year_points) || [];
@@ -215,5 +256,5 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
   function shortName(n) { return String(n).replace(/\s*\(.*\)/, ''); }
 
-  global.FitPlots = { setTheme, overview, lineFit, residuals, residualDistribution, lightCurve, verification };
+  global.FitPlots = { setTheme, overview, lineFit, residuals, residualDistribution, lightCurve, decomposition, lineColour, verification };
 })(window);

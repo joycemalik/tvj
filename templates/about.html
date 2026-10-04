@@ -1069,6 +1069,37 @@ sup.cite {
     </ol>
     <p>The same panels are written for every line to a publication figure (PNG) per spectrum.</p>
 
+    <h3>9.3 Profile Diagnostic Viewer (/v2)</h3>
+    <p>After a spectrum is loaded the page shows, from top to bottom:</p>
+    <ol>
+      <li><strong>Header</strong>: file name, number of detected and verified lines, and the continuum
+          \(\alpha \pm \sigma_\alpha\), \(A \pm \sigma_A\) (one per spectrum); buttons for the Excel export and the all-lines PNG.</li>
+      <li><strong>Graph 1</strong> and the <strong>emission-line summary</strong> (window, min/max λ, \(\chi^2_\text{red}\), status per line).</li>
+      <li>For the selected line: <strong>Graphs 2–4</strong> and the parameter table (all values ±1σ).</li>
+      <li>Collapsible sections, each showing its key result while closed:
+        <em>Verification</em> (§9.1); <em>Graph 5 — variability context</em>, which dates the spectrum from the SWP
+        log by its SWP number and plots the selected line's detected fluxes of the same calendar year with this
+        spectrum highlighted, plus a table of this spectrum's flux vs. that year's \(\bar F\) and \(F_\text{var}\) for every line;
+        and <em>Graph 6 — full-spectrum decomposition</em>, the observed spectrum with every selected line's Gaussian in
+        its own colour (Okabe &amp; Ito colour-blind-safe palette), followed by a fit and light-curve panel per selected line.
+        A line selector chooses which lines are shown and downloaded.</li>
+      <li><strong>Campaign reference</strong> (collapsed): \(F_\text{var}\) per line per year for all dated spectra.</li>
+    </ol>
+    <p>Every graph downloads as PNG (2× resolution) or SVG.</p>
+
+    <h3>9.4 Excel outputs</h3>
+    <table class="data-table">
+      <thead><tr><th>File</th><th>Sheets</th></tr></thead>
+      <tbody>
+        <tr><td>Per spectrum (viewer “Export to Excel”)</td>
+            <td>README · Lines (reference column names, one row per line) · Continuum (date, JD, windows, α, A) ·
+                Verification (one row per check) · Variability context (this spectrum vs. its year)</td></tr>
+        <tr><td>Campaign (<code>outputs/variability_results.xlsx</code>, “Download campaign workbook”)</td>
+            <td>README (formulas, units, sources) · Fvar by year · Light curves (JD, JD − JD<sub>min</sub>, F, F<sub>err</sub>) ·
+                Line fits (every spectrum × line with verification) · Spectra (date, JD, continuum)</td></tr>
+      </tbody>
+    </table>
+
   </div>
 
 
@@ -1249,8 +1280,13 @@ sup.cite {
         </tr>
         <tr>
           <td><code>src/variability.py</code></td>
-          <td>\(F_\text{var}\) per line per year (§10)</td>
-          <td>Per-year table with piecewise errors</td>
+          <td>\(F_\text{var}\) per line per year (§10); dating and same-year context of one spectrum</td>
+          <td>Per-year table with piecewise errors; <code>/api/fvar_context</code></td>
+        </tr>
+        <tr>
+          <td><code>src/excel_export.py</code></td>
+          <td>Campaign workbook (§9.4)</td>
+          <td><code>outputs/variability_results.xlsx</code></td>
         </tr>
         <tr>
           <td><code>run_variability.py</code></td>

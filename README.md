@@ -82,6 +82,24 @@ Shown for the selected line in `/` and `/v2` (`static/js/fitplots.js`) and writt
 3. **Normalised residuals** (F − M)/σ with ±1σ, ±2σ lines.
 4. **Residual distribution** — histogram vs. N(0, 1).
 
+### Profile Diagnostic Viewer (`/v2`)
+
+Header (detections, verified count, continuum α ± err, A ± err, Excel / PNG buttons) → Graph 1 and the line summary → Graphs 2–4 and the parameter table for the selected line → collapsible sections that show their key result while closed:
+
+- **Verification** for the selected line (§3).
+- **Graph 5 — variability context**: the spectrum is dated from `jd.xlsx` by its SWP number; the plot shows the selected line's detected fluxes from the same calendar year with this spectrum highlighted, and a table compares every line with that year's F̄ and F_var.
+- **Graph 6 — full-spectrum decomposition**: the spectrum with each selected line's Gaussian in its own colour (Okabe & Ito palette), plus fit and light-curve panels per line. A line selector (e.g. only Lyα and Si IV) controls what is shown and downloaded.
+- **Campaign reference**: F_var per line per year for all dated spectra, with the campaign workbook download.
+
+Every graph downloads as PNG (2×) or SVG.
+
+### Excel outputs
+
+| File | Sheets |
+|---|---|
+| Per spectrum (viewer → *Export to Excel*) | README · Lines (reference column names) · Continuum · Verification (one row per check) · Variability context |
+| `outputs/variability_results.xlsx` (`/download/variability_results.xlsx`) | README (formulas, units, sources) · Fvar by year · Light curves (JD, JD − JD_min, F, F_err) · Line fits · Spectra |
+
 ## 5. Variability (F_var)
 
 `src/variability.py`, per emission line and per calendar year, using detected fluxes only:
@@ -178,7 +196,8 @@ src/
   line_fitter.py        seed → refine → quality per line
   quality.py            detection and warnings
   statistics.py         reference-style window statistics, local baseline
-  variability.py        F_var with piecewise error, JD loader
+  variability.py        F_var with piecewise error, JD loader, per-spectrum context
+  excel_export.py       organised campaign workbook
   plotting.py           publication PNG per spectrum
   pipeline.py           orchestrator
 static/js/fitplots.js   browser graphs and verification table
@@ -200,6 +219,8 @@ tests/                  pytest suite
 | POST | `/upload_fit`, GET `/stream/<id>` | Same, with streamed log |
 | GET | `/plots/<file>` | Publication PNG |
 | GET | `/api/fvar` | F_var per line per year |
+| GET | `/api/fvar_context?spectrum=<file>` | Date, same-year light curve and F_var for one spectrum |
+| GET | `/download/variability_results.xlsx` | Campaign workbook |
 
 ## 11. Deployment
 

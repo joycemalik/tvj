@@ -101,6 +101,17 @@ body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-heigh
 /* Chart panels */
 .chart-panel{border:1px solid var(--rule);background:var(--paper);}
 .chart-header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 12px;background:var(--paper2);border-bottom:1px solid var(--rule);}
+.fold{margin-top:12px;border:1px solid var(--rule);background:var(--paper);}
+.fold>summary{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 14px;cursor:pointer;list-style:none;background:var(--paper2);}
+.fold>summary::-webkit-details-marker{display:none;}
+.fold>summary::before{content:'▸';color:var(--ink3);margin-right:6px;}
+.fold[open]>summary::before{content:'▾';}
+.fold-title{font-size:12px;font-weight:600;color:var(--ink);flex:1;}
+.fold-sum{font-family:var(--mono);font-size:11px;color:var(--ink3);text-align:right;}
+.pair-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media (max-width:900px){.pair-grid{grid-template-columns:1fr;}}
+.spec-cont{font-family:var(--mono);font-size:11px;color:var(--ink3);margin-top:3px;}
+.spec-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .dl-btn{font-family:var(--mono);font-size:10px;padding:2px 7px;border:1px solid var(--rule2);background:var(--paper);color:var(--ink2);cursor:pointer;}
 .dl-btn:hover{border-color:var(--accent);color:var(--accent);}
 .chart-label{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);}
@@ -211,39 +222,43 @@ body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-heigh
   <!-- Results dashboard (hidden until pipeline returns data) -->
   <div id="results-dashboard">
 
-    <!-- Spectrum identification bar -->
+    <!-- Spectrum identification bar + actions -->
     <div class="spec-header">
-      <div class="spec-title">Spectrum: <span id="resFilename">—</span></div>
+      <div>
+        <div class="spec-title">Spectrum: <span id="resFilename">—</span></div>
+        <div class="spec-cont" id="resContinuum">—</div>
+      </div>
       <div class="spec-meta">
-        <div class="spec-chi2">Global χ²<sub>red</sub>: <strong id="resGlobalChi2">—</strong></div>
         <div class="status-badge status-ok" id="resStatusBadge">ACCEPTED</div>
+        <button class="demo-btn" onclick="exportSpectrumExcel()">Export to Excel</button>
+        <a class="demo-btn" id="figLink" href="#" download style="text-decoration:none;">All-lines figure (PNG)</a>
       </div>
     </div>
 
-    <!-- Graph 1: Full UV Overview -->
+    <!-- Graph 1: Full spectrum -->
     <div class="chart-panel">
       <div class="chart-header">
         <span class="chart-label">Graph 1 — Rest-frame spectrum</span>
-        <span class="chart-sub">Observed flux · power-law continuum F = Aλ<sup>α</sup> · shaded: continuum windows · dotted: fitted line centres</span><span class="chart-sub"><button class="dl-btn" onclick="downloadGraph('overviewPlot','png')">PNG</button> <button class="dl-btn" onclick="downloadGraph('overviewPlot','svg')">SVG</button></span>
+        <span class="chart-sub">observed flux · power-law continuum · shaded: continuum windows
+          <button class="dl-btn" onclick="downloadGraph('overviewPlot','png')">PNG</button>
+          <button class="dl-btn" onclick="downloadGraph('overviewPlot','svg')">SVG</button></span>
       </div>
-      <div class="chart-wrap"><div id="overviewPlot" style="width:100%;height:320px;"></div></div>
+      <div class="chart-wrap"><div id="overviewPlot" style="width:100%;height:300px;"></div></div>
     </div>
 
     <!-- Summary table -->
     <div class="chart-panel">
       <div class="chart-header">
-        <span class="chart-label">Emission Line Summary</span>
+        <span class="chart-label">Emission-line summary</span>
+        <span class="chart-sub">click a row to inspect the line · spectral index and amplitude are shown above (one continuum per spectrum)</span>
       </div>
       <div style="overflow-x:auto;">
         <table class="summary-tbl">
           <thead>
             <tr>
-              <th>Line</th><th>Rest λ (Å)</th><th>Fitted λ (Å)</th><th>Δλ (Å)</th>
-              <th>v (km/s)</th><th>σ (Å)</th><th>FWHM (km/s)</th>
-              <th>Flux</th><th>Flux Err</th><th>EW (Å)</th><th>EW Err</th><th>SNR</th>
-              <th>Window (Å)</th><th>Min λ</th><th>Max λ</th><th>Reduced χ²</th>
-              <th>Spectral Index</th><th>Error Spectral Index</th><th>Amplitude</th><th>Error Amplitude</th>
-              <th>Status</th>
+              <th>Line</th><th>Rest λ (Å)</th><th>Fitted λ (Å)</th><th>σ (Å)</th><th>FWHM (km/s)</th>
+              <th>Flux</th><th>Flux Err</th><th>EW (Å)</th><th>SNR</th>
+              <th>Window (Å)</th><th>Min λ</th><th>Max λ</th><th>Reduced χ²</th><th>Status</th>
             </tr>
           </thead>
           <tbody id="summaryTableBody"></tbody>
@@ -251,99 +266,78 @@ body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-heigh
       </div>
     </div>
 
-    <!-- Line tabs + diagnostic grid -->
+    <!-- Selected line: graphs 2–4 + parameters -->
     <div>
       <div class="line-tabs" id="lineTabs"></div>
-
       <div class="diag-grid" style="margin-top:0;">
-        <!-- Left: plots -->
         <div style="display:flex;flex-direction:column;gap:14px;">
           <div class="chart-panel">
             <div class="chart-header">
               <span class="chart-label" id="localFitTitle">Graph 2 — Line fit</span>
-              <span class="chart-sub">Data ± 1σ pixel noise · Gaussian + local linear continuum (weighted least squares)</span><span class="chart-sub"><button class="dl-btn" onclick="downloadGraph('localPlot','png')">PNG</button> <button class="dl-btn" onclick="downloadGraph('localPlot','svg')">SVG</button></span>
+              <span class="chart-sub">data ± 1σ · Gaussian + local continuum
+                <button class="dl-btn" onclick="downloadGraph('localPlot','png')">PNG</button>
+                <button class="dl-btn" onclick="downloadGraph('localPlot','svg')">SVG</button></span>
             </div>
-            <div class="chart-wrap"><div id="localPlot" style="width:100%;height:360px;"></div></div>
-            <div class="chart-header" style="margin-top:0;">
-              <span class="chart-label">Graph 3 — Normalised residuals (F − F<sub>model</sub>)/σ</span>
-              <span class="chart-sub">±1σ and ±2σ reference lines</span><span class="chart-sub"><button class="dl-btn" onclick="downloadGraph('residualPlot','png')">PNG</button> <button class="dl-btn" onclick="downloadGraph('residualPlot','svg')">SVG</button></span>
-            </div>
-            <div class="chart-wrap"><div id="residualPlot" style="width:100%;height:200px;"></div></div>
+            <div class="chart-wrap"><div id="localPlot" style="width:100%;height:340px;"></div></div>
           </div>
-          <div class="chart-panel">
-            <div class="chart-header">
-              <span class="chart-label">Graph 4 — Residual distribution</span>
-              <span class="chart-sub">Histogram of normalised residuals vs. standard normal N(0,1)</span><span class="chart-sub"><button class="dl-btn" onclick="downloadGraph('landscapePlot','png')">PNG</button> <button class="dl-btn" onclick="downloadGraph('landscapePlot','svg')">SVG</button></span>
+          <div class="pair-grid">
+            <div class="chart-panel">
+              <div class="chart-header">
+                <span class="chart-label">Graph 3 — Residuals (F − M)/σ</span>
+                <span class="chart-sub"><button class="dl-btn" onclick="downloadGraph('residualPlot','png')">PNG</button>
+                  <button class="dl-btn" onclick="downloadGraph('residualPlot','svg')">SVG</button></span>
+              </div>
+              <div class="chart-wrap"><div id="residualPlot" style="width:100%;height:220px;"></div></div>
             </div>
-            <div class="chart-wrap"><div id="landscapePlot" style="width:100%;height:260px;"></div></div>
+            <div class="chart-panel">
+              <div class="chart-header">
+                <span class="chart-label">Graph 4 — Residuals vs N(0,1)</span>
+                <span class="chart-sub"><button class="dl-btn" onclick="downloadGraph('landscapePlot','png')">PNG</button>
+                  <button class="dl-btn" onclick="downloadGraph('landscapePlot','svg')">SVG</button></span>
+              </div>
+              <div class="chart-wrap"><div id="landscapePlot" style="width:100%;height:220px;"></div></div>
+            </div>
           </div>
         </div>
 
-        <!-- Right: params + QC -->
-        <div style="display:flex;flex-direction:column;gap:14px;">
-          <!-- Final Gaussian params -->
-          <div class="params-section">
-            <div class="params-section-head">Final Gaussian Parameters</div>
-            <div class="params-body">
-              <table class="params-tbl">
-                <tr><td>Amplitude</td><td id="valOutAmp">—</td></tr>
-                <tr><td>Line Centre (Å)</td><td id="valOutCenter">—</td></tr>
-                <tr><td>Wing Window (Å)</td><td id="valOutWing">—</td></tr>
-                <tr><td>Min λ (Å)</td><td id="valOutMin">—</td></tr>
-                <tr><td>Max λ (Å)</td><td id="valOutMax">—</td></tr>
-                <tr><td>Sigma (Å)</td><td id="valOutSigma">—</td></tr>
-              </table>
-            </div>
+        <div class="params-section">
+          <div class="params-section-head">Fit parameters (±1σ)</div>
+          <div class="params-body">
+            <table class="params-tbl">
+              <tr><td>Rest λ</td><td id="valRestWl">—</td></tr>
+              <tr><td>Centre μ</td><td id="valCenter">—</td></tr>
+              <tr><td>Offset Δλ / velocity</td><td id="valDeltaWl">—</td></tr>
+              <tr><td>Amplitude A</td><td id="valAmp">—</td></tr>
+              <tr><td>σ</td><td id="valSigma">—</td></tr>
+              <tr><td>FWHM</td><td id="valFWHM">—</td></tr>
+              <tr><td>FWHM (km/s)</td><td id="valFWHMkms">—</td></tr>
+              <tr><td>Flux √(2π)Aσ</td><td id="valFlux">—</td></tr>
+              <tr><td>Equivalent width</td><td id="valEW">—</td></tr>
+              <tr><td>Significance F/σ<sub>F</sub></td><td id="valSNR">—</td></tr>
+              <tr><td>Reduced χ²</td><td id="valChi2">—</td></tr>
+              <tr><td>Window W (min–max)</td><td id="valWingWindow">—</td></tr>
+            </table>
           </div>
-
-          <!-- Scientific parameters -->
-          <div class="params-section">
-            <div class="params-section-head">Scientific Gaussian Parameters</div>
-            <div class="params-body">
-              <table class="params-tbl">
-                <tr><td>Rest λ (λ<sub>rest</sub>)</td><td id="valRestWl">—</td></tr>
-                <tr><td>Fitted Centre (μ)</td><td id="valCenter">—</td></tr>
-                <tr><td>Wavelength Offset (Δλ)</td><td id="valDeltaWl">—</td></tr>
-                <tr><td>Velocity Offset (v)</td><td id="valVelOffset">—</td></tr>
-                <tr><td>Amplitude (A)</td><td id="valAmp">—</td></tr>
-                <tr><td>Gaussian σ</td><td id="valSigma">—</td></tr>
-                <tr><td>FWHM (Å) = 2.355σ</td><td id="valFWHM">—</td></tr>
-                <tr><td>FWHM (km/s)</td><td id="valFWHMkms">—</td></tr>
-                <tr><td>Derived 2.355σ FWHM</td><td id="valFWHM235">—</td></tr>
-                <tr><td>Integrated Flux</td><td id="valFlux">—</td></tr>
-                <tr><td>Flux Error</td><td id="valFluxErr">—</td></tr>
-                <tr><td>Equivalent Width (EW)</td><td id="valEW">—</td></tr>
-                <tr><td>EW Error</td><td id="valEWErr">—</td></tr>
-                <tr><td>SNR</td><td id="valSNR">—</td></tr>
-                <tr><td>Reduced χ²</td><td id="valChi2">—</td></tr>
-                <tr><td>Wing Window</td><td id="valWingWindow">—</td></tr>
-              </table>
-            </div>
-          </div>
-
         </div>
       </div>
     </div>
 
-    <!-- Verification step -->
-    <div class="chart-panel" style="margin-top:14px;">
-      <div class="chart-header">
-        <span class="chart-label">Verification — statistical checks of the selected line fit</span>
-        <span class="chart-sub">Required checks must pass for VERIFIED; "info" rows are reported only</span>
-      </div>
+    <!-- Verification (collapsed; status visible) -->
+    <details class="fold">
+      <summary><span class="fold-title">Verification — statistical checks of the selected line</span>
+        <span class="fold-sum" id="verifSummary">—</span></summary>
       <div id="verificationPanel" style="padding:8px 14px 12px;overflow-x:auto;"></div>
-    </div>
+    </details>
 
-    <!-- Variability context: this spectrum within its year's light curve -->
-    <div class="chart-panel" style="margin-top:14px;">
-      <div class="chart-header">
-        <span class="chart-label">Graph 5 — Variability context of this spectrum</span>
-        <span class="chart-sub">
-          <button class="dl-btn" onclick="downloadGraph('lightcurvePlot','png')">PNG</button>
-          <button class="dl-btn" onclick="downloadGraph('lightcurvePlot','svg')">SVG</button>
-        </span>
+    <!-- Variability context (collapsed; date visible) -->
+    <details class="fold">
+      <summary><span class="fold-title">Graph 5 — Variability context of this spectrum</span>
+        <span class="fold-sum" id="contextSummary">—</span></summary>
+      <div style="display:flex;justify-content:flex-end;padding:6px 12px 0;">
+        <button class="dl-btn" onclick="downloadGraph('lightcurvePlot','png')">PNG</button>&nbsp;
+        <button class="dl-btn" onclick="downloadGraph('lightcurvePlot','svg')">SVG</button>
       </div>
-      <div id="contextInfo" style="padding:8px 14px 0;font-size:12px;color:var(--ink2);"></div>
+      <div id="contextInfo" style="padding:4px 14px 0;font-size:12px;color:var(--ink2);"></div>
       <div class="chart-wrap"><div id="lightcurvePlot" style="width:100%;height:280px;"></div></div>
       <div style="padding:0 14px 12px;overflow-x:auto;">
         <table class="summary-tbl" id="contextTable">
@@ -354,25 +348,23 @@ body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-heigh
           <tbody id="contextBody"></tbody>
         </table>
       </div>
-    </div>
+    </details>
 
-    <!-- All lines of this spectrum -->
-    <div class="chart-panel" style="margin-top:14px;">
-      <div class="chart-header">
-        <span class="chart-label">All lines in this spectrum — fit and same-year light curve</span>
-        <span class="chart-sub"><button class="dl-btn" onclick="downloadAllLines('png')">Download selected (PNG)</button>
-          <button class="dl-btn" onclick="downloadAllLines('svg')">Download selected (SVG)</button></span>
-      </div>
+    <!-- All lines (collapsed) -->
+    <details class="fold">
+      <summary><span class="fold-title">Graph 6 and all lines — compare and download selected lines</span>
+        <span class="fold-sum" id="allLinesSummary">—</span></summary>
       <div id="lineSelector" style="display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:10px 12px 0;font-size:11px;font-family:var(--mono);"></div>
+      <div class="chart-header" style="margin-top:10px;">
+        <span class="chart-label">Graph 6 — Full-spectrum decomposition</span>
+        <span class="chart-sub">each selected line's Gaussian in its own colour
+          <button class="dl-btn" onclick="downloadGraph('decompPlot','png')">PNG</button>
+          <button class="dl-btn" onclick="downloadGraph('decompPlot','svg')">SVG</button>
+          <button class="dl-btn" onclick="downloadAllLines('png')">All selected panels (PNG)</button></span>
+      </div>
+      <div class="chart-wrap"><div id="decompPlot" style="width:100%;height:360px;"></div></div>
       <div id="allLinesGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:12px;padding:12px;"></div>
-    </div>
-
-    <!-- Print action -->
-    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;">
-      <a class="demo-btn" id="figLink" href="#" download style="text-decoration:none;">Download all-lines figure (PNG)</a>
-      <button class="demo-btn" onclick="exportSpectrumExcel()">Export to Excel</button>
-      <button class="demo-btn" onclick="window.print()">Print Report</button>
-    </div>
+    </details>
 
   </div><!-- end results-dashboard -->
 
@@ -386,7 +378,7 @@ body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-heigh
       <span id="fvarCut">10</span>, else √(ΔF̄²/N)/F̄ (Vaughan et al. 2003; Sukanya et al. 2018).
       The fitted spectrum above is placed in this table in Graph 5.
     </div>
-    <div style="margin-bottom:8px;"><button class="demo-btn" id="fvarExportBtn" onclick="exportFvarExcel()" disabled>Export F<sub>var</sub> to Excel</button></div>
+    <div style="margin-bottom:8px;"><a class="demo-btn" href="/download/variability_results.xlsx" style="text-decoration:none;">Download campaign workbook (Excel: README, F<sub>var</sub> by year, light curves, line fits, spectra)</a></div>
     <div style="overflow-x:auto;max-height:340px;overflow-y:auto;">
       <table class="summary-tbl" id="fvarTable">
         <thead><tr>
@@ -527,23 +519,29 @@ function handleFile(file) {
 /* ── Main render ── */
 function renderDashboard(data, filename) {
   currentRecord = data;
+  const fx = v => (v != null && isFinite(v)) ? Number(v).toExponential(3) : '—';
+  const fn = (v, d) => (v != null && isFinite(v)) ? Number(v).toFixed(d) : '—';
   document.getElementById('resFilename').textContent = filename;
-  document.getElementById('resGlobalChi2').textContent = (data.global_reduced_chi2 || 0).toFixed(3);
+  document.getElementById('resContinuum').innerHTML =
+    `Continuum F = Aλ<sup>α</sup>: spectral index α = ${fn(data.spectral_index, 4)} ± ${fn(data.spectral_index_err, 4)} · ` +
+    `amplitude A = ${fx(data.continuum_amplitude)} ± ${fx(data.continuum_amplitude_err)}`;
 
+  const lines = data.lines || [];
+  const nDet = lines.filter(l => l.detected).length;
+  const nVer = lines.filter(l => l.detected && l.verification && l.verification.status === 'VERIFIED').length;
   const badge = document.getElementById('resStatusBadge');
-  const ok = data.lines && data.lines.some(l => l.detected);
-  badge.textContent = ok ? '✓ VALIDATED' : 'LIMITED FIT';
-  badge.className = 'status-badge ' + (ok ? 'status-ok' : 'status-fail');
+  badge.textContent = `${nDet}/${lines.length} lines detected · ${nVer} verified`;
+  badge.className = 'status-badge ' + (nDet ? 'status-ok' : 'status-fail');
 
   document.getElementById('figLink').href = data.plot_url || '#';
   lineSelection = null;
   loadContext(data.spectrum_name || filename);
   drawOverview(data);
-  buildSummaryTable(data.lines || []);
-  buildLineTabs(data.lines || []);
+  buildSummaryTable(lines);
+  buildLineTabs(lines);
 
-  let first = (data.lines || []).findIndex(l => l.rest_wavelength === 1216.0);
-  if (first < 0) first = (data.lines || []).findIndex(l => l.detected);
+  let first = lines.findIndex(l => l.rest_wavelength === 1216.0);
+  if (first < 0) first = lines.findIndex(l => l.detected);
   if (first < 0) first = 0;
   selectLine(first);
   showResults();
@@ -564,36 +562,25 @@ function buildSummaryTable(lines) {
   lines.forEach((l, idx) => {
     const tr = document.createElement('tr');
     tr.onclick = () => selectLine(idx);
-    const dWl = l.center ? l.center - l.rest_wavelength : 0;
-    const vel = (dWl / l.rest_wavelength) * 299792.458;
-    const fs = String(l.fit_status || '').toUpperCase();
-    let bTxt = '— NOT DETECTED', bCls = 'badge-fail';
-    if (fs.includes('ACCEPTED'))  { bTxt = '✓ ACCEPTED';     bCls = 'badge-ok'; }
-    else if (fs.includes('REJECTED')) { bTxt = '✕ REJECTED'; }
-    else if (fs.includes('MARGINAL')) { bTxt = '⚠ MARGINAL'; }
-
+    const v = l.verification ? l.verification.status : '';
+    const status = !l.detected ? '<span class="badge-fail">not detected</span>'
+      : (v === 'VERIFIED' ? '<span class="badge-ok">✓ verified</span>' : '<span class="badge-fail">detected · check</span>');
+    const d = l.detected;
     tr.innerHTML = `
-      <td style="font-weight:600;">${l.line_name}</td>
+      <td style="font-weight:600;border-left:4px solid ${FitPlots.lineColour(idx)};">${l.line_name}</td>
       <td>${l.rest_wavelength.toFixed(1)}</td>
-      <td>${l.detected ? fmtN(l.center,2) : '—'}</td>
-      <td>${l.detected ? fmtN(dWl,2) : '—'}</td>
-      <td>${l.detected ? fmtN(vel,1) : '—'}</td>
-      <td>${l.detected ? fmtN(l.sigma,2) : '—'}</td>
-      <td>${l.detected ? fmtN(l.fwhm_kms,0) : '—'}</td>
-      <td>${l.detected ? fmtX(l.flux) : '—'}</td>
-      <td>${l.detected ? fmtX(l.flux_err) : '—'}</td>
-      <td>${l.detected ? fmtN(l.ew,2) : '—'}</td>
-      <td>${l.detected ? fmtN(l.ew_err,2) : '—'}</td>
-      <td>${l.detected ? fmtN(l.snr,2) : '—'}</td>
+      <td>${d ? fmtN(l.center,2) : '—'}</td>
+      <td>${d ? fmtN(l.sigma,2) : '—'}</td>
+      <td>${d ? fmtN(l.fwhm_kms,0) : '—'}</td>
+      <td>${d ? fmtX(l.flux) : '—'}</td>
+      <td>${d ? fmtX(l.flux_err) : '—'}</td>
+      <td>${d ? fmtN(l.ew,2) : '—'}</td>
+      <td>${fmtN(l.snr,1)}</td>
       <td>${fmtN(l.wing_window,0)}</td>
       <td>${fmtN(l.min_wavelength,2)}</td>
       <td>${fmtN(l.max_wavelength,2)}</td>
-      <td>${fmtN(l.reduced_chi2,3)}</td>
-      <td>${fmtN(currentRecord.spectral_index,4)}</td>
-      <td>${fmtN(currentRecord.spectral_index_err,4)}</td>
-      <td>${fmtX(currentRecord.continuum_amplitude)}</td>
-      <td>${fmtX(currentRecord.continuum_amplitude_err)}</td>
-      <td><span class="${bCls}">${bTxt}</span></td>`;
+      <td>${fmtN(l.reduced_chi2,2)}</td>
+      <td>${status}</td>`;
     tbody.appendChild(tr);
   });
 }
@@ -605,7 +592,8 @@ function buildLineTabs(lines) {
   lines.forEach((l, idx) => {
     const b = document.createElement('button');
     b.className = 'line-tab';
-    b.textContent = `${l.line_name} (${l.rest_wavelength.toFixed(0)} Å)`;
+    b.textContent = l.line_name.replace(/\s*\(.*\)/, '');
+    b.style.borderBottom = `3px solid ${FitPlots.lineColour(idx)}`;
     b.onclick = () => selectLine(idx);
     c.appendChild(b);
   });
@@ -625,40 +613,32 @@ function selectLine(idx) {
 
 /* ── Line detail plots + params ── */
 function renderLineDetails(line) {
-  const fmtX = v => (v !== undefined && v !== null && isFinite(v) && v !== 0) ? Number(v).toExponential(3) : '—';
-  const fmtN = (v,d=2) => (v !== undefined && v !== null && isFinite(v)) ? Number(v).toFixed(d) : '—';
-  const pm = (v, e, d) => (e !== undefined && e !== null && isFinite(e)) ? `${fmtN(v,d)} ± ${fmtN(e,d)}` : fmtN(v,d);
-  const pmX = (v, e) => (e !== undefined && e !== null && isFinite(e)) ? `${fmtX(v)} ± ${fmtX(e)}` : fmtX(v);
+  const ok = v => v !== undefined && v !== null && isFinite(v);
+  const fmtX = v => ok(v) && v !== 0 ? Number(v).toExponential(3) : '—';
+  const fmtN = (v,d=2) => ok(v) ? Number(v).toFixed(d) : '—';
+  const pm = (v, e, d) => ok(e) ? `${fmtN(v,d)} ± ${fmtN(e,d)}` : fmtN(v,d);
+  const pmX = (v, e) => ok(e) ? `${fmtX(v)} ± ${fmtX(e)}` : fmtX(v);
 
   const center = line.center || line.rest_wavelength;
-  const sigma  = line.sigma;
-  const wing   = line.wing_window;
   const dWl    = center - line.rest_wavelength;
   const vel    = (dWl / line.rest_wavelength) * 299792.458;
 
-  document.getElementById('valOutAmp').textContent    = pmX(line.amplitude, line.amplitude_err);
-  document.getElementById('valOutCenter').textContent = pm(center, line.center_err, 2);
-  document.getElementById('valOutWing').textContent   = fmtN(wing,0);
-  document.getElementById('valOutMin').textContent    = fmtN(line.min_wavelength,2);
-  document.getElementById('valOutMax').textContent    = fmtN(line.max_wavelength,2);
-  document.getElementById('valOutSigma').textContent  = pm(sigma, line.sigma_err, 2);
-
   document.getElementById('valRestWl').textContent    = `${line.rest_wavelength.toFixed(2)} Å`;
   document.getElementById('valCenter').textContent    = `${pm(center, line.center_err, 2)} Å`;
-  document.getElementById('valDeltaWl').textContent   = `${dWl>=0?'+':''}${fmtN(dWl,2)} Å`;
-  document.getElementById('valVelOffset').textContent = `${fmtN(vel,1)} km/s`;
+  document.getElementById('valDeltaWl').textContent   = `${dWl>=0?'+':''}${fmtN(dWl,2)} Å / ${fmtN(vel,0)} km/s`;
   document.getElementById('valAmp').textContent       = pmX(line.amplitude, line.amplitude_err);
-  document.getElementById('valSigma').textContent     = `${pm(sigma, line.sigma_err, 2)} Å`;
+  document.getElementById('valSigma').textContent     = `${pm(line.sigma, line.sigma_err, 2)} Å`;
   document.getElementById('valFWHM').textContent      = `${fmtN(line.fwhm_ang,2)} Å`;
-  document.getElementById('valFWHMkms').textContent   = `${fmtN(line.fwhm_kms,0)} km/s (intrinsic ${fmtN(line.fwhm_kms_intrinsic,0)})`;
-  document.getElementById('valFWHM235').textContent   = `${fmtN(2.3548*sigma,2)} Å`;
-  document.getElementById('valFlux').textContent      = fmtX(line.flux);
-  document.getElementById('valFluxErr').textContent   = fmtX(line.flux_err);
-  document.getElementById('valEW').textContent        = `${fmtN(line.ew,2)} Å`;
-  document.getElementById('valEWErr').textContent     = `${fmtN(line.ew_err,2)} Å`;
-  document.getElementById('valSNR').textContent       = fmtN(line.snr,2);
-  document.getElementById('valChi2').textContent      = `${fmtN(line.reduced_chi2,3)} (dof ${line.dof ?? '—'})`;
-  document.getElementById('valWingWindow').textContent= `${fmtN(wing,1)} Å`;
+  document.getElementById('valFWHMkms').textContent   = `${fmtN(line.fwhm_kms,0)} (intrinsic ${fmtN(line.fwhm_kms_intrinsic,0)})`;
+  document.getElementById('valFlux').textContent      = pmX(line.flux, line.flux_err);
+  document.getElementById('valEW').textContent        = `${pm(line.ew, line.ew_err, 2)} Å`;
+  document.getElementById('valSNR').textContent       = `${fmtN(line.snr,1)} ${line.detected ? '(detected)' : '(< 3, not detected)'}`;
+  document.getElementById('valChi2').textContent      = `${fmtN(line.reduced_chi2,2)} (dof ${line.dof ?? '—'})`;
+  document.getElementById('valWingWindow').textContent= `${fmtN(line.wing_window,0)} Å (${fmtN(line.min_wavelength,1)}–${fmtN(line.max_wavelength,1)})`;
+
+  const v = line.verification;
+  document.getElementById('verifSummary').textContent = !v ? 'not available'
+    : (v.status === 'VERIFIED' ? `${line.line_name.replace(/\s*\(.*\)/, '')}: VERIFIED` : `${line.line_name.replace(/\s*\(.*\)/, '')}: CHECK — ${v.failed.join(', ')}`);
 
   FitPlots.lineFit('localPlot', line);
   FitPlots.residuals('residualPlot', line);
@@ -667,46 +647,110 @@ function renderLineDetails(line) {
   drawContextPlot(line);
 }
 
+/* Plotly cannot size plots inside a closed <details>; resize when a section opens */
+document.addEventListener('toggle', e => {
+  if (e.target.tagName === 'DETAILS' && e.target.open) {
+    e.target.querySelectorAll('.js-plotly-plot').forEach(p => Plotly.Plots.resize(p));
+  }
+}, true);
+
 /* ── Excel export: current spectrum (one row per line, reference column names) ── */
 function exportSpectrumExcel() {
   if (!currentRecord || !window.XLSX) return;
-  const name = document.getElementById('resFilename').textContent || 'spectrum';
   const r = currentRecord;
-  const rows = (r.lines || []).map(l => ({
+  const name = r.spectrum_name || document.getElementById('resFilename').textContent || 'spectrum';
+  const c = contextData && contextData.matched && contextData.jd != null ? contextData : null;
+  const num = v => (v === undefined || v === null || !isFinite(v)) ? null : Number(v);
+
+  // Sheet 1: one row per line, reference column names first
+  const lines = (r.lines || []).map(l => ({
     'Spectrum': name,
     'Emission Line': l.line_name,
-    'Detected': l.detected ? 'yes' : 'no',
-    'Status': l.fit_status || '',
-    'Line Center (Å)': l.center,
-    'Line Center Error (Å)': l.center_err,
-    'Sigma (Å)': l.sigma,
-    'Sigma Error (Å)': l.sigma_err,
-    'Flux': l.flux,
-    'Flux Error': l.flux_err,
-    'Flux in Window': l.flux_window,
-    'SNR': l.snr,
-    'EW': l.ew,
-    'EW Error': l.ew_err,
-    'FWHM (Å)': l.fwhm_ang,
-    'FWHM (km/s)': l.fwhm_kms,
-    'FWHM intrinsic (km/s)': l.fwhm_kms_intrinsic,
-    'Wing Window': l.wing_window,
-    'Min λ': l.min_wavelength,
-    'Max λ': l.max_wavelength,
-    'Reduced χ²': l.reduced_chi2,
-    'Spectral Index': r.spectral_index,
-    'Error Spectral Index': r.spectral_index_err,
-    'Amplitude': r.continuum_amplitude,
-    'Error Amplitude': r.continuum_amplitude_err,
-    'Line Amplitude': l.amplitude,
-    'Line Amplitude Error': l.amplitude_err,
+    'Rest λ (Å)': num(l.rest_wavelength),
+    'Detected (F/σF ≥ 3)': l.detected ? 'yes' : 'no',
+    'Verification': l.verification ? l.verification.status : '',
+    'Line Center (Å)': num(l.center),
+    'Line Center Error (Å)': num(l.center_err),
+    'Flux (erg s-1 cm-2)': num(l.flux),
+    'Flux Error': num(l.flux_err),
+    'SNR (F/σF)': num(l.snr),
+    'EW (Å)': num(l.ew),
+    'EW Error (Å)': num(l.ew_err),
+    'Sigma (Å)': num(l.sigma),
+    'Sigma Error (Å)': num(l.sigma_err),
+    'FWHM (Å)': num(l.fwhm_ang),
+    'FWHM (km/s)': num(l.fwhm_kms),
+    'FWHM intrinsic (km/s)': num(l.fwhm_kms_intrinsic),
+    'Wing Window (Å)': num(l.wing_window),
+    'Min λ (Å)': num(l.min_wavelength),
+    'Max λ (Å)': num(l.max_wavelength),
+    'Reduced χ²': num(l.reduced_chi2),
+    'dof': num(l.dof),
+    'Spectral Index': num(r.spectral_index),
+    'Error Spectral Index': num(r.spectral_index_err),
+    'Amplitude': num(r.continuum_amplitude),
+    'Error Amplitude': num(r.continuum_amplitude_err),
+    'Line Amplitude': num(l.amplitude),
+    'Line Amplitude Error': num(l.amplitude_err),
+    'Flux in Window (reference convention)': num(l.flux_window),
   }));
+
+  // Sheet 2: continuum and observation
+  const cont = [{
+    'Spectrum': name,
+    'Observation date': c ? c.date : 'not in SWP log',
+    'JD': c ? c.jd : null,
+    'Year': c ? c.year : null,
+    'Continuum windows (Å)': r.continuum_windows || '',
+    'Spectral Index α': num(r.spectral_index),
+    'Error Spectral Index': num(r.spectral_index_err),
+    'Amplitude A': num(r.continuum_amplitude),
+    'Error Amplitude': num(r.continuum_amplitude_err),
+  }];
+
+  // Sheet 3: verification checks, one row per check
+  const ver = [];
+  (r.lines || []).forEach(l => (l.verification ? l.verification.checks : []).forEach(k => ver.push({
+    'Emission Line': l.line_name, 'Check': k.name, 'Value': k.value, 'Criterion': k.criterion,
+    'Result': k.pass ? 'pass' : (k.required ? 'fail' : 'note'), 'Reference': k.reference,
+  })));
+
+  // Sheet 4: variability context (this spectrum vs its year)
+  const ctx = c ? c.lines.map(cl => {
+    const live = (r.lines || []).find(x => x.line_name === cl.line);
+    const F = live && live.detected ? live.flux : null, fv = cl.fvar || {};
+    return {
+      'Emission Line': cl.line, 'Year': c.year, 'This spectrum F': num(F),
+      'Year F avg': num(fv.f_mean), 'Year F err rms': num(fv.err_rms),
+      '(F − F avg)/F avg': F != null && fv.f_mean ? (F - fv.f_mean) / fv.f_mean : null,
+      'N (year)': fv.n ?? 0, 'Fvar (year)': num(fv.fvar), 'Fvar error': num(fv.fvar_err), 'Error formula': fv.regime || '',
+    };
+  }) : [{ 'Note': 'This spectrum is not in the SWP log (jd.xlsx), so it cannot be placed in the campaign light curves.' }];
+
+  const readme = [
+    ['Spectrum', name],
+    ['Lines', 'One row per emission line. Flux = √(2π)Aσ from a weighted least-squares Gaussian + local linear continuum fit; errors are 1σ from the covariance matrix.'],
+    ['Continuum', 'Power law F = A λ^α fitted in log–log space over the listed windows; standard errors of the OLS estimators.'],
+    ['Verification', 'Statistical checks per line (χ² goodness of fit corrected for pixel correlation, runs test, Shapiro–Wilk, model-independent flux, detection, bounds).'],
+    ['Variability context', 'This spectrum compared with all detected spectra of the same year; Fvar from Vaughan et al. (2003) with the piecewise error.'],
+    ['Units', 'Wavelengths in Å (rest frame), fluxes in erg s-1 cm-2, flux densities in erg s-1 cm-2 Å-1.'],
+  ];
+
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Line fits');
+  const add = (rows, sheet, widths) => {
+    const ws = Array.isArray(rows[0]) ? XLSX.utils.aoa_to_sheet(rows) : XLSX.utils.json_to_sheet(rows);
+    const keys = Array.isArray(rows[0]) ? [0, 1] : Object.keys(rows[0] || {});
+    ws['!cols'] = keys.map((k, i) => ({ wch: widths ? widths[i] : Math.min(40, Math.max(12, String(k).length + 2)) }));
+    XLSX.utils.book_append_sheet(wb, ws, sheet);
+  };
+  add(readme, 'README', [22, 120]);
+  add(lines, 'Lines');
+  add(cont, 'Continuum');
+  if (ver.length) add(ver, 'Verification', [22, 24, 60, 40, 8, 40]);
+  add(ctx, 'Variability context');
   XLSX.writeFile(wb, name.replace(/\.txt.*$/i, '') + '_fit.xlsx');
 }
 
-/* ── F_var per line per year (from /api/fvar) ── */
 /* ── Graph downloads (Plotly renders the current figure at 2× for print) ── */
 function downloadGraph(id, format, lineIdx) {
   const el = document.getElementById(id);
@@ -716,7 +760,14 @@ function downloadGraph(id, format, lineIdx) {
   const line = currentRecord && currentRecord.lines && currentRecord.lines[idx];
   const tag = id === 'overviewPlot' ? 'spectrum' : (line ? line.line_name.replace(/[^A-Za-z0-9]+/g, '_') : 'line');
   const names = { overviewPlot: 'graph1_spectrum', localPlot: 'graph2_fit', residualPlot: 'graph3_residuals',
-                  landscapePlot: 'graph4_residual_distribution', lightcurvePlot: 'graph5_variability' };
+                  landscapePlot: 'graph4_residual_distribution', lightcurvePlot: 'graph5_variability',
+                  decompPlot: 'graph6_decomposition' };
+  if (id === 'decompPlot') {
+    const sel = (currentRecord.lines || []).filter((_, i) => lineSelection && lineSelection.has(i))
+      .map(l => l.line_name.replace(/\s*\(.*\)/, '').replace(/[^A-Za-z0-9]+/g, ''));
+    return Plotly.downloadImage(el, { format, scale: format === 'png' ? 2 : 1, width: el.offsetWidth, height: el.offsetHeight,
+      filename: `${spec}_graph6_decomposition_${sel.join('-') || 'none'}` });
+  }
   if (id.startsWith('allFit')) names[id] = 'fit';
   if (id.startsWith('allLc')) names[id] = 'lightcurve';
   Plotly.downloadImage(el, { format, scale: format === 'png' ? 2 : 1, width: el.offsetWidth, height: el.offsetHeight,
@@ -737,10 +788,12 @@ async function loadContext(spectrumName) {
   const c = contextData;
   if (!c.matched || c.jd == null) {
     info.innerHTML = `This spectrum cannot be placed in the campaign light curves: ${c.reason || 'no date'}.`;
+    document.getElementById('contextSummary').textContent = 'not dated — ' + (c.reason || 'no date');
     FitPlots.lightCurve('lightcurvePlot', null, { year: '—' });
     renderAllLines();
     return;
   }
+  document.getElementById('contextSummary').textContent = `observed ${c.date} (JD ${c.jd.toFixed(1)}), year ${c.year}`;
   info.innerHTML = `<strong>${c.spectrum}</strong> observed <strong>${c.date}</strong> (JD ${c.jd.toFixed(3)}), year <strong>${c.year}</strong>.
     Graph 5 shows the selected line's detected fluxes from all ${c.year} spectra (same pipeline, <code>run_variability.py</code>);
     the diamond is this spectrum. The table compares every line of this spectrum with its ${c.year} mean and F<sub>var</sub>.`;
@@ -769,7 +822,7 @@ function buildLineSelector() {
   if (!lineSelection) lineSelection = new Set(lines.map((_, i) => i));
   const sel = document.getElementById('lineSelector');
   sel.innerHTML = '<span style="color:var(--ink3);">Show:</span>' + lines.map((l, i) =>
-    `<label style="cursor:pointer;white-space:nowrap;"><input type="checkbox" data-i="${i}" ${lineSelection.has(i) ? 'checked' : ''}> ${l.line_name.replace(/\s*\(.*\)/, '')}</label>`).join('') +
+    `<label style="cursor:pointer;white-space:nowrap;border-left:4px solid ${FitPlots.lineColour(i)};padding-left:4px;"><input type="checkbox" data-i="${i}" ${lineSelection.has(i) ? 'checked' : ''}> ${l.line_name.replace(/\s*\(.*\)/, '')}</label>`).join('') +
     ' <button class="dl-btn" data-act="all">All</button> <button class="dl-btn" data-act="det">Detected</button> <button class="dl-btn" data-act="none">None</button>';
   sel.querySelectorAll('input').forEach(cb => cb.onchange = () => {
     cb.checked ? lineSelection.add(+cb.dataset.i) : lineSelection.delete(+cb.dataset.i);
@@ -792,12 +845,14 @@ function renderAllLines() {
     const v = l.verification ? l.verification.status : '—';
     const head = `${esc(l.line_name)} — ${l.detected ? `F = ${Number(l.flux).toExponential(2)} ± ${Number(l.flux_err).toExponential(1)}` : 'not detected'} · ${v}`;
     return `<div style="border:1px solid var(--rule);">
-      <div class="chart-header"><span class="chart-label" style="font-size:11px;">${head}</span>
+      <div class="chart-header" style="border-left:4px solid ${FitPlots.lineColour(i)};"><span class="chart-label" style="font-size:11px;">${head}</span>
         <span class="chart-sub"><button class="dl-btn" onclick="downloadGraph('allFit${i}','png','${i}')">fit PNG</button>
         <button class="dl-btn" onclick="downloadGraph('allLc${i}','png','${i}')">light curve PNG</button></span></div>
       <div id="allFit${i}" style="height:240px;"></div>
       <div id="allLc${i}" style="height:180px;"></div></div>`;
   }).join('');
+  FitPlots.decomposition('decompPlot', currentRecord, lineSelection);
+  document.getElementById('allLinesSummary').textContent = `${lineSelection.size} of ${lines.length} lines selected`;
   if (!lineSelection.size) grid.innerHTML = '<p style="font-size:12px;color:var(--ink3);">No lines selected.</p>';
   lines.forEach((l, i) => {
     if (!lineSelection.has(i)) return;
@@ -842,18 +897,6 @@ function renderFvar(data) {
     <td>${fn(r.jd_min,2)}</td><td>${fn(r.jd_span,1)}</td>
     <td>${fx(r.f_mean)}</td><td>${fx(r.err_rms)}</td><td>${fn(r.ratio,2)}</td>
     <td style="font-weight:600;">${fn(r.fvar,4)}</td><td>${fn(r.fvar_err,4)}</td><td>${r.regime}</td></tr>`).join('');
-  document.getElementById('fvarExportBtn').disabled = false;
-}
-
-function exportFvarExcel() {
-  if (!fvarRows.length || !window.XLSX) return;
-  const rows = fvarRows.map(r => ({
-    'Line': r.line, 'Year': r.year, 'N': r.n, 'JD min': r.jd_min, 'JD span (d)': r.jd_span,
-    'F avg': r.f_mean, 'F err (rms)': r.err_rms, 'S²/σ²err': r.ratio,
-    'Fvar': r.fvar, 'Fvar error': r.fvar_err, 'Error regime': r.regime }));
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Fvar by year');
-  XLSX.writeFile(wb, '3C273_Fvar_by_year.xlsx');
 }
 
 window.addEventListener('DOMContentLoaded', async () => {

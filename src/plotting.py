@@ -39,14 +39,23 @@ def save_publication_plots(record: Dict[str, Any], output_dir: str = "outputs/pl
         ax0.plot(wl[good], fl[good] / U, color='k', lw=0.6, label='Observed')
         ax0.plot(wl, cont / U, color='0.5', lw=0.9, ls='--',
                  label=f"Power law $F = A\\lambda^\\alpha$ (α = {record.get('spectral_index', float('nan')):.3f})")
-        for l in lines:
-            if l.get('detected'):
-                ax0.axvline(l['center'], color='0.6', lw=0.5, ls=':')
+        # Okabe & Ito (2008) colour-blind-safe palette, same order as the web viewer
+        palette = ['#0072B2', '#D55E00', '#009E73', '#CC79A7', '#E69F00', '#56B4E9', '#882255', '#117733', '#999933']
+        all_lines = record.get('lines', [])
+        for i, l in enumerate(all_lines):
+            p = l.get('plot')
+            if not p or not l.get('detected'):
+                continue
+            col = palette[i % len(palette)]
+            cont_l = np.asarray(p['continuum']) / U
+            g = np.asarray(p['components'][0]['y']) / U + cont_l
+            ax0.fill_between(p['x'], cont_l, g, color=col, alpha=0.2, lw=0)
+            ax0.plot(p['x'], g, color=col, lw=1.1, label=l['line_name'].split(' (')[0])
         ax0.set_xlabel('Rest wavelength (Å)')
         ax0.set_ylabel(unit)
         ax0.set_ylim(0, np.nanpercentile(fl[good], 99.5) / U * 1.15)
         ax0.set_title(spec_name, fontsize=9, loc='left')
-        ax0.legend(loc='upper right')
+        ax0.legend(loc='upper right', ncol=2)
 
         for i, l in enumerate(lines):
             r, c = divmod(i, ncol)
