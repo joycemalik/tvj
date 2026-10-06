@@ -28,7 +28,13 @@ import numpy as np
 FVAR_ERR_CUTOFF = 10.0
 
 
-def fvar(flux, err, cutoff: float = FVAR_ERR_CUTOFF) -> Dict[str, float]:
+def fvar(flux, err, cutoff: float = FVAR_ERR_CUTOFF, err_mode: str = 'piecewise') -> Dict[str, float]:
+    """
+    err_mode 'piecewise': error from one of the two Vaughan et al. (2003) terms, chosen by σ²_F/ΔF̄² vs cutoff.
+    err_mode 'combined':  ΔF_var = √[(√(1/2N) ΔF̄²/(F̄² F_var))² + (√(ΔF̄²/N)/F̄)²]  (Vaughan et al. 2003, eq. B2;
+                          as written in the manuscript).
+    Also returns F_avg error σ/√N with σ the sample standard deviation, and R_max ± error.
+    """
     F = np.asarray(flux, dtype=float)
     E = np.asarray(err, dtype=float)
     ok = np.isfinite(F) & np.isfinite(E)
@@ -44,12 +50,23 @@ def fvar(flux, err, cutoff: float = FVAR_ERR_CUTOFF) -> Dict[str, float]:
     variance = float(F.var(ddof=1))
     mse = float(np.mean(E ** 2))
     ratio = variance / mse if mse > 0 else float('inf')
-    out.update(f_mean=f_mean, err_rms=math.sqrt(mse), variance=variance, mse_err=mse, ratio=ratio)
+    out.update(f_mean=f_mean, err_rms=math.sqrt(mse), variance=variance, mse_err=mse, ratio=ratio,
+               f_mean_err=math.sqrt(variance) / math.sqrt(n))
+    i_max, i_min = int(np.argmax(F)), int(np.argmin(F))
+    if F[i_min] > 0:
+        rmax = float(F[i_max] / F[i_min])
+        out.update(f_max=float(F[i_max]), f_min=float(F[i_min]), rmax=rmax,
+                   rmax_err=rmax * math.sqrt((E[i_min] / F[i_min]) ** 2 + (E[i_max] / F[i_max]) ** 2))
     excess = variance - mse
     if excess <= 0 or f_mean <= 0:
         out['regime'] = 'not variable'
         return out
     fv = math.sqrt(excess) / f_mean
+    if err_mode == 'combined':
+        fv_err = math.sqrt((math.sqrt(1.0 / (2 * n)) * mse / (f_mean ** 2 * fv)) ** 2
+                           + (math.sqrt(mse / n) / f_mean) ** 2)
+        out.update(fvar=fv, fvar_err=fv_err, regime='combined (Vaughan 2003 B2)')
+        return out
     if ratio < cutoff:
         fv_err = math.sqrt(1.0 / (2 * n)) * mse / (f_mean ** 2 * fv)
         regime = 'S² ≈ σ²err'
@@ -76,7 +93,7 @@ def load_jd(path: str = 'jd.xlsx'):
     return df.reset_index(drop=True)
 
 
-def fvar_by_year(line_fluxes, cutoff: float = FVAR_ERR_CUTOFF):
+def fvar_by_year(line_fluxes, cutoff: float = FVAR_ERR_CUTOFF, err_mode: str = 'piecewise'):
     """
     `line_fluxes` columns: line, year, jd, flux, flux_err (detected measurements only),
     optionally rest_wavelength (rows are then ordered by wavelength).
@@ -90,13 +107,14 @@ def fvar_by_year(line_fluxes, cutoff: float = FVAR_ERR_CUTOFF):
         line_order = sorted(line_fluxes['line'].unique())
     for (line, year), g in sorted(line_fluxes.groupby(['line', 'year']),
                                   key=lambda kv: (line_order.index(kv[0][0]), kv[0][1])):
-        r = fvar(g['flux'], g['flux_err'], cutoff)
+        r = fvar(g['flux'], g['flux_err'], cutoff, err_mode)
         jd0 = float(g['jd'].min())
         rows.append(dict(line=line, year=int(year), n=r['n'],
                          jd_min=jd0, jd_span=float(g['jd'].max() - jd0),
-                         f_mean=r['f_mean'], err_rms=r['err_rms'],
+                         f_mean=r['f_mean'], f_mean_err=r.get('f_mean_err', float('nan')), err_rms=r['err_rms'],
                          ratio=r['ratio'], fvar=r['fvar'], fvar_err=r['fvar_err'],
-                         regime=r['regime']))
+                         regime=r['regime'], rmax=r.get('rmax', float('nan')),
+                         rmax_err=r.get('rmax_err', float('nan'))))
     import pandas as pd
     return pd.DataFrame(rows)
 
@@ -172,6 +190,7 @@ def load_fvar_table(path: Optional[str] = None) -> Optional[List[Dict]]:
         for r in csv.DictReader(fh):
             rows.append({'line': r['line'], 'year': int(r['year']), 'n': int(r['n']),
                          'jd_min': num(r['jd_min']), 'jd_span': num(r['jd_span']),
-                         'f_mean': num(r['f_mean']), 'err_rms': num(r['err_rms']), 'ratio': num(r['ratio']),
-                         'fvar': num(r['fvar']), 'fvar_err': num(r['fvar_err']), 'regime': r.get('regime') or ''})
+                         'f_mean': num(r['f_mean']), 'f_mean_err': num(r.get('f_mean_err')), 'err_rms': num(r['err_rms']), 'ratio': num(r['ratio']),
+                         'fvar': num(r['fvar']), 'fvar_err': num(r['fvar_err']), 'regime': r.get('regime') or '',
+                         'rmax': num(r.get('rmax')), 'rmax_err': num(r.get('rmax_err'))})
     return rows

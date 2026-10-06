@@ -407,6 +407,8 @@ sup.cite {
     <nav class="nav-pills">
       <a href="/"      class="nav-pill">Single-Spectrum Fitter</a>
       <a href="/v2"    class="nav-pill">Profile Diagnostic Viewer</a>
+      <a href="/v4"   class="nav-pill">Manuscript Method</a>
+      <a href="/v5"   class="nav-pill">Campaign Results</a>
       <a href="/v3"    class="nav-pill">Multi-Epoch Ensemble</a>
       <a href="/about" class="nav-pill active">Pipeline Documentation</a>
     </nav>
@@ -1087,7 +1089,47 @@ sup.cite {
     </ol>
     <p>Every graph downloads as PNG (2× resolution) or SVG.</p>
 
-    <h3>9.4 Excel outputs</h3>
+    <h3>9.3a Campaign Results (/v5)</h3>
+    <p>
+      <a href="/v5">/v5</a> shows every line of every spectrum, fitted with the method of §7 by
+      <code>run_variability.py</code> in parallel worker processes. A line selector drives all views:
+      Graph A (all selected lines over the campaign as \(F/\bar F\)), a spectrum browser with the full-spectrum
+      decomposition and per-line fit and residual panels, and a line-by-line results table. The campaign workbook
+      adds a <em>Flux matrix</em> sheet (one row per spectrum, all lines side by side). Uploaded batches of
+      <code>.txt</code> spectra are fitted the same way and dated by their SWP image number.
+    </p>
+
+    <h3>9.4 Manuscript method (/v4)</h3>
+    <p>
+      A separate viewer, <a href="/v4">/v4</a>, and batch run (<code>run_variability.py --method manuscript</code>,
+      output in <code>outputs/manuscript/</code>) measure the lines exactly as described in the 3C&nbsp;390.3
+      manuscript. Everything else (continuum, peak search, seed grid, line windows and ranges, verification,
+      dating, \(F_\text{var}\)) is shared with the default method. The differences are:
+    </p>
+    <table class="data-table">
+      <thead><tr><th>Quantity</th><th>Default (/v2)</th><th>Manuscript (/v4)</th></tr></thead>
+      <tbody>
+        <tr><td>Continuum under the line</td><td>local linear term fitted together with the Gaussians</td>
+            <td>power law \(F_\lambda = A\lambda^\alpha\) subtracted first; Gaussians fitted to \(F_\text{sub}\)</td></tr>
+        <tr><td>Model</td><td colspan="2">\(G(\lambda) = a\exp[-(\lambda-b)^2/2c^2]\), components summed</td></tr>
+        <tr><td>Pixel noise</td><td>DER_SNR of the residuals</td>
+            <td>\(\sigma_c F_\lambda\), with \(\sigma_c\) the rms of the 3σ-clipped normalised continuum residuals (MAD fallback)</td></tr>
+        <tr><td>Flux</td><td>\(\sqrt{2\pi}\,a\,c\)</td><td>trapezoidal integral of the fitted Gaussian over \(b \pm 6c\); analytic fallback; \(|F|\)</td></tr>
+        <tr><td>Flux error</td><td>covariance propagation</td>
+            <td>\(\sigma_F = \sqrt{N}\,\sigma_c\,\Delta\lambda\,F_\lambda(b)\) (IRAF), \(N\) = pixels within \(b \pm 3c\), \(\Delta\lambda\) = Å per pixel</td></tr>
+        <tr><td>EW error</td><td>\(\sigma_F / F_c(\mu)\)</td><td>\(W\,\sigma_F/F\)</td></tr>
+        <tr><td>FWHM error</td><td>—</td><td>\(\sigma(\text{FWHM}) = 2.3548\,\sigma_c\) with \(\sigma_c\) the fitted-σ uncertainty</td></tr>
+        <tr><td>\(\chi^2_\text{red}\)</td><td>\(\nu = n - (3k + 2)\)</td><td>\(\nu = n - 3k\)</td></tr>
+        <tr><td>Variability</td><td colspan="2">\(F_\text{avg}\), \(F_\text{var}\) (Vaughan et al. 2003, piecewise error) and
+            \(R_\text{max} = F_\text{max}/F_\text{min}\), \(\sigma_R = R_\text{max}\sqrt{(\sigma_\text{min}/F_\text{min})^2 + (\sigma_\text{max}/F_\text{max})^2}\), per line per year</td></tr>
+      </tbody>
+    </table>
+    <p>
+      Without a local continuum term, structure the power law does not follow (e.g. around Ly\(\alpha\) + N&nbsp;V)
+      remains in the residuals; the verification panel reports this.
+    </p>
+
+    <h3>9.5 Excel outputs</h3>
     <table class="data-table">
       <thead><tr><th>File</th><th>Sheets</th></tr></thead>
       <tbody>

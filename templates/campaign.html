@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Campaign Results — V5 | 3C273</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap">
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<script src="/static/js/fitplots.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--paper:#f7f5f0;--paper2:#f0ede6;--ink:#1a1814;--ink2:#4a4640;--ink3:#7a756e;--rule:#d4cfc6;--rule2:#c4bfb6;
+  --accent:#1a3a5c;--green:#2a5a2a;--red:#7a2020;--mono:'IBM Plex Mono',monospace;--serif:'EB Garamond',Georgia,serif;--sans:'Inter',system-ui,sans-serif;}
+html{font-size:14px;} body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.5;}
+.topbar{background:var(--paper2);border-bottom:2px solid var(--ink);}
+.topbar-inner{max-width:1440px;margin:0 auto;padding:8px 28px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.topbar-brand{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--accent);}
+.nav-pill{display:inline-block;padding:5px 12px;font-size:11px;font-family:var(--mono);color:var(--ink2);border:1px solid var(--rule2);text-decoration:none;}
+.nav-pill.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+main{max-width:1440px;margin:0 auto;padding:16px 28px 40px;}
+h1{font-family:var(--serif);font-size:20px;font-weight:500;}
+.meta{font-size:12px;color:var(--ink3);margin-top:3px;}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0;}
+.btn{font-family:var(--mono);font-size:11px;padding:6px 12px;border:1px solid var(--rule2);background:#fff;color:var(--ink);cursor:pointer;text-decoration:none;}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+.dl{font-family:var(--mono);font-size:10px;padding:2px 7px;border:1px solid var(--rule2);background:#fff;cursor:pointer;}
+.panel{border:1px solid var(--rule);background:#fff;margin-top:14px;}
+.panel-h{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;background:var(--paper2);border-bottom:1px solid var(--rule);}
+.panel-t{font-size:12px;font-weight:600;}
+.panel-s{font-family:var(--mono);font-size:11px;color:var(--ink3);}
+.sel{display:flex;flex-wrap:wrap;gap:6px 14px;padding:10px 12px;font-family:var(--mono);font-size:11px;}
+.sel label{cursor:pointer;white-space:nowrap;padding-left:5px;}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);margin-top:10px;}
+.stat{background:#fff;padding:8px 12px;} .stat b{display:block;font-family:var(--mono);font-size:16px;font-weight:500;} .stat span{font-size:11px;color:var(--ink3);}
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;}
+th{position:sticky;top:0;background:var(--paper2);text-align:left;padding:6px 8px;border-bottom:1px solid var(--rule2);color:var(--ink3);font-weight:500;}
+td{padding:5px 8px;border-bottom:1px solid var(--rule);}
+tbody tr{cursor:pointer;} tbody tr:hover{background:var(--paper2);} tr.cur td{background:rgba(26,58,92,.06);}
+.ok{color:var(--green);font-weight:600;} .no{color:var(--ink3);} .chk{color:var(--red);}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:12px;padding:12px;}
+.card{border:1px solid var(--rule);}
+.spec-nav{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+select,input[type=search]{font-family:var(--mono);font-size:11px;padding:5px 8px;border:1px solid var(--rule2);background:#fff;}
+#progress{font-family:var(--mono);font-size:11px;color:var(--ink2);}
+.note{font-size:12px;color:var(--ink2);padding:8px 12px;}
+</style>
+</head>
+<body>
+<div class="topbar"><div class="topbar-inner">
+  <span class="topbar-brand">3C 273 · IUE SWP · Emission-line pipeline</span>
+  <nav>
+    <a href="/" class="nav-pill">Single-Spectrum Fitter</a>
+    <a href="/v2" class="nav-pill">Profile Diagnostic Viewer</a>
+    <a href="/v3" class="nav-pill">Multi-Epoch Ensemble</a>
+    <a href="/v4" class="nav-pill">Manuscript Method</a>
+    <a href="/v5" class="nav-pill active">Campaign Results</a>
+    <a href="/about" class="nav-pill">Pipeline Documentation</a>
+  </nav>
+</div></div>
+
+<main>
+  <h1>Campaign results — every line of every spectrum</h1>
+  <div class="meta" id="meta">Weighted least-squares Gaussian + local continuum fits (the most accurate method; see /about), verified and dated from the SWP log. Loading…</div>
+
+  <div class="bar">
+    <a class="btn primary" id="xlsx" href="/download/campaign.xlsx">Download all results (Excel)</a>
+    <label class="btn">Process my own spectra (.txt, many at once)
+      <input type="file" id="files" accept=".txt" multiple style="display:none;"></label>
+    <button class="btn" id="showCampaign" style="display:none;">Back to the full campaign</button>
+    <span id="progress"></span>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="panel">
+    <div class="panel-h"><span class="panel-t">Lines shown in all graphs and the table</span>
+      <span class="panel-s"><button class="dl" data-act="all">All</button> <button class="dl" data-act="strong">Strong lines</button> <button class="dl" data-act="none">None</button></span></div>
+    <div class="sel" id="lineSel"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-h"><span class="panel-t">Graph A — all lines over the whole campaign (F / F̄, detected fluxes)</span>
+      <span class="panel-s"><button class="dl" onclick="dl('lcAll','png')">PNG</button> <button class="dl" onclick="dl('lcAll','svg')">SVG</button></span></div>
+    <div class="note">Each line divided by its own mean so different lines share one axis; error bars are 1σ. Click a point to open that spectrum below.</div>
+    <div id="lcAll" style="height:380px;"></div>
+  </div>
+
+  <div class="panel" id="specPanel">
+    <div class="panel-h">
+      <span class="panel-t">Spectrum: <span id="specName">—</span> <span class="panel-s" id="specMeta"></span></span>
+      <span class="spec-nav">
+        <button class="dl" id="prev">◀ previous</button>
+        <select id="specSelect"></select>
+        <button class="dl" id="next">next ▶</button>
+        <button class="dl" onclick="dl('decomp','png')">decomposition PNG</button>
+        <button class="dl" onclick="dlAllCards()">all graphs of this spectrum (PNG)</button>
+      </span>
+    </div>
+    <div id="decomp" style="height:360px;"></div>
+    <div class="grid" id="cards"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-h"><span class="panel-t">Results — line by line for every spectrum</span>
+      <span class="panel-s"><input type="search" id="q" placeholder="filter spectrum…">
+        <label><input type="checkbox" id="detOnly"> detected only</label> <span id="nrows"></span></span></div>
+    <div style="max-height:520px;overflow:auto;">
+      <table>
+        <thead><tr><th>Spectrum</th><th>Date</th><th>Line</th><th>F (erg s⁻¹ cm⁻²)</th><th>± σ<sub>F</sub></th><th>F/σ<sub>F</sub></th>
+          <th>μ (Å)</th><th>σ (Å)</th><th>FWHM (km/s)</th><th>EW (Å)</th><th>χ²<sub>red</sub></th><th>Status</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script>
+let rows = [], spectra = [], lineNames = [], selected = new Set(), job = '', cur = null;
+const STRONG = /Alpha|N V|C IV|Si IV/;
+const fx = v => v == null ? '—' : Number(v).toExponential(2);
+const fn = (v, d) => v == null ? '—' : Number(v).toFixed(d);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const colourOf = name => FitPlots.lineColour(lineNames.indexOf(name));
+
+async function load() {
+  const res = await fetch('/api/campaign/summary' + (job ? '?job=' + job : ''));
+  const data = await res.json();
+  if (!res.ok) { document.getElementById('meta').textContent = data.error; return; }
+  rows = data.rows;
+  document.getElementById('xlsx').href = data.workbook;
+  const rest = {};
+  rows.forEach(r => rest[r.line] = r.rest_wavelength);
+  lineNames = Object.keys(rest).sort((a, b) => rest[a] - rest[b]);
+  if (!selected.size) selected = new Set(lineNames);
+  const bySpec = {};
+  rows.forEach(r => { (bySpec[r.spectrum] ??= { name: r.spectrum, jd: r.jd, date: r.date, n: 0, det: 0 }); bySpec[r.spectrum].n++; if (r.detected) bySpec[r.spectrum].det++; });
+  spectra = Object.values(bySpec).sort((a, b) => (a.jd ?? 1e12) - (b.jd ?? 1e12) || a.name.localeCompare(b.name));
+  document.getElementById('meta').textContent =
+    `${spectra.length} spectra × ${lineNames.length} lines = ${rows.length} fits` + (job ? ' (your uploaded batch)' : ' (full 3C 273 campaign, precomputed on this machine)') +
+    '. Weighted least-squares Gaussian + local continuum fits, verified and dated from the SWP log.';
+  document.getElementById('showCampaign').style.display = job ? '' : 'none';
+  const sel = document.getElementById('specSelect');
+  sel.innerHTML = spectra.map((s, i) => `<option value="${i}">${esc(s.name)} ${s.date ? '· ' + esc(s.date) : ''}</option>`).join('');
+  buildSelector(); renderStats(); renderLightCurves(); renderTable();
+  openSpectrum(cur && spectra.findIndex(s => s.name === cur) >= 0 ? spectra.findIndex(s => s.name === cur) : 0);
+}
+
+function buildSelector() {
+  document.getElementById('lineSel').innerHTML = lineNames.map(n =>
+    `<label style="border-left:4px solid ${colourOf(n)}"><input type="checkbox" value="${esc(n)}" ${selected.has(n) ? 'checked' : ''}> ${esc(n.replace(/\s*\(.*\)/, ''))}</label>`).join('');
+  document.querySelectorAll('#lineSel input').forEach(cb => cb.onchange = () => {
+    cb.checked ? selected.add(cb.value) : selected.delete(cb.value); refresh();
+  });
+}
+document.querySelectorAll('[data-act]').forEach(b => b.onclick = () => {
+  const a = b.dataset.act;
+  selected = new Set(lineNames.filter(n => a === 'all' || (a === 'strong' && STRONG.test(n))));
+  buildSelector(); refresh();
+});
+function refresh() { renderStats(); renderLightCurves(); renderTable(); if (cur) openSpectrum(spectra.findIndex(s => s.name === cur)); }
+
+function renderStats() {
+  const html = lineNames.filter(n => selected.has(n)).map(n => {
+    const r = rows.filter(x => x.line === n), d = r.filter(x => x.detected);
+    const v = d.filter(x => x.verification === 'VERIFIED').length;
+    return `<div class="stat" style="border-top:3px solid ${colourOf(n)}"><b>${d.length}/${r.length}</b>
+      <span>${esc(n.replace(/\s*\(.*\)/, ''))} detected · ${v} verified</span></div>`;
+  }).join('');
+  document.getElementById('stats').innerHTML = html;
+}
+
+function renderLightCurves() {
+  const traces = [];
+  lineNames.filter(n => selected.has(n)).forEach(n => {
+    const d = rows.filter(r => r.line === n && r.detected && r.jd != null && r.flux != null);
+    if (!d.length) return;
+    const mean = d.reduce((a, r) => a + r.flux, 0) / d.length;
+    traces.push({ x: d.map(r => r.jd - 2400000.5), y: d.map(r => r.flux / mean), mode: 'markers', name: n.replace(/\s*\(.*\)/, ''),
+      marker: { size: 5, color: colourOf(n) }, error_y: { type: 'data', array: d.map(r => r.flux_err / mean), thickness: 0.6, width: 0, color: colourOf(n) },
+      customdata: d.map(r => r.spectrum), text: d.map(r => r.spectrum),
+      hovertemplate: '%{text}<br>MJD %{x:.1f}<br>F/F̄ %{y:.3f}<extra>' + n.replace(/\s*\(.*\)/, '') + '</extra>' });
+  });
+  if (!traces.length) { Plotly.purge('lcAll'); document.getElementById('lcAll').innerHTML = '<p class="note">No detected fluxes for the selected lines.</p>'; return; }
+  document.getElementById('lcAll').innerHTML = '';
+  Plotly.newPlot('lcAll', traces, {
+    paper_bgcolor: '#fff', plot_bgcolor: '#fff', margin: { t: 10, r: 15, l: 60, b: 45 }, font: { family: 'Inter', size: 11 },
+    xaxis: { title: 'MJD (JD − 2400000.5)', showline: true, mirror: true, ticks: 'inside', linecolor: '#1a1a1a', gridcolor: '#eee' },
+    yaxis: { title: 'F / F̄', showline: true, mirror: true, ticks: 'inside', linecolor: '#1a1a1a', gridcolor: '#eee' },
+    legend: { orientation: 'h', y: 1.08 }, hovermode: 'closest',
+  }, { responsive: true, displayModeBar: false });
+  document.getElementById('lcAll').on('plotly_click', ev => {
+    const i = spectra.findIndex(s => s.name === ev.points[0].customdata);
+    if (i >= 0) { openSpectrum(i); document.getElementById('specPanel').scrollIntoView({ behavior: 'smooth' }); }
+  });
+}
+
+function renderTable() {
+  const q = document.getElementById('q').value.toLowerCase(), det = document.getElementById('detOnly').checked;
+  const order = Object.fromEntries(spectra.map((s, i) => [s.name, i]));
+  const list = rows.filter(r => selected.has(r.line) && (!det || r.detected) && (!q || r.spectrum.toLowerCase().includes(q)))
+    .sort((a, b) => order[a.spectrum] - order[b.spectrum] || lineNames.indexOf(a.line) - lineNames.indexOf(b.line));
+  document.getElementById('nrows').textContent = `${list.length} rows`;
+  document.getElementById('tbody').innerHTML = list.slice(0, 3000).map(r => {
+    const st = !r.detected ? '<span class="no">not detected</span>' : (r.verification === 'VERIFIED' ? '<span class="ok">verified</span>' : '<span class="chk" title="' + esc(r.failed_checks) + '">check</span>');
+    return `<tr data-s="${esc(r.spectrum)}" class="${r.spectrum === cur ? 'cur' : ''}"><td>${esc(r.spectrum)}</td><td>${esc(r.date || '—')}</td>
+      <td style="border-left:4px solid ${colourOf(r.line)}">${esc(r.line.replace(/\s*\(.*\)/, ''))}</td>
+      <td>${fx(r.flux)}</td><td>${fx(r.flux_err)}</td><td>${fn(r.significance, 1)}</td><td>${fn(r.center, 2)}</td><td>${fn(r.sigma, 2)}</td>
+      <td>${fn(r.fwhm_kms, 0)}</td><td>${fn(r.ew, 1)}</td><td>${fn(r.reduced_chi2, 2)}</td><td>${st}</td></tr>`;
+  }).join('');
+  document.querySelectorAll('#tbody tr').forEach(tr => tr.onclick = () => {
+    openSpectrum(spectra.findIndex(s => s.name === tr.dataset.s));
+    document.getElementById('specPanel').scrollIntoView({ behavior: 'smooth' });
+  });
+}
+document.getElementById('q').oninput = renderTable;
+document.getElementById('detOnly').onchange = renderTable;
+
+let record = null;
+async function openSpectrum(i) {
+  if (i < 0 || i >= spectra.length) return;
+  const s = spectra[i]; cur = s.name;
+  document.getElementById('specSelect').value = i;
+  document.getElementById('specName').textContent = s.name;
+  document.getElementById('specMeta').textContent = `${s.date ? 'observed ' + s.date + ' · ' : ''}${s.det}/${s.n} lines detected`;
+  document.querySelectorAll('#tbody tr').forEach(tr => tr.classList.toggle('cur', tr.dataset.s === cur));
+  const res = await fetch('/api/campaign/spectrum/' + encodeURIComponent(s.name) + (job ? '?job=' + job : ''));
+  if (!res.ok) { document.getElementById('cards').innerHTML = '<p class="note">Graphs not available for this spectrum (run the batch with JSON output).</p>'; return; }
+  record = await res.json();
+  if (cur !== s.name) return;
+  const idx = new Set((record.lines || []).map((l, k) => selected.has(l.line_name) ? k : -1).filter(k => k >= 0));
+  FitPlots.decomposition('decomp', record, idx);
+  document.getElementById('cards').innerHTML = (record.lines || []).map((l, k) => {
+    if (!selected.has(l.line_name)) return '';
+    const v = l.verification ? l.verification.status : '';
+    return `<div class="card"><div class="panel-h" style="border-left:4px solid ${colourOf(l.line_name)}">
+      <span class="panel-t" style="font-size:11px;">${esc(l.line_name)} — ${l.detected ? `F = ${fx(l.flux)} ± ${fx(l.flux_err)}` : 'not detected'} ${v ? '· ' + v : ''}</span>
+      <span class="panel-s"><button class="dl" onclick="dl('fit${k}','png')">PNG</button></span></div>
+      <div id="fit${k}" style="height:230px;"></div><div id="res${k}" style="height:140px;"></div></div>`;
+  }).join('');
+  (record.lines || []).forEach((l, k) => {
+    if (!selected.has(l.line_name)) return;
+    FitPlots.lineFit('fit' + k, l);
+    FitPlots.residuals('res' + k, l);
+  });
+}
+document.getElementById('specSelect').onchange = e => openSpectrum(+e.target.value);
+document.getElementById('prev').onclick = () => openSpectrum(spectra.findIndex(s => s.name === cur) - 1);
+document.getElementById('next').onclick = () => openSpectrum(spectra.findIndex(s => s.name === cur) + 1);
+
+function dl(id, format) {
+  const el = document.getElementById(id);
+  if (!el || !el.data) return;
+  const base = (cur || 'campaign').replace(/\.txt$/i, '');
+  const name = id === 'lcAll' ? 'campaign_lightcurves_' + [...selected].map(n => n.replace(/\s*\(.*\)/, '').replace(/[^A-Za-z0-9]+/g, '')).join('-')
+    : id === 'decomp' ? base + '_decomposition'
+    : base + '_' + (record.lines[+id.replace(/\D/g, '')].line_name.replace(/[^A-Za-z0-9]+/g, '_'));
+  Plotly.downloadImage(el, { format, scale: format === 'png' ? 2 : 1, width: el.offsetWidth, height: el.offsetHeight, filename: name });
+}
+async function dlAllCards() {
+  const ids = ['decomp', ...[...document.querySelectorAll('#cards [id^="fit"]')].map(e => e.id)];
+  for (const id of ids) { dl(id, 'png'); await new Promise(r => setTimeout(r, 400)); }
+}
+
+document.getElementById('files').onchange = async e => {
+  const files = [...e.target.files];
+  if (!files.length) return;
+  const fd = new FormData();
+  files.forEach(f => fd.append('files', f));
+  const p = document.getElementById('progress');
+  p.textContent = `Uploading ${files.length} spectra…`;
+  const res = await fetch('/api/campaign/process', { method: 'POST', body: fd });
+  const data = await res.json();
+  if (!res.ok) { p.textContent = data.error; return; }
+  const t0 = Date.now();
+  const timer = setInterval(async () => {
+    const s = await (await fetch('/api/campaign/status/' + data.job)).json();
+    p.textContent = `Fitting on this computer: ${s.done}/${s.total} spectra (${Math.round((Date.now() - t0) / 1000)} s)`;
+    if (s.state !== 'running') {
+      clearInterval(timer);
+      if (s.state === 'error') { p.textContent = 'Failed: ' + s.error; return; }
+      p.textContent = `Done: ${s.total} spectra in ${Math.round((Date.now() - t0) / 1000)} s.`;
+      job = data.job; cur = null; selected = new Set(); load();
+    }
+  }, 1500);
+  e.target.value = '';
+};
+document.getElementById('showCampaign').onclick = () => { job = ''; cur = null; selected = new Set(); load(); };
+
+load();
+</script>
+</body>
+</html>

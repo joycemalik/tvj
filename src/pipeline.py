@@ -111,9 +111,11 @@ def run_single_spectrum_pipeline(
     line_config_path: Optional[str] = None,
     continuum_windows: Optional[str] = DEFAULT_CONTINUUM_WINDOWS,
     top_n: int = 20,
+    method: str = 'refine',
 ) -> Dict[str, Any]:
     """
     End-to-end scientific pipeline for a single spectrum file.
+    method: 'refine' (default, src/refine.py) or 'manuscript' (src/manuscript_fit.py).
 
     Parameters
     ----------
@@ -160,6 +162,11 @@ def run_single_spectrum_pipeline(
     if noise <= 1.0e-30:
         noise = 1.0e-20
 
+    sigma_c = None
+    if method == 'manuscript':
+        from src.manuscript_fit import normalised_continuum_rms
+        sigma_c = normalised_continuum_rms(wavelength, flux, continuum_fit, continuum_windows)
+
     # ---- Load line catalog ----
     if line_config_path and os.path.exists(line_config_path):
         # Legacy single-line mode
@@ -205,6 +212,8 @@ def run_single_spectrum_pipeline(
             continuum_fit=continuum_fit,
             line_config=cfg,
             top_n=top_n,
+            method=method,
+            sigma_c=sigma_c,
         )
         line_results.append(result)
 
@@ -261,6 +270,8 @@ def run_single_spectrum_pipeline(
         'spectral_index':      float(spec_idx_cont),
         'spectral_index_err':  float(alpha_err),
         'continuum_windows':   continuum_windows,
+        'method':              method,
+        'sigma_c':             sigma_c,
         'lines':               line_results,
         'global_reduced_chi2': float(global_chi2),
         'joint_fit_applied':   bool(joint_fit_applied),

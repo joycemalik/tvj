@@ -23,9 +23,11 @@ HEADER_FILL = PatternFill('solid', fgColor='E8E6E1')
 FVAR_COLS: List[Tuple[str, str, str]] = [
     ('line', 'Line', '@'), ('year', 'Year', '0'), ('n', 'N spectra', '0'),
     ('jd_min', 'JD min', '0.000'), ('jd_span', 'JD span (d)', '0.0'),
-    ('f_mean', 'F avg (erg s-1 cm-2)', SCI), ('err_rms', 'F err rms (erg s-1 cm-2)', SCI),
+    ('f_mean', 'F avg (erg s-1 cm-2)', SCI), ('f_mean_err', 'F avg error σ/√N', SCI),
+    ('err_rms', 'F err rms (erg s-1 cm-2)', SCI),
     ('ratio', 'S²/σ²err', '0.00'), ('fvar', 'Fvar', '0.0000'), ('fvar_err', 'Fvar error', '0.0000'),
     ('regime', 'Error formula used', '@'),
+    ('rmax', 'Rmax = Fmax/Fmin', '0.000'), ('rmax_err', 'Rmax error', '0.000'),
 ]
 CURVE_COLS = [
     ('line', 'Line', '@'), ('year', 'Year', '0'), ('spectrum', 'Spectrum', '@'), ('date', 'Date', '@'),
@@ -43,6 +45,7 @@ FIT_COLS = [
     ('flux', 'Flux (erg s-1 cm-2)', SCI), ('flux_err', 'Flux error', SCI), ('significance', 'F/σF', '0.0'),
     ('flux_window', 'Flux in window (reference convention)', SCI),
     ('ew', 'EW (Å)', '0.00'), ('ew_err', 'EW error (Å)', '0.00'),
+    ('fwhm_ang_err', 'FWHM error (Å)', '0.00'), ('fwhm_kms_err', 'FWHM error (km/s)', '0'),
     ('wing_window', 'Wing window (Å)', '0'), ('min_wavelength', 'Min λ (Å)', '0.00'),
     ('max_wavelength', 'Max λ (Å)', '0.00'), ('reduced_chi2', 'Reduced χ²', '0.00'),
     ('at_bound', 'Parameter at bound', '@'),
@@ -62,6 +65,7 @@ README = [
     ('Light curves', 'Every detected measurement: JD, JD − JD min (per line, whole campaign), F and F err. Sorted by line wavelength, then JD.'),
     ('Line fits', 'Every spectrum × line: least-squares parameters with 1σ errors and the verification result.'),
     ('Spectra', 'One row per spectrum: observation date and the power-law continuum F = A λ^α.'),
+    ('Flux matrix', 'One row per spectrum, every line side by side: F, F err and detected (yes/no).'),
     ('', ''),
     ('Formula', ''),
     ('F avg', 'F̄ = (1/N) Σ F_i'),
@@ -70,12 +74,21 @@ README = [
     ('Fvar', 'Fvar = √(σ²_F − ΔF̄²) / F̄;  empty when σ²_F ≤ ΔF̄² (scatter consistent with errors)'),
     ('Fvar error (S²/σ²err < 10)', '√(1/2N) · ΔF̄² / (F̄² Fvar)'),
     ('Fvar error (S²/σ²err ≥ 10)', '√(ΔF̄²/N) / F̄'),
-    ('Line flux', 'F = √(2π) A σ from a weighted least-squares Gaussian + local linear continuum fit'),
+    ('Rmax', 'Rmax = Fmax / Fmin;  error = Rmax · √((σ_min/F_min)² + (σ_max/F_max)²)'),
+    ('Line flux', '{flux_method}'),
     ('', ''),
     ('Data', 'Rest-frame IUE SWP low-dispersion spectra (z = 0.158); dates from jd.xlsx (SWP log).'),
     ('Sources', 'Vaughan et al. 2003, MNRAS 345, 1271; Sukanya et al. 2018; Rodríguez-Pascual et al. 1997, ApJS 110, 9.'),
-    ('Produced by', 'python run_variability.py (see README.md and /about).'),
+    ('Produced by', '{produced_by}'),
 ]
+
+FLUX_METHOD = {
+    'refine': 'F = √(2π) A σ from a weighted least-squares Gaussian + local linear continuum fit; '
+              'error from the fit covariance.',
+    'manuscript': 'Manuscript method: power law subtracted, Gaussian(s) fitted to F_sub; F = trapezoidal integral of the '
+                  'fitted Gaussian (analytic √(2π) a c fallback); σ_F = √N · σ_c · Δλ · F_λ(b) (IRAF noise '
+                  'prescription, N = pixels within b ± 3c); σ(FWHM) = 2.3548 σ_c(fit).',
+}
 
 
 def _sheet(writer, name: str, df: pd.DataFrame, cols) -> None:
@@ -100,7 +113,11 @@ def _sheet(writer, name: str, df: pd.DataFrame, cols) -> None:
     ws.auto_filter.ref = ws.dimensions
 
 
-def write_variability_workbook(path: str, fits: pd.DataFrame, table: pd.DataFrame, curves: pd.DataFrame) -> None:
+def write_variability_workbook(path: str, fits: pd.DataFrame, table: pd.DataFrame, curves: pd.DataFrame,
+                               method: str = 'refine') -> None:
+    produced = ('python run_variability.py' if method == 'refine'
+                else 'python run_variability.py --method manuscript') + ' (see README.md and /about).'
+    readme = [(a, b.format(flux_method=FLUX_METHOD.get(method, ''), produced_by=produced)) for a, b in README]
     order = fits.groupby('line')['rest_wavelength'].first().sort_values().index.tolist()
     rank = {l: i for i, l in enumerate(order)}
 
@@ -111,11 +128,14 @@ def write_variability_workbook(path: str, fits: pd.DataFrame, table: pd.DataFram
     f['detected'] = f['detected'].map({True: 'yes', False: 'no'})
     f['at_bound'] = f['at_bound'].map({True: 'yes', False: 'no'})
 
-    c = curves.merge(f[['spectrum', 'date']].drop_duplicates('spectrum'), on='spectrum', how='left')
+    curve_cols = ['line', 'year', 'spectrum', 'jd', 'jd_minus_min', 'flux', 'flux_err']
+    c = curves if len(curves) else pd.DataFrame(columns=curve_cols)
+    c = c.merge(f[['spectrum', 'date']].drop_duplicates('spectrum'), on='spectrum', how='left')
     c['_r'] = c['line'].map(rank)
     c = c.sort_values(['_r', 'jd'])
 
-    t = table.copy()
+    # empty when no line has ≥2 dated detections in any year (e.g. a small uploaded batch)
+    t = table.copy() if len(table) else pd.DataFrame(columns=[col for col, _, _ in FVAR_COLS])
     t['_r'] = t['line'].map(rank)
     t = t.sort_values(['_r', 'year'])
 
@@ -129,7 +149,7 @@ def write_variability_workbook(path: str, fits: pd.DataFrame, table: pd.DataFram
          .sort_values(['jd', 'spectrum'], na_position='last'))
 
     with pd.ExcelWriter(path, engine='openpyxl') as xw:
-        pd.DataFrame(README, columns=['Item', 'Description']).to_excel(xw, sheet_name='README', index=False, header=False)
+        pd.DataFrame(readme, columns=['Item', 'Description']).to_excel(xw, sheet_name='README', index=False, header=False)
         ws = xw.sheets['README']
         ws.column_dimensions['A'].width = 30
         ws.column_dimensions['B'].width = 110
@@ -140,3 +160,20 @@ def write_variability_workbook(path: str, fits: pd.DataFrame, table: pd.DataFram
         _sheet(xw, 'Light curves', c, CURVE_COLS)
         _sheet(xw, 'Line fits', f, FIT_COLS)
         _sheet(xw, 'Spectra', s, SPEC_COLS)
+        _flux_matrix(xw, f, order)
+
+
+def _flux_matrix(xw, f: pd.DataFrame, order: List[str]) -> None:
+    """One row per spectrum; for every line (in wavelength order) F, F err and detection."""
+    base = (f.groupby('spectrum', as_index=False)
+             .agg(date=('date', 'first'), jd=('jd', 'first'))
+             .sort_values(['jd', 'spectrum'], na_position='last'))
+    cols = [('spectrum', 'Spectrum', '@'), ('date', 'Date', '@'), ('jd', 'JD', '0.00000')]
+    for ln in order:
+        g = f[f['line'] == ln].set_index('spectrum')
+        short = ln.split(' (')[0]
+        base[f'{ln}|F'] = base['spectrum'].map(g['flux'])
+        base[f'{ln}|E'] = base['spectrum'].map(g['flux_err'])
+        base[f'{ln}|D'] = base['spectrum'].map(g['detected'])
+        cols += [(f'{ln}|F', f'{short} F', SCI), (f'{ln}|E', f'{short} F err', SCI), (f'{ln}|D', f'{short} detected', '@')]
+    _sheet(xw, 'Flux matrix', base, cols)

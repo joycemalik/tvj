@@ -13,7 +13,7 @@ This module delegates the heavy lifting to candidate_engine.generate_candidates(
 import os
 import yaml
 import numpy as np
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional  # noqa: F401
 
 from src.candidate_engine import generate_candidates
 from src.quality import evaluate_fit_quality
@@ -26,6 +26,8 @@ def fit_single_line(
     continuum_fit: np.ndarray,
     line_config: Dict[str, Any],
     top_n: int = 20,
+    method: str = 'refine',
+    sigma_c: Optional[float] = None,
 ) -> Dict[str, Any]:
     """
     Fit a single emission line to a continuum-subtracted spectrum.
@@ -110,7 +112,12 @@ def fit_single_line(
     best = dict(seed)
     best['flux_window'] = seed.get('flux')
     best['flux_window_err'] = seed.get('flux_err')
-    refined = refine_line(wavelength, subtracted_y + continuum_fit, rest_wl, line_config, seed)
+    if method == 'manuscript':
+        from src.manuscript_fit import fit_line_manuscript
+        refined = fit_line_manuscript(wavelength, subtracted_y + continuum_fit, continuum_fit,
+                                      rest_wl, line_config, seed, sigma_c)
+    else:
+        refined = refine_line(wavelength, subtracted_y + continuum_fit, rest_wl, line_config, seed)
     if refined is not None:
         best.update(refined)
         # Reference-style window re-centred on the refined line centre

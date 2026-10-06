@@ -27,3 +27,8 @@ refine:
 snr_min: 3.0
 snr_max: 15.0
 chi2_red_max: 5.0
+
+# Manuscript method (/v4): power law fitted in line-free windows on both sides of the line;
+# the line flux is integrated between them (λmin = 1288, λmax = 1318).
+manuscript:
+  continuum_windows: [[1280, 1288], [1318, 1324]]

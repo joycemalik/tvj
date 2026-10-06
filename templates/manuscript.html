@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manuscript Method Viewer — V4 | 3C273</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap">
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="/static/js/fitplots.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --paper:#f7f5f0;--paper2:#f0ede6;--paper3:#e8e4db;
+  --ink:#1a1814;--ink2:#4a4640;--ink3:#7a756e;
+  --rule:#d4cfc6;--rule2:#c4bfb6;
+  --accent:#1a3a5c;--accent2:#7a2020;
+  --green:#2a5a2a;
+  --mono:'IBM Plex Mono','Courier New',monospace;
+  --serif:'EB Garamond',Georgia,serif;
+  --sans:'Inter',system-ui,sans-serif;
+}
+html{font-size:14px;}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.5;min-height:100vh;}
+
+/* ── TOPBAR ── */
+.topbar{background:var(--paper2);border-bottom:2px solid var(--ink);}
+.topbar-inner{max-width:1440px;margin:0 auto;padding:8px 28px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.topbar-brand{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--accent);letter-spacing:.08em;}
+.topbar-nav{display:flex;gap:5px;flex-wrap:wrap;}
+/* ── NAV PILLS ── */
+.nav-pill{display:inline-block;padding:5px 12px;font-size:11px;font-family:var(--mono);font-weight:500;color:var(--ink2);border:1px solid var(--rule2);text-decoration:none;border-radius:2px;}
+.nav-pill:hover{border-color:var(--accent);color:var(--accent);}
+.nav-pill.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+/* ── MASTHEAD ── */
+.masthead{border-bottom:1px solid var(--rule);padding:14px 28px 12px;}
+.journal-tag{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);margin-bottom:4px;}
+.masthead h1{font-family:var(--serif);font-size:19px;font-weight:500;line-height:1.2;}
+.masthead h1 em{font-style:italic;color:var(--ink2);}
+.masthead-meta{font-size:11px;color:var(--ink3);margin-top:4px;}
+
+/* ── UPLOAD BAR ── */
+.upload-bar{display:flex;align-items:center;gap:10px;padding:8px 28px;background:var(--paper2);border-bottom:1px solid var(--rule);flex-wrap:wrap;}
+.upload-btn{display:inline-flex;align-items:center;gap:5px;background:var(--accent);color:#fff;border:none;padding:5px 12px;font-size:12px;font-family:var(--sans);font-weight:500;cursor:pointer;border-radius:2px;}
+.upload-btn:hover{background:#142e4a;}
+.demo-btn{display:inline-flex;align-items:center;background:var(--paper);color:var(--ink2);border:1px solid var(--rule2);padding:5px 12px;font-size:12px;font-family:var(--sans);cursor:pointer;border-radius:2px;}
+.demo-btn:hover{border-color:var(--accent);color:var(--accent);}
+#upload-status{font-size:11px;color:var(--ink3);}
+#upload-status.ok{color:var(--green);font-weight:500;}
+#upload-status.err{color:var(--accent2);font-weight:500;}
+
+/* ── CONSOLE STRIP ── */
+.console-strip{display:none;padding:10px 28px;background:#f0ede6;border-bottom:1px solid var(--rule);max-height:160px;overflow-y:auto;}
+.console-inner{font-family:var(--mono);font-size:11px;color:var(--ink2);}
+.console-line{display:flex;gap:10px;margin-bottom:3px;}
+.console-ts{color:var(--ink3);}
+.console-msg{color:var(--ink);}
+
+/* ── ANALYSIS SUMMARY ── */
+.analysis-summary{padding:18px 28px;border-bottom:1px solid var(--rule);}
+.section-head{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);border-bottom:1px solid var(--rule);padding-bottom:5px;margin-bottom:12px;}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));border:1px solid var(--rule);}
+.stat-cell{padding:10px 12px;border-right:1px solid var(--rule);}
+.stat-cell .sl{font-size:10px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--ink3);margin-bottom:3px;}
+.stat-cell .sv{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--accent);}
+.stat-cell .se{font-family:var(--mono);font-size:10px;color:var(--ink3);margin-top:2px;}
+
+/* ── MAIN CONTENT ── */
+#main-content{padding:18px 28px 40px;}
+
+/* Upload prompt (shown before results) */
+#upload-prompt{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:38vh;gap:14px;color:var(--ink3);text-align:center;}
+.prompt-box{width:52px;height:52px;border:1.5px solid var(--rule2);display:flex;align-items:center;justify-content:center;}
+#upload-prompt p{font-size:14px;font-family:var(--serif);font-style:italic;}
+
+/* ── RESULTS DASHBOARD ── */
+#results-dashboard{display:none;flex-direction:column;gap:18px;}
+
+/* Spectrum header */
+.spec-header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--paper2);border:1px solid var(--rule);}
+.spec-title{font-family:var(--mono);font-size:12px;color:var(--ink);}
+.spec-title span{color:var(--accent);font-weight:500;}
+.spec-meta{display:flex;align-items:center;gap:14px;}
+.spec-chi2{font-family:var(--mono);font-size:11px;color:var(--ink3);}
+.status-badge{font-family:var(--mono);font-size:10px;padding:3px 9px;border:1px solid;}
+.status-ok{color:var(--green);border-color:var(--green);background:rgba(42,90,42,.06);}
+.status-fail{color:var(--accent2);border-color:var(--accent2);background:rgba(122,32,32,.06);}
+
+/* Toolbar */
+.dash-toolbar{display:flex;align-items:center;gap:18px;padding:7px 14px;background:var(--paper2);border:1px solid var(--rule);border-bottom:none;flex-wrap:wrap;}
+.tb-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);}
+
+/* Line tabs */
+.line-tabs{display:flex;gap:0;overflow-x:auto;border:1px solid var(--rule);border-bottom:none;}
+.line-tab{padding:7px 14px;font-size:11px;font-family:var(--mono);font-weight:500;border:none;border-right:1px solid var(--rule);background:var(--paper2);color:var(--ink3);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;}
+.line-tab:last-child{border-right:none;}
+.line-tab.active{background:var(--paper);color:var(--ink);border-bottom-color:var(--accent);}
+.line-tab:hover:not(.active){color:var(--ink2);}
+
+/* Chart panels */
+.chart-panel{border:1px solid var(--rule);background:var(--paper);}
+.chart-header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 12px;background:var(--paper2);border-bottom:1px solid var(--rule);}
+.fold{margin-top:12px;border:1px solid var(--rule);background:var(--paper);}
+.fold>summary{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 14px;cursor:pointer;list-style:none;background:var(--paper2);}
+.fold>summary::-webkit-details-marker{display:none;}
+.fold>summary::before{content:'▸';color:var(--ink3);margin-right:6px;}
+.fold[open]>summary::before{content:'▾';}
+.fold-title{font-size:12px;font-weight:600;color:var(--ink);flex:1;}
+.fold-sum{font-family:var(--mono);font-size:11px;color:var(--ink3);text-align:right;}
+.pair-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media (max-width:900px){.pair-grid{grid-template-columns:1fr;}}
+.spec-cont{font-family:var(--mono);font-size:11px;color:var(--ink3);margin-top:3px;}
+.spec-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.dl-btn{font-family:var(--mono);font-size:10px;padding:2px 7px;border:1px solid var(--rule2);background:var(--paper);color:var(--ink2);cursor:pointer;}
+.dl-btn:hover{border-color:var(--accent);color:var(--accent);}
+.chart-label{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);}
+.chart-sub{font-family:var(--mono);font-size:10px;color:var(--ink3);}
+.chart-wrap{background:var(--paper);}
+
+/* Diagnostic grid */
+.diag-grid{display:grid;grid-template-columns:2fr 1fr;gap:14px;}
+@media(max-width:1024px){.diag-grid{grid-template-columns:1fr;}}
+
+/* Params table */
+.params-tbl{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;}
+.params-tbl td{padding:6px 8px;border-bottom:1px solid var(--rule);}
+.params-tbl td:first-child{color:var(--ink3);width:55%;}
+.params-tbl td:last-child{color:var(--ink);font-weight:500;text-align:right;}
+.params-section{border:1px solid var(--rule);padding:0;}
+.params-section-head{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);padding:6px 10px;background:var(--paper2);border-bottom:1px solid var(--rule);}
+.params-body{padding:4px 8px;}
+
+/* QC list */
+.verif-tbl th{text-align:left;padding:6px 8px;background:var(--paper2);border-bottom:1px solid var(--rule2);color:var(--ink3);font-weight:500;font-family:var(--mono);}
+.verif-tbl td{padding:6px 8px;border-bottom:1px solid var(--rule);color:var(--ink);font-family:var(--mono);vertical-align:top;}
+
+/* Summary table */
+.summary-tbl{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;}
+.summary-tbl th{text-align:left;padding:7px 10px;background:var(--paper2);border-bottom:1px solid var(--rule2);color:var(--ink3);font-weight:500;}
+.summary-tbl td{padding:7px 10px;border-bottom:1px solid var(--rule);color:var(--ink);}
+.summary-tbl tr:hover{background:var(--paper2);cursor:pointer;}
+.summary-tbl tr.active-row td{background:rgba(26,58,92,.05);border-left:2px solid var(--accent);}
+.badge-ok{font-family:var(--mono);font-size:9px;padding:2px 6px;border:1px solid var(--green);color:var(--green);}
+.badge-fail{font-family:var(--mono);font-size:9px;padding:2px 6px;border:1px solid var(--accent2);color:var(--accent2);}
+
+/* Pipeline flow */
+
+/* ── FOOTER ── */
+.site-footer{width:100%;background:var(--paper2);border-top:2px solid var(--ink);margin-top:4rem;}
+.footer-inner{max-width:1440px;margin:0 auto;padding:3rem 28px 2.5rem;display:grid;grid-template-columns:2fr 2fr 1fr;gap:3rem;}
+@media(max-width:900px){.footer-inner{grid-template-columns:1fr;gap:2rem;}}
+/* ── FOOTER (editorial, minimal) ── */
+.site-footer{background:var(--paper3);border-top:2px solid var(--ink);margin-top:3rem;}
+.footer-body{max-width:1440px;margin:0 auto;padding:2.2rem 28px 1.8rem;display:grid;grid-template-columns:2fr 1fr 1fr;gap:2.5rem;align-items:start;}
+@media(max-width:860px){.footer-body{grid-template-columns:1fr;gap:1.8rem;}}
+.footer-brand-name{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--ink);letter-spacing:.08em;display:block;margin-bottom:8px;}
+.footer-brand-desc{font-size:11px;color:var(--ink3);line-height:1.75;}
+.footer-section-label{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);display:block;margin-bottom:10px;padding-bottom:5px;border-bottom:1px solid var(--rule);}
+.footer-links{display:flex;flex-direction:column;gap:2px;}
+.footer-links a{font-family:var(--mono);font-size:11px;color:var(--ink2);text-decoration:none;padding:4px 0 4px 8px;border-left:2px solid transparent;transition:border-color .12s,color .12s;}
+.footer-links a:hover{color:var(--accent);border-left-color:var(--accent);}
+.footer-links a.here{color:var(--accent);border-left-color:var(--accent);font-weight:600;}
+.footer-meta-list{display:flex;flex-direction:column;gap:4px;}
+.footer-meta-list span{font-family:var(--mono);font-size:10px;color:var(--ink3);padding:2px 0;}
+.footer-meta-list span::before{content:"→ ";color:var(--accent);font-size:9px;}
+.footer-bar{max-width:1440px;margin:0 auto;padding:10px 28px;border-top:1px solid var(--rule);font-family:var(--mono);font-size:10px;color:var(--ink3);letter-spacing:.05em;display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
+.footer-bar strong{color:var(--ink);font-weight:600;}
+.footer-dot{color:var(--rule2);}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-inner">
+    <span class="topbar-brand">3C 273 · Lyα Spectroscopic Pipeline</span>
+    <nav class="topbar-nav">
+      <a href="/"     class="nav-pill">Single-Spectrum Fitter</a>
+      <a href="/v2"   class="nav-pill">Profile Diagnostic Viewer</a>
+      <a href="/v4"   class="nav-pill active">Manuscript Method</a>
+      <a href="/v5"   class="nav-pill">Campaign Results</a>
+      <a href="/v3"   class="nav-pill">Multi-Epoch Ensemble</a>
+      <a href="/about" class="nav-pill">Pipeline Documentation</a>
+    </nav>
+  </div>
+</div>
+
+<!-- PAGE HEADER -->
+<div class="masthead">
+  <div>
+    <div class="journal-tag">Manuscript method · IUE SWP · 3C 273</div>
+    <h1>Manuscript Method Viewer <em>— fitting as described in the manuscript</em></h1>
+    <div class="masthead-meta">Power law F<sub>λ</sub> = Aλ<sup>α</sup> subtracted · Gaussian G = a·exp[−(λ−b)²/2c²] fitted to F<sub>sub</sub> · flux = trapezoidal integral of G · σ<sub>F</sub> = √N·σ<sub>c</sub>·Δλ·F<sub>λ</sub> (IRAF) · σ(FWHM) = 2.3548·σ<sub>c</sub> · F<sub>avg</sub>, F<sub>var</sub>, R<sub>max</sub> (Vaughan et al. 2003). <a href="/v2">Profile Diagnostic Viewer</a> keeps the default method.</div>
+  </div>
+</div>
+
+<!-- UPLOAD BAR -->
+<div class="upload-bar">
+  <span style="font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);">Load Spectrum:</span>
+  <button class="upload-btn" id="uploadBtn">Upload .txt File</button>
+  <button class="demo-btn" id="btnDemoV2">Demo: Spectrum 70</button>
+  <input type="file" id="fileInputV2" accept=".txt" style="display:none;">
+  <span id="upload-status"></span>
+</div>
+
+<!-- CONSOLE STRIP -->
+<div class="console-strip" id="consoleStrip">
+  <div class="console-inner" id="consoleLog"></div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div id="main-content">
+
+  <!-- Upload prompt state -->
+  <div id="upload-prompt">
+    <div class="prompt-box">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    </div>
+    <p>Upload an IUE SWP spectrum (.txt) or load the demo to run the diagnostic fitting pipeline.</p>
+    <p style="font-size:12px;">Supported format: two-column wavelength · flux text file.</p>
+  </div>
+
+  <!-- Results dashboard (hidden until pipeline returns data) -->
+  <div id="results-dashboard">
+
+    <!-- Spectrum identification bar + actions -->
+    <div class="spec-header">
+      <div>
+        <div class="spec-title">Spectrum: <span id="resFilename">—</span></div>
+        <div class="spec-cont" id="resContinuum">—</div>
+      </div>
+      <div class="spec-meta">
+        <div class="status-badge status-ok" id="resStatusBadge">ACCEPTED</div>
+        <button class="demo-btn" onclick="exportSpectrumExcel()">Export to Excel</button>
+        <a class="demo-btn" id="figLink" href="#" download style="text-decoration:none;">All-lines figure (PNG)</a>
+      </div>
+    </div>
+
+    <!-- Graph 1: Full spectrum -->
+    <div class="chart-panel">
+      <div class="chart-header">
+        <span class="chart-label">Graph 1 — Rest-frame spectrum</span>
+        <span class="chart-sub">observed flux · power-law continuum · shaded: continuum windows
+          <button class="dl-btn" onclick="downloadGraph('overviewPlot','png')">PNG</button>
+          <button class="dl-btn" onclick="downloadGraph('overviewPlot','svg')">SVG</button></span>
+      </div>
+      <div class="chart-wrap"><div id="overviewPlot" style="width:100%;height:300px;"></div></div>
+    </div>
+
+    <!-- Summary table -->
+    <div class="chart-panel">
+      <div class="chart-header">
+        <span class="chart-label">Emission-line summary</span>
+        <span class="chart-sub">click a row to inspect the line · spectral index and amplitude are shown above (one continuum per spectrum)</span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="summary-tbl">
+          <thead>
+            <tr>
+              <th>Line</th><th>Rest λ (Å)</th><th>Fitted λ (Å)</th><th>σ (Å)</th><th>FWHM (km/s)</th>
+              <th>Flux</th><th>Flux Err</th><th>EW (Å)</th><th>SNR</th>
+              <th>Window (Å)</th><th>Min λ</th><th>Max λ</th><th>Reduced χ²</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="summaryTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Selected line: graphs 2–4 + parameters -->
+    <div>
+      <div class="line-tabs" id="lineTabs"></div>
+      <div class="diag-grid" style="margin-top:0;">
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div class="chart-panel">
+            <div class="chart-header">
+              <span class="chart-label" id="localFitTitle">Graph 2 — Line fit</span>
+              <span class="chart-sub">data ± 1σ · Gaussian + local continuum
+                <button class="dl-btn" onclick="downloadGraph('localPlot','png')">PNG</button>
+                <button class="dl-btn" onclick="downloadGraph('localPlot','svg')">SVG</button></span>
+            </div>
+            <div class="chart-wrap"><div id="localPlot" style="width:100%;height:340px;"></div></div>
+          </div>
+          <div class="pair-grid">
+            <div class="chart-panel">
+              <div class="chart-header">
+                <span class="chart-label">Graph 3 — Residuals (F − M)/σ</span>
+                <span class="chart-sub"><button class="dl-btn" onclick="downloadGraph('residualPlot','png')">PNG</button>
+                  <button class="dl-btn" onclick="downloadGraph('residualPlot','svg')">SVG</button></span>
+              </div>
+              <div class="chart-wrap"><div id="residualPlot" style="width:100%;height:220px;"></div></div>
+            </div>
+            <div class="chart-panel">
+              <div class="chart-header">
+                <span class="chart-label">Graph 4 — Residuals vs N(0,1)</span>
+                <span class="chart-sub"><button class="dl-btn" onclick="downloadGraph('landscapePlot','png')">PNG</button>
+                  <button class="dl-btn" onclick="downloadGraph('landscapePlot','svg')">SVG</button></span>
+              </div>
+              <div class="chart-wrap"><div id="landscapePlot" style="width:100%;height:220px;"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="params-section">
+          <div class="params-section-head">Fit parameters — manuscript method (±1σ)</div>
+          <div class="params-body">
+            <table class="params-tbl">
+              <tr><td>Rest λ</td><td id="valRestWl">—</td></tr>
+              <tr><td>Centre μ</td><td id="valCenter">—</td></tr>
+              <tr><td>Offset Δλ / velocity</td><td id="valDeltaWl">—</td></tr>
+              <tr><td>Amplitude A</td><td id="valAmp">—</td></tr>
+              <tr><td>σ</td><td id="valSigma">—</td></tr>
+              <tr><td>FWHM</td><td id="valFWHM">—</td></tr>
+              <tr><td>FWHM (km/s)</td><td id="valFWHMkms">—</td></tr>
+              <tr><td>Flux ∫G dλ (trapezoidal)</td><td id="valFlux">—</td></tr>
+              <tr><td>σ<sub>F</sub> = √N·σ<sub>c</sub>·Δλ·F<sub>λ</sub></td><td id="valIraf">—</td></tr>
+              <tr><td>Equivalent width</td><td id="valEW">—</td></tr>
+              <tr><td>Significance F/σ<sub>F</sub></td><td id="valSNR">—</td></tr>
+              <tr><td>Reduced χ²</td><td id="valChi2">—</td></tr>
+              <tr><td>Window W (min–max)</td><td id="valWingWindow">—</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Verification (collapsed; status visible) -->
+    <details class="fold">
+      <summary><span class="fold-title">Verification — statistical checks of the selected line</span>
+        <span class="fold-sum" id="verifSummary">—</span></summary>
+      <div id="verificationPanel" style="padding:8px 14px 12px;overflow-x:auto;"></div>
+    </details>
+
+    <!-- Variability context (collapsed; date visible) -->
+    <details class="fold">
+      <summary><span class="fold-title">Graph 5 — Variability context of this spectrum</span>
+        <span class="fold-sum" id="contextSummary">—</span></summary>
+      <div style="display:flex;justify-content:flex-end;padding:6px 12px 0;">
+        <button class="dl-btn" onclick="downloadGraph('lightcurvePlot','png')">PNG</button>&nbsp;
+        <button class="dl-btn" onclick="downloadGraph('lightcurvePlot','svg')">SVG</button>
+      </div>
+      <div id="contextInfo" style="padding:4px 14px 0;font-size:12px;color:var(--ink2);"></div>
+      <div class="chart-wrap"><div id="lightcurvePlot" style="width:100%;height:280px;"></div></div>
+      <div style="padding:0 14px 12px;overflow-x:auto;">
+        <table class="summary-tbl" id="contextTable">
+          <thead><tr>
+            <th>Line</th><th>This spectrum F</th><th>Year F̄</th><th>(F − F̄)/F̄</th><th>N (year)</th>
+            <th>F<sub>var</sub> (year)</th><th>± err</th><th>R<sub>max</sub> (year)</th><th>Regime</th>
+          </tr></thead>
+          <tbody id="contextBody"></tbody>
+        </table>
+      </div>
+    </details>
+
+    <!-- All lines (collapsed) -->
+    <details class="fold">
+      <summary><span class="fold-title">Graph 6 and all lines — compare and download selected lines</span>
+        <span class="fold-sum" id="allLinesSummary">—</span></summary>
+      <div id="lineSelector" style="display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:10px 12px 0;font-size:11px;font-family:var(--mono);"></div>
+      <div class="chart-header" style="margin-top:10px;">
+        <span class="chart-label">Graph 6 — Full-spectrum decomposition</span>
+        <span class="chart-sub">each selected line's Gaussian in its own colour
+          <button class="dl-btn" onclick="downloadGraph('decompPlot','png')">PNG</button>
+          <button class="dl-btn" onclick="downloadGraph('decompPlot','svg')">SVG</button>
+          <button class="dl-btn" onclick="downloadAllLines('png')">All selected panels (PNG)</button></span>
+      </div>
+      <div class="chart-wrap"><div id="decompPlot" style="width:100%;height:360px;"></div></div>
+      <div id="allLinesGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:12px;padding:12px;"></div>
+    </details>
+
+  </div><!-- end results-dashboard -->
+
+  <!-- Campaign reference table (all dated spectra), collapsed by default -->
+  <details class="analysis-summary" style="margin-top:18px;">
+    <summary style="cursor:pointer;" class="section-head">Campaign reference — F<sub>var</sub> per emission line, per year (all dated spectra)</summary>
+    <div class="se" style="margin:8px 0;font-size:11px;color:var(--ink3);">
+      Computed offline by <code>run_variability.py --method manuscript</code>: every spectrum in <code>spectrum/</code> is fitted with this
+      pipeline, dated from <code>jd.xlsx</code>, and the detected (≥3σ) fluxes of each line are grouped by calendar year.
+      F<sub>var</sub> = √(σ²<sub>F</sub> − ΔF̄²) / F̄; error √(1/2N)·ΔF̄²/(F̄²F<sub>var</sub>) when σ²<sub>F</sub>/ΔF̄² &lt;
+      <span id="fvarCut">10</span>, else √(ΔF̄²/N)/F̄ (Vaughan et al. 2003; Sukanya et al. 2018).
+      The fitted spectrum above is placed in this table in Graph 5.
+    </div>
+    <div style="margin-bottom:8px;"><a class="demo-btn" href="/download/variability_results.xlsx?method=manuscript" style="text-decoration:none;">Download campaign workbook (Excel: README, F<sub>var</sub> by year, light curves, line fits, spectra)</a></div>
+    <div style="overflow-x:auto;max-height:340px;overflow-y:auto;">
+      <table class="summary-tbl" id="fvarTable">
+        <thead><tr>
+          <th>Line</th><th>Year</th><th>N</th><th>JD<sub>min</sub></th><th>JD span (d)</th>
+          <th>F<sub>avg</sub></th><th>ΔF̄ (rms err)</th><th>σ²<sub>F</sub>/ΔF̄²</th><th>F<sub>var</sub></th><th>± err</th><th>R<sub>max</sub></th><th>± err</th><th>Regime</th>
+        </tr></thead>
+        <tbody id="fvarBody"><tr><td colspan="11" style="color:var(--ink3);">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </details>
+</div><!-- end main-content -->
+
+<!-- FOOTER -->
+<footer class="site-footer">
+  <div class="footer-body">
+    <div>
+      <span class="footer-brand-name">3C 273 · Lyα Spectroscopic Pipeline</span>
+      <p class="footer-brand-desc">Automated spectroscopic fitting pipeline for 215 archival IUE SWP ultraviolet observations of the quasar 3C 273. Power-law continuum modeling, single-Gaussian emission-line decomposition over 5,600 candidate models, and quality-controlled flux, EW, SNR, FWHM measurements.</p>
+    </div>
+    <div>
+      <span class="footer-section-label">Navigate</span>
+      <nav class="footer-links">
+        <a href="/">Single-Spectrum Fitter</a>
+        <a href="/v2" class="here">Profile Diagnostic Viewer</a>
+        <a href="/v3">Multi-Epoch Ensemble</a>
+        <a href="/about">Pipeline Documentation</a>
+      </nav>
+    </div>
+    <div>
+      <span class="footer-section-label">Pipeline</span>
+      <div class="footer-meta-list">
+        <span>IUE SWP · 900–1830 Å</span>
+        <span>215 archival spectra</span>
+        <span>Lyα λ1216 Å</span>
+        <span>Flux · EW · FWHM · SNR · χ²</span>
+        <span>F<sub>var</sub> · R<sub>max</sub></span>
+      </div>
+    </div>
+  </div>
+  <div class="footer-bar">
+    <strong>3C273 Lyman Alpha Spectral Pipeline</strong>
+    <span class="footer-dot">·</span>
+    <span>IUE archive data courtesy of NASA/ESA MAST</span>
+    <span class="footer-dot">·</span>
+    <span>Python 3 / Flask · Plotly.js</span>
+  </div>
+</footer>
+
+<script>
+let currentRecord = null, selectedLineIndex = 0;
+
+/* ── DOM refs ── */
+const fileInput   = document.getElementById('fileInputV2');
+const uploadBtn   = document.getElementById('uploadBtn');
+const demoBtn     = document.getElementById('btnDemoV2');
+const consoleStrip = document.getElementById('consoleStrip');
+const consoleLog  = document.getElementById('consoleLog');
+const uploadStatus = document.getElementById('upload-status');
+const uploadPrompt = document.getElementById('upload-prompt');
+const resultsDash  = document.getElementById('results-dashboard');
+
+/* ── Plotly light-theme layout base ── */
+const MONO = "'IBM Plex Mono', monospace";
+const LIGHT = {
+  paper_bgcolor: '#f7f5f0',
+  plot_bgcolor:  '#f7f5f0',
+  font: { family: MONO, color: '#4a4640', size: 10 },
+  xaxis: { gridcolor: '#d4cfc6', tickfont: { color: '#7a756e' }, linecolor: '#c4bfb6', zerolinecolor: '#c4bfb6' },
+  yaxis: { gridcolor: '#d4cfc6', tickfont: { color: '#7a756e' }, linecolor: '#c4bfb6', zerolinecolor: '#c4bfb6' },
+  legend: { font: { family: MONO, color: '#1a1814', size: 10 } }
+};
+function mkLayout(overrides) {
+  return Object.assign({}, LIGHT, overrides,
+    { xaxis: Object.assign({}, LIGHT.xaxis, overrides.xaxis || {}),
+      yaxis: Object.assign({}, LIGHT.yaxis, overrides.yaxis || {}) });
+}
+
+/* ── Upload / Demo ── */
+uploadBtn.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length > 0) handleFile(fileInput.files[0]);
+});
+demoBtn.addEventListener('click', () => loadDemo());
+
+function setStatus(msg, cls) {
+  uploadStatus.textContent = msg;
+  uploadStatus.className = cls || '';
+}
+
+function logLine(msg) {
+  const d = document.createElement('div');
+  d.className = 'console-line';
+  const t = new Date().toLocaleTimeString();
+  d.innerHTML = `<span class="console-ts">[${t}]</span><span class="console-msg">${msg}</span>`;
+  consoleLog.appendChild(d);
+  consoleStrip.scrollTop = consoleStrip.scrollHeight;
+}
+
+function showConsole() { consoleStrip.style.display = 'block'; consoleLog.innerHTML = ''; }
+function hideResults()  { resultsDash.style.display = 'none'; uploadPrompt.style.display = 'flex'; }
+function showResults()  { resultsDash.style.display = 'flex'; uploadPrompt.style.display = 'none'; }
+
+function loadDemo() {
+  showConsole();
+  logLine('Loading demo spectrum (Spectrum 70)…');
+  setStatus('Running pipeline…');
+  hideResults();
+  const fd = new FormData();
+  fd.append('demo', 'true');
+  fd.append('method', 'manuscript');
+  fetch('/fit', { method: 'POST', body: fd })
+    .then(r => r.ok ? r.json() : r.json().then(e => { throw new Error(e.error || 'Server error'); }))
+    .then(data => {
+      logLine('Pipeline complete. Rendering results…');
+      setStatus('Done — demo loaded.', 'ok');
+      renderDashboard(data, '70dcdr2dswp35476mxlo.txt (Demo)');
+    })
+    .catch(err => { logLine('ERROR: ' + err.message); setStatus('Error: ' + err.message, 'err'); });
+}
+
+function handleFile(file) {
+  if (!file.name.endsWith('.txt')) { setStatus('Error: upload a .txt spectrum file.', 'err'); return; }
+  showConsole();
+  logLine(`Uploading ${file.name}…`);
+  setStatus('Running pipeline…');
+  hideResults();
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('method', 'manuscript');
+  fetch('/fit', { method: 'POST', body: fd })
+    .then(r => r.ok ? r.json() : r.json().then(e => { throw new Error(e.error || 'Server error'); }))
+    .then(data => {
+      logLine('Pipeline complete. Rendering results…');
+      setStatus(`Done — ${file.name}`, 'ok');
+      renderDashboard(data, file.name);
+    })
+    .catch(err => { logLine('ERROR: ' + err.message); setStatus('Error: ' + err.message, 'err'); });
+}
+
+/* ── Main render ── */
+function renderDashboard(data, filename) {
+  currentRecord = data;
+  const fx = v => (v != null && isFinite(v)) ? Number(v).toExponential(3) : '—';
+  const fn = (v, d) => (v != null && isFinite(v)) ? Number(v).toFixed(d) : '—';
+  document.getElementById('resFilename').textContent = filename;
+  document.getElementById('resContinuum').innerHTML =
+    `Continuum F = Aλ<sup>α</sup>: spectral index α = ${fn(data.spectral_index, 4)} ± ${fn(data.spectral_index_err, 4)} · ` +
+    `amplitude A = ${fx(data.continuum_amplitude)} ± ${fx(data.continuum_amplitude_err)}`;
+
+  const lines = data.lines || [];
+  const nDet = lines.filter(l => l.detected).length;
+  const nVer = lines.filter(l => l.detected && l.verification && l.verification.status === 'VERIFIED').length;
+  const badge = document.getElementById('resStatusBadge');
+  badge.textContent = `${nDet}/${lines.length} lines detected · ${nVer} verified`;
+  badge.className = 'status-badge ' + (nDet ? 'status-ok' : 'status-fail');
+
+  document.getElementById('figLink').href = data.plot_url || '#';
+  lineSelection = null;
+  loadContext(data.spectrum_name || filename);
+  drawOverview(data);
+  buildSummaryTable(lines);
+  buildLineTabs(lines);
+
+  let first = lines.findIndex(l => l.rest_wavelength === 1216.0);
+  if (first < 0) first = lines.findIndex(l => l.detected);
+  if (first < 0) first = 0;
+  selectLine(first);
+  showResults();
+}
+
+/* ── Overview plot ── */
+function drawOverview(data) {
+  FitPlots.overview('overviewPlot', data);
+}
+
+/* ── Summary table ── */
+function buildSummaryTable(lines) {
+  const tbody = document.getElementById('summaryTableBody');
+  tbody.innerHTML = '';
+  const fmtX = v => v ? Number(v).toExponential(2) : '—';
+  const fmtN = (v,d=2) => (v !== undefined && v !== null && !isNaN(v)) ? Number(v).toFixed(d) : '—';
+
+  lines.forEach((l, idx) => {
+    const tr = document.createElement('tr');
+    tr.onclick = () => selectLine(idx);
+    const v = l.verification ? l.verification.status : '';
+    const status = !l.detected ? '<span class="badge-fail">not detected</span>'
+      : (v === 'VERIFIED' ? '<span class="badge-ok">✓ verified</span>' : '<span class="badge-fail">detected · check</span>');
+    const d = l.detected;
+    tr.innerHTML = `
+      <td style="font-weight:600;border-left:4px solid ${FitPlots.lineColour(idx)};">${l.line_name}</td>
+      <td>${l.rest_wavelength.toFixed(1)}</td>
+      <td>${d ? fmtN(l.center,2) : '—'}</td>
+      <td>${d ? fmtN(l.sigma,2) : '—'}</td>
+      <td>${d ? fmtN(l.fwhm_kms,0) + (l.fwhm_kms_err != null ? ' ± ' + fmtN(l.fwhm_kms_err,0) : '') : '—'}</td>
+      <td>${d ? fmtX(l.flux) : '—'}</td>
+      <td>${d ? fmtX(l.flux_err) : '—'}</td>
+      <td>${d ? fmtN(l.ew,2) : '—'}</td>
+      <td>${fmtN(l.snr,1)}</td>
+      <td>${fmtN(l.wing_window,0)}</td>
+      <td>${fmtN(l.min_wavelength,2)}</td>
+      <td>${fmtN(l.max_wavelength,2)}</td>
+      <td>${fmtN(l.reduced_chi2,2)}</td>
+      <td>${status}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+/* ── Line tabs ── */
+function buildLineTabs(lines) {
+  const c = document.getElementById('lineTabs');
+  c.innerHTML = '';
+  lines.forEach((l, idx) => {
+    const b = document.createElement('button');
+    b.className = 'line-tab';
+    b.textContent = l.line_name.replace(/\s*\(.*\)/, '');
+    b.style.borderBottom = `3px solid ${FitPlots.lineColour(idx)}`;
+    b.onclick = () => selectLine(idx);
+    c.appendChild(b);
+  });
+}
+
+function selectLine(idx) {
+  selectedLineIndex = idx;
+  const lines = currentRecord.lines || [];
+  if (idx >= lines.length) return;
+  document.querySelectorAll('.line-tab').forEach((t,i) => t.classList.toggle('active', i===idx));
+  document.querySelectorAll('#summaryTableBody tr').forEach((tr,i) => tr.classList.toggle('active-row', i===idx));
+  const line = lines[idx];
+  document.getElementById('localFitTitle').textContent =
+    `Graph 2 — Line fit — ${line.line_name} (λ${line.rest_wavelength.toFixed(0)} Å)`;
+  renderLineDetails(line);
+}
+
+/* ── Line detail plots + params ── */
+function renderLineDetails(line) {
+  const ok = v => v !== undefined && v !== null && isFinite(v);
+  const fmtX = v => ok(v) && v !== 0 ? Number(v).toExponential(3) : '—';
+  const fmtN = (v,d=2) => ok(v) ? Number(v).toFixed(d) : '—';
+  const pm = (v, e, d) => ok(e) ? `${fmtN(v,d)} ± ${fmtN(e,d)}` : fmtN(v,d);
+  const pmX = (v, e) => ok(e) ? `${fmtX(v)} ± ${fmtX(e)}` : fmtX(v);
+
+  const center = line.center || line.rest_wavelength;
+  const dWl    = center - line.rest_wavelength;
+  const vel    = (dWl / line.rest_wavelength) * 299792.458;
+
+  document.getElementById('valRestWl').textContent    = `${line.rest_wavelength.toFixed(2)} Å`;
+  document.getElementById('valCenter').textContent    = `${pm(center, line.center_err, 2)} Å`;
+  document.getElementById('valDeltaWl').textContent   = `${dWl>=0?'+':''}${fmtN(dWl,2)} Å / ${fmtN(vel,0)} km/s`;
+  document.getElementById('valAmp').textContent       = pmX(line.amplitude, line.amplitude_err);
+  document.getElementById('valSigma').textContent     = `${pm(line.sigma, line.sigma_err, 2)} Å`;
+  document.getElementById('valFWHM').textContent      = `${pm(line.fwhm_ang, line.fwhm_ang_err, 2)} Å`;
+  document.getElementById('valFWHMkms').textContent   = `${pm(line.fwhm_kms, line.fwhm_kms_err, 0)} (intrinsic ${fmtN(line.fwhm_kms_intrinsic,0)})`;
+  document.getElementById('valIraf').textContent      = ok(line.sigma_c) ? `N = ${line.n_pix_line}, σc = ${fmtN(line.sigma_c,4)}, Δλ = ${fmtN(line.dispersion,3)} Å, Fλ(b) = ${fmtX(line.continuum_at_center)}` : '—';
+  document.getElementById('valFlux').textContent      = pmX(line.flux, line.flux_err);
+  document.getElementById('valEW').textContent        = `${pm(line.ew, line.ew_err, 2)} Å`;
+  document.getElementById('valSNR').textContent       = `${fmtN(line.snr,1)} ${line.detected ? '(detected)' : '(< 3, not detected)'}`;
+  document.getElementById('valChi2').textContent      = `${fmtN(line.reduced_chi2,2)} (dof ${line.dof ?? '—'})`;
+  document.getElementById('valWingWindow').textContent= `${fmtN(line.wing_window,0)} Å (${fmtN(line.min_wavelength,1)}–${fmtN(line.max_wavelength,1)})`;
+
+  const v = line.verification;
+  document.getElementById('verifSummary').textContent = !v ? 'not available'
+    : (v.status === 'VERIFIED' ? `${line.line_name.replace(/\s*\(.*\)/, '')}: VERIFIED` : `${line.line_name.replace(/\s*\(.*\)/, '')}: CHECK — ${v.failed.join(', ')}`);
+
+  FitPlots.lineFit('localPlot', line);
+  FitPlots.residuals('residualPlot', line);
+  FitPlots.residualDistribution('landscapePlot', line);
+  FitPlots.verification('verificationPanel', line);
+  drawContextPlot(line);
+}
+
+/* Plotly cannot size plots inside a closed <details>; resize when a section opens */
+document.addEventListener('toggle', e => {
+  if (e.target.tagName === 'DETAILS' && e.target.open) {
+    e.target.querySelectorAll('.js-plotly-plot').forEach(p => Plotly.Plots.resize(p));
+  }
+}, true);
+
+/* ── Excel export: current spectrum (one row per line, reference column names) ── */
+function exportSpectrumExcel() {
+  if (!currentRecord || !window.XLSX) return;
+  const r = currentRecord;
+  const name = r.spectrum_name || document.getElementById('resFilename').textContent || 'spectrum';
+  const c = contextData && contextData.matched && contextData.jd != null ? contextData : null;
+  const num = v => (v === undefined || v === null || !isFinite(v)) ? null : Number(v);
+
+  // Sheet 1: one row per line, reference column names first
+  const lines = (r.lines || []).map(l => ({
+    'Spectrum': name,
+    'Emission Line': l.line_name,
+    'Rest λ (Å)': num(l.rest_wavelength),
+    'Detected (F/σF ≥ 3)': l.detected ? 'yes' : 'no',
+    'Verification': l.verification ? l.verification.status : '',
+    'Line Center (Å)': num(l.center),
+    'Line Center Error (Å)': num(l.center_err),
+    'Flux (erg s-1 cm-2)': num(l.flux),
+    'Flux Error': num(l.flux_err),
+    'SNR (F/σF)': num(l.snr),
+    'EW (Å)': num(l.ew),
+    'EW Error (Å)': num(l.ew_err),
+    'Sigma (Å)': num(l.sigma),
+    'Sigma Error (Å)': num(l.sigma_err),
+    'FWHM (Å)': num(l.fwhm_ang),
+    'FWHM (km/s)': num(l.fwhm_kms),
+    'FWHM Error (Å)': num(l.fwhm_ang_err),
+    'FWHM Error (km/s)': num(l.fwhm_kms_err),
+    'N pixels (flux error)': num(l.n_pix_line),
+    'σc (normalised continuum rms)': num(l.sigma_c),
+    'Δλ (Å/pixel)': num(l.dispersion),
+    'Fλ at line centre': num(l.continuum_at_center),
+    'FWHM intrinsic (km/s)': num(l.fwhm_kms_intrinsic),
+    'Wing Window (Å)': num(l.wing_window),
+    'Min λ (Å)': num(l.min_wavelength),
+    'Max λ (Å)': num(l.max_wavelength),
+    'Reduced χ²': num(l.reduced_chi2),
+    'dof': num(l.dof),
+    'Spectral Index': num(r.spectral_index),
+    'Error Spectral Index': num(r.spectral_index_err),
+    'Amplitude': num(r.continuum_amplitude),
+    'Error Amplitude': num(r.continuum_amplitude_err),
+    'Line Amplitude': num(l.amplitude),
+    'Line Amplitude Error': num(l.amplitude_err),
+    'Flux in Window (reference convention)': num(l.flux_window),
+  }));
+
+  // Sheet 2: continuum and observation
+  const cont = [{
+    'Spectrum': name,
+    'Observation date': c ? c.date : 'not in SWP log',
+    'JD': c ? c.jd : null,
+    'Year': c ? c.year : null,
+    'Continuum windows (Å)': r.continuum_windows || '',
+    'Spectral Index α': num(r.spectral_index),
+    'Error Spectral Index': num(r.spectral_index_err),
+    'Amplitude A': num(r.continuum_amplitude),
+    'Error Amplitude': num(r.continuum_amplitude_err),
+  }];
+
+  // Sheet 3: verification checks, one row per check
+  const ver = [];
+  (r.lines || []).forEach(l => (l.verification ? l.verification.checks : []).forEach(k => ver.push({
+    'Emission Line': l.line_name, 'Check': k.name, 'Value': k.value, 'Criterion': k.criterion,
+    'Result': k.pass ? 'pass' : (k.required ? 'fail' : 'note'), 'Reference': k.reference,
+  })));
+
+  // Sheet 4: variability context (this spectrum vs its year)
+  const ctx = c ? c.lines.map(cl => {
+    const live = (r.lines || []).find(x => x.line_name === cl.line);
+    const F = live && live.detected ? live.flux : null, fv = cl.fvar || {};
+    return {
+      'Emission Line': cl.line, 'Year': c.year, 'This spectrum F': num(F),
+      'Year F avg': num(fv.f_mean), 'Year F err rms': num(fv.err_rms),
+      '(F − F avg)/F avg': F != null && fv.f_mean ? (F - fv.f_mean) / fv.f_mean : null,
+      'N (year)': fv.n ?? 0, 'Fvar (year)': num(fv.fvar), 'Fvar error': num(fv.fvar_err), 'Rmax (year)': num(fv.rmax), 'Rmax error': num(fv.rmax_err), 'Error formula': fv.regime || '',
+    };
+  }) : [{ 'Note': 'This spectrum is not in the SWP log (jd.xlsx), so it cannot be placed in the campaign light curves.' }];
+
+  const readme = [
+    ['Spectrum', name],
+    ['Method', 'Manuscript method: power law subtracted, Gaussian(s) fitted to F_sub; flux = trapezoidal integral of the fitted Gaussian (analytic fallback); flux error σF = √N·σc·Δλ·Fλ (IRAF); σ(FWHM) = 2.3548·σc(fit).'],
+    ['Lines', 'One row per emission line, including FWHM errors and the inputs of the flux error (N, σc, Δλ, Fλ).'],
+    ['Continuum', 'Power law F = A λ^α fitted in log–log space over the listed windows; standard errors of the OLS estimators.'],
+    ['Verification', 'Statistical checks per line (χ² goodness of fit corrected for pixel correlation, runs test, Shapiro–Wilk, model-independent flux, detection, bounds).'],
+    ['Variability context', 'This spectrum compared with all detected spectra of the same year; Fvar from Vaughan et al. (2003) with the piecewise error.'],
+    ['Units', 'Wavelengths in Å (rest frame), fluxes in erg s-1 cm-2, flux densities in erg s-1 cm-2 Å-1.'],
+  ];
+
+  const wb = XLSX.utils.book_new();
+  const add = (rows, sheet, widths) => {
+    const ws = Array.isArray(rows[0]) ? XLSX.utils.aoa_to_sheet(rows) : XLSX.utils.json_to_sheet(rows);
+    const keys = Array.isArray(rows[0]) ? [0, 1] : Object.keys(rows[0] || {});
+    ws['!cols'] = keys.map((k, i) => ({ wch: widths ? widths[i] : Math.min(40, Math.max(12, String(k).length + 2)) }));
+    XLSX.utils.book_append_sheet(wb, ws, sheet);
+  };
+  add(readme, 'README', [22, 120]);
+  add(lines, 'Lines');
+  add(cont, 'Continuum');
+  if (ver.length) add(ver, 'Verification', [22, 24, 60, 40, 8, 40]);
+  add(ctx, 'Variability context');
+  XLSX.writeFile(wb, name.replace(/\.txt.*$/i, '') + '_fit_manuscript.xlsx');
+}
+
+/* ── Graph downloads (Plotly renders the current figure at 2× for print) ── */
+function downloadGraph(id, format, lineIdx) {
+  const el = document.getElementById(id);
+  if (!el || !el.data) return;
+  const spec = (currentRecord && currentRecord.spectrum_name || 'spectrum').replace(/\.txt$/i, '');
+  const idx = lineIdx === undefined ? selectedLineIndex : Number(lineIdx);
+  const line = currentRecord && currentRecord.lines && currentRecord.lines[idx];
+  const tag = id === 'overviewPlot' ? 'spectrum' : (line ? line.line_name.replace(/[^A-Za-z0-9]+/g, '_') : 'line');
+  const names = { overviewPlot: 'graph1_spectrum', localPlot: 'graph2_fit', residualPlot: 'graph3_residuals',
+                  landscapePlot: 'graph4_residual_distribution', lightcurvePlot: 'graph5_variability',
+                  decompPlot: 'graph6_decomposition' };
+  if (id === 'decompPlot') {
+    const sel = (currentRecord.lines || []).filter((_, i) => lineSelection && lineSelection.has(i))
+      .map(l => l.line_name.replace(/\s*\(.*\)/, '').replace(/[^A-Za-z0-9]+/g, ''));
+    return Plotly.downloadImage(el, { format, scale: format === 'png' ? 2 : 1, width: el.offsetWidth, height: el.offsetHeight,
+      filename: `${spec}_graph6_decomposition_${sel.join('-') || 'none'}` });
+  }
+  if (id.startsWith('allFit')) names[id] = 'fit';
+  if (id.startsWith('allLc')) names[id] = 'lightcurve';
+  Plotly.downloadImage(el, { format, scale: format === 'png' ? 2 : 1, width: el.offsetWidth, height: el.offsetHeight,
+                             filename: `${spec}_${names[id] || id}${id === 'overviewPlot' ? '' : '_' + tag}` });
+}
+
+/* ── Variability context: this spectrum in its year's light curve ── */
+let contextData = null;
+async function loadContext(spectrumName) {
+  contextData = null;
+  const info = document.getElementById('contextInfo');
+  document.getElementById('contextBody').innerHTML = '';
+  info.textContent = 'Looking up observation date…';
+  try {
+    const res = await fetch('/api/fvar_context?method=manuscript&spectrum=' + encodeURIComponent(spectrumName));
+    contextData = await res.json();
+  } catch (e) { contextData = { matched: false, reason: 'lookup failed' }; }
+  const c = contextData;
+  if (!c.matched || c.jd == null) {
+    info.innerHTML = `This spectrum cannot be placed in the campaign light curves: ${c.reason || 'no date'}.`;
+    document.getElementById('contextSummary').textContent = 'not dated — ' + (c.reason || 'no date');
+    FitPlots.lightCurve('lightcurvePlot', null, { year: '—' });
+    renderAllLines();
+    return;
+  }
+  document.getElementById('contextSummary').textContent = `observed ${c.date} (JD ${c.jd.toFixed(1)}), year ${c.year}`;
+  info.innerHTML = `<strong>${c.spectrum}</strong> observed <strong>${c.date}</strong> (JD ${c.jd.toFixed(3)}), year <strong>${c.year}</strong>.
+    Graph 5 shows the selected line's detected fluxes from all ${c.year} spectra (same pipeline, <code>run_variability.py</code>);
+    the diamond is this spectrum. The table compares every line of this spectrum with its ${c.year} mean and F<sub>var</sub>.`;
+  const fx = v => v == null ? '—' : Number(v).toExponential(3), fn = (v, d) => v == null ? '—' : Number(v).toFixed(d);
+  document.getElementById('contextBody').innerHTML = c.lines.map(l => {
+    const live = (currentRecord.lines || []).find(x => x.line_name === l.line);
+    const F = live && live.detected ? live.flux : null;
+    const fv = l.fvar || {};
+    const dev = F != null && fv.f_mean ? (F - fv.f_mean) / fv.f_mean : null;
+    return `<tr><td style="font-weight:600;">${l.line}</td>
+      <td>${F != null ? fx(F) : 'not detected'}</td><td>${fx(fv.f_mean)}</td>
+      <td>${dev == null ? '—' : (dev >= 0 ? '+' : '') + (100 * dev).toFixed(1) + ' %'}</td>
+      <td>${fv.n ?? 0}</td><td style="font-weight:600;">${fn(fv.fvar, 4)}</td><td>${fn(fv.fvar_err, 4)}</td>
+      <td>${fv.rmax != null ? fn(fv.rmax,3) + ' ± ' + fn(fv.rmax_err,3) : '—'}</td><td>${fv.regime || '—'}</td></tr>`;
+  }).join('');
+  const line = (currentRecord.lines || [])[selectedLineIndex];
+  if (line) drawContextPlot(line);
+  renderAllLines();
+}
+
+/* ── Small multiples: every line's fit + its same-year light curve ── */
+let lineSelection = null;   // Set of selected line indices; null = all
+
+function buildLineSelector() {
+  const lines = (currentRecord && currentRecord.lines) || [];
+  if (!lineSelection) lineSelection = new Set(lines.map((_, i) => i));
+  const sel = document.getElementById('lineSelector');
+  sel.innerHTML = '<span style="color:var(--ink3);">Show:</span>' + lines.map((l, i) =>
+    `<label style="cursor:pointer;white-space:nowrap;border-left:4px solid ${FitPlots.lineColour(i)};padding-left:4px;"><input type="checkbox" data-i="${i}" ${lineSelection.has(i) ? 'checked' : ''}> ${l.line_name.replace(/\s*\(.*\)/, '')}</label>`).join('') +
+    ' <button class="dl-btn" data-act="all">All</button> <button class="dl-btn" data-act="det">Detected</button> <button class="dl-btn" data-act="none">None</button>';
+  sel.querySelectorAll('input').forEach(cb => cb.onchange = () => {
+    cb.checked ? lineSelection.add(+cb.dataset.i) : lineSelection.delete(+cb.dataset.i);
+    renderAllLines();
+  });
+  sel.querySelectorAll('button').forEach(b => b.onclick = () => {
+    const a = b.dataset.act;
+    lineSelection = new Set(lines.map((l, i) => i).filter(i => a === 'all' || (a === 'det' && lines[i].detected)));
+    renderAllLines();
+  });
+}
+
+function renderAllLines() {
+  const grid = document.getElementById('allLinesGrid');
+  const lines = (currentRecord && currentRecord.lines) || [];
+  buildLineSelector();
+  const esc = s => String(s).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+  grid.innerHTML = lines.map((l, i) => {
+    if (!lineSelection.has(i)) return '';
+    const v = l.verification ? l.verification.status : '—';
+    const head = `${esc(l.line_name)} — ${l.detected ? `F = ${Number(l.flux).toExponential(2)} ± ${Number(l.flux_err).toExponential(1)}` : 'not detected'} · ${v}`;
+    return `<div style="border:1px solid var(--rule);">
+      <div class="chart-header" style="border-left:4px solid ${FitPlots.lineColour(i)};"><span class="chart-label" style="font-size:11px;">${head}</span>
+        <span class="chart-sub"><button class="dl-btn" onclick="downloadGraph('allFit${i}','png','${i}')">fit PNG</button>
+        <button class="dl-btn" onclick="downloadGraph('allLc${i}','png','${i}')">light curve PNG</button></span></div>
+      <div id="allFit${i}" style="height:240px;"></div>
+      <div id="allLc${i}" style="height:180px;"></div></div>`;
+  }).join('');
+  FitPlots.decomposition('decompPlot', currentRecord, lineSelection);
+  document.getElementById('allLinesSummary').textContent = `${lineSelection.size} of ${lines.length} lines selected`;
+  if (!lineSelection.size) grid.innerHTML = '<p style="font-size:12px;color:var(--ink3);">No lines selected.</p>';
+  lines.forEach((l, i) => {
+    if (!lineSelection.has(i)) return;
+    FitPlots.lineFit(`allFit${i}`, l);
+    const c = contextData;
+    if (c && c.matched && c.jd != null) {
+      FitPlots.lightCurve(`allLc${i}`, c.lines.find(x => x.line === l.line_name), c, l.detected ? l.flux : null, l.flux_err);
+    } else {
+      FitPlots.lightCurve(`allLc${i}`, null, { year: '—' });
+    }
+  });
+}
+
+async function downloadAllLines(format) {
+  const ids = [];
+  (currentRecord.lines || []).forEach((l, i) => { if (lineSelection.has(i)) ids.push([`allFit${i}`, i], [`allLc${i}`, i]); });
+  for (const [id, i] of ids) {
+    const el = document.getElementById(id);
+    if (el && (el.data || []).length) {
+      downloadGraph(id, format, i);
+      await new Promise(r => setTimeout(r, 400));   // browsers throttle bursts of downloads
+    }
+  }
+}
+
+function drawContextPlot(line) {
+  const c = contextData;
+  if (!c || !c.matched || c.jd == null) return;
+  const cl = c.lines.find(l => l.line === line.line_name);
+  FitPlots.lightCurve('lightcurvePlot', cl, c, line.detected ? line.flux : null, line.flux_err);
+}
+
+let fvarRows = [];
+function renderFvar(data) {
+  const body = document.getElementById('fvarBody');
+  const fx = v => v == null ? '—' : Number(v).toExponential(3);
+  const fn = (v, d) => v == null ? '—' : Number(v).toFixed(d);
+  document.getElementById('fvarCut').textContent = data.cutoff;
+  fvarRows = data.rows;
+  body.innerHTML = data.rows.map(r => `<tr>
+    <td style="font-weight:600;">${r.line}</td><td>${r.year}</td><td>${r.n}</td>
+    <td>${fn(r.jd_min,2)}</td><td>${fn(r.jd_span,1)}</td>
+    <td>${fx(r.f_mean)}</td><td>${fx(r.err_rms)}</td><td>${fn(r.ratio,2)}</td>
+    <td style="font-weight:600;">${fn(r.fvar,4)}</td><td>${fn(r.fvar_err,4)}</td><td>${fn(r.rmax,3)}</td><td>${fn(r.rmax_err,3)}</td><td>${r.regime}</td></tr>`).join('');
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  const body = document.getElementById('fvarBody');
+  try {
+    const res  = await fetch('/api/fvar?method=manuscript');
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      body.innerHTML = `<tr><td colspan="11" style="color:var(--ink3);">${data.error || 'F_var table unavailable'}</td></tr>`;
+      return;
+    }
+    renderFvar(data);
+  } catch (e) {
+    body.innerHTML = '<tr><td colspan="11" style="color:var(--ink3);">F_var table unavailable</td></tr>';
+  }
+});
+</script>
+</body>
+</html>

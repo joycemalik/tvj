@@ -93,6 +93,36 @@ Header (detections, verified count, continuum α ± err, A ± err, Excel / PNG b
 
 Every graph downloads as PNG (2×) or SVG.
 
+### Campaign Results (`/v5`)
+
+Every line of every spectrum in one place, computed locally by `python run_variability.py` (all CPU cores but two, max 10 worker processes; the fits are many small least-squares problems, so the CPU is the right device — a GPU would not speed them up).
+
+- **Line selector** applies to every graph and the table.
+- **Graph A**: all selected lines over the whole campaign as F/F̄ (detected fluxes, 1σ errors); click a point to open that spectrum.
+- **Spectrum browser**: full-spectrum decomposition plus fit and residual panels for each line of the chosen spectrum; every graph downloads as PNG/SVG.
+- **Results table**: line by line for every spectrum (filter by name, detected only).
+- **Excel**: the campaign workbook, including a *Flux matrix* sheet (one row per spectrum, every line's F, F err and detection side by side).
+- **Process my own spectra**: upload many `.txt` files at once; they are fitted in parallel on the machine running the app (`outputs/batches/<job>/`), dated by SWP number, and shown on the same page with their own workbook.
+
+### Manuscript method (`/v4`)
+
+A separate viewer and batch run implement the measurement exactly as described in the 3C 390.3 manuscript; `/v2` and `outputs/` keep the default method.
+
+| | Default (`/v2`, `outputs/`) | Manuscript (`/v4`, `outputs/manuscript/`) |
+|---|---|---|
+| Continuum under the line | local linear term fitted with the Gaussians | power law subtracted first, Gaussians fitted to F_sub |
+| Flux | √(2π) a c | trapezoidal integral of the fitted Gaussian (analytic fallback), \|F\| |
+| Flux error | fit covariance | σ_F = √N · σ_c · Δλ · F_λ(b) (IRAF), N = pixels within b ± 3c |
+| FWHM error | — | σ(FWHM) = 2.3548 σ_c(fit) |
+| χ²_red dof | n − (3k + 2) | n − 3k |
+| Variability | F_avg, F_var, R_max ± error per line per year | same |
+
+```bash
+python run_variability.py --method manuscript --workers 6
+```
+
+Code: `src/manuscript_fit.py` (selected with `method='manuscript'` in `run_single_spectrum_pipeline`). API: add `method=manuscript` to `/fit`, `/api/fvar`, `/api/fvar_context`, `/download/variability_results.xlsx`.
+
 ### Excel outputs
 
 | File | Sheets |
@@ -193,6 +223,7 @@ src/
   continuum.py          power law + standard errors
   candidate_engine.py   peak search and seed grid
   refine.py             least-squares fit, DER_SNR noise, verification, plot arrays
+  manuscript_fit.py     manuscript method (/v4): power-law subtracted, IRAF flux error, FWHM error
   line_fitter.py        seed → refine → quality per line
   quality.py            detection and warnings
   statistics.py         reference-style window statistics, local baseline
@@ -214,6 +245,12 @@ tests/                  pytest suite
 | GET | `/` | V1 single-spectrum fitter |
 | GET | `/v2` | V2 Profile Diagnostic Viewer (F_var table, per-spectrum fit, Excel export) |
 | GET | `/v3` | V3 multi-epoch viewer (reference tables) |
+| GET | `/v4` | V4 manuscript-method viewer |
+| GET | `/v5` | V5 campaign results (all spectra, all lines) |
+| GET | `/api/campaign/summary[?job=]` | every fitted line of every spectrum |
+| GET | `/api/campaign/spectrum/<file>[?job=]` | full result of one spectrum (graphs) |
+| POST | `/api/campaign/process` | fit uploaded `.txt` files in parallel; poll `/api/campaign/status/<job>` |
+| GET | `/download/campaign.xlsx[?job=]` | campaign workbook |
 | GET | `/about` | Method documentation |
 | POST | `/fit` | Fit one spectrum, full JSON |
 | POST | `/upload_fit`, GET `/stream/<id>` | Same, with streamed log |
