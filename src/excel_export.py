@@ -177,3 +177,59 @@ def _flux_matrix(xw, f: pd.DataFrame, order: List[str]) -> None:
         base[f'{ln}|D'] = base['spectrum'].map(g['detected'])
         cols += [(f'{ln}|F', f'{short} F', SCI), (f'{ln}|E', f'{short} F err', SCI), (f'{ln}|D', f'{short} detected', '@')]
     _sheet(xw, 'Flux matrix', base, cols)
+
+
+LINE_COLS = [c for c in FIT_COLS if c[0] not in ('line', 'rest_wavelength')] + [
+    ('f_mean', 'Year F avg (erg s-1 cm-2)', SCI), ('fvar', 'Year Fvar', '0.0000'), ('fvar_err', 'Year Fvar error', '0.0000'),
+    ('rmax', 'Year Rmax', '0.000'), ('rmax_err', 'Year Rmax error', '0.000'),
+]
+
+
+def _sheet_name(line: str, taken: set) -> str:
+    name = ''.join(ch for ch in line if ch not in '[]:*?/\\').strip()[:31] or 'line'
+    base, k = name, 2
+    while name in taken:
+        name = f'{base[:28]}_{k}'
+        k += 1
+    taken.add(name)
+    return name
+
+
+def write_per_line_workbook(path: str, fits: pd.DataFrame, table: pd.DataFrame, method: str = 'refine') -> None:
+    """One sheet per emission line, one row per spectrum (all of them, detected or not), plus a README."""
+    order = fits.groupby('line')['rest_wavelength'].first().sort_values().index.tolist()
+    f = fits.copy()
+    f['date'] = pd.to_datetime(f['date'], errors='coerce').dt.strftime('%Y-%m-%d')
+    f['detected'] = f['detected'].map({True: 'yes', False: 'no'})
+    f['at_bound'] = f['at_bound'].map({True: 'yes', False: 'no'})
+    if len(table):
+        keep = [c for c in ('line', 'year', 'f_mean', 'fvar', 'fvar_err', 'rmax', 'rmax_err') if c in table.columns]
+        f = f.merge(table[keep], on=['line', 'year'], how='left')
+
+    taken, names = set(), {}
+    readme = [('3C 273 IUE SWP: one sheet per emission line', ''), ('', ''), ('Sheet', 'Line / contents')]
+    with pd.ExcelWriter(path, engine='openpyxl') as xw:
+        pd.DataFrame(readme, columns=['Item', 'Description']).to_excel(xw, sheet_name='README', index=False, header=False)
+        for ln in order:
+            names[ln] = _sheet_name(ln, taken)
+        n_spec = f['spectrum'].nunique()
+        rows = [(names[ln], f'{ln} (rest {fits.loc[fits.line == ln, "rest_wavelength"].iloc[0]:.1f} Å): '
+                            f'{(f.line == ln).sum()} spectra, one row each') for ln in order]
+        rows += [('', ''), ('Columns', 'Fit parameters with 1σ errors, flux, FWHM, EW, χ², verification; '
+                 '"Year ..." columns repeat the calendar-year F avg, Fvar and Rmax of that line for the row\'s year '
+                 '(empty when the line has <2 detections that year or scatter ≤ errors).'),
+                 ('Method', FLUX_METHOD.get(method, '')),
+                 ('Spectra', f'{n_spec} spectra, dated from jd.xlsx; sorted by JD.')]
+        ws = xw.sheets['README']
+        ws.column_dimensions['A'].width = 30
+        ws.column_dimensions['B'].width = 110
+        ws.cell(row=1, column=1).font = Font(bold=True, size=12)
+        for r in (3,):
+            ws.cell(row=r, column=1).font = Font(bold=True)
+            ws.cell(row=r, column=2).font = Font(bold=True)
+        for i, (a, b) in enumerate(rows, start=4):
+            ws.cell(row=i, column=1, value=a)
+            ws.cell(row=i, column=2, value=b)
+        for ln in order:
+            g = f[f['line'] == ln].sort_values(['jd', 'spectrum'], na_position='last')
+            _sheet(xw, names[ln], g, LINE_COLS)

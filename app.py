@@ -79,7 +79,7 @@ def campaign_summary():
     if not path or not os.path.exists(path):
         return jsonify({'error': 'no campaign results yet — run `python run_variability.py` or process spectra'}), 404
     keep = ('spectrum', 'line', 'rest_wavelength', 'detected', 'verification', 'failed_checks', 'center', 'center_err',
-            'sigma', 'sigma_err', 'fwhm_kms', 'fwhm_kms_intrinsic', 'flux', 'flux_err', 'significance', 'ew', 'ew_err',
+            'sigma', 'sigma_err', 'fwhm_kms', 'fwhm_kms_err', 'fwhm_kms_intrinsic', 'flux', 'flux_err', 'significance', 'ew', 'ew_err',
             'reduced_chi2', 'wing_window', 'min_wavelength', 'max_wavelength', 'spectral_index', 'spectral_index_err',
             'continuum_amplitude', 'continuum_amplitude_err', 'jd', 'date', 'year')
     rows = []

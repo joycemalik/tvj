@@ -52,15 +52,15 @@ select,input[type=search]{font-family:var(--mono);font-size:11px;padding:5px 8px
   <nav>
     <a href="/" class="nav-pill">Single-Spectrum Fitter</a>
     <a href="/v2" class="nav-pill">Profile Diagnostic Viewer</a>
-    <a href="/v3" class="nav-pill">Multi-Epoch Ensemble</a>
     <a href="/v4" class="nav-pill">Manuscript Method</a>
     <a href="/v5" class="nav-pill active">Campaign Results</a>
+    <a href="/v3" class="nav-pill">Multi-Epoch Ensemble</a>
     <a href="/about" class="nav-pill">Pipeline Documentation</a>
   </nav>
 </div></div>
 
 <main>
-  <h1>Campaign results — every line of every spectrum</h1>
+  <h1>Campaign results — line by line</h1>
   <div class="meta" id="meta">Weighted least-squares Gaussian + local continuum fits (the most accurate method; see /about), verified and dated from the SWP log. Loading…</div>
 
   <div class="bar">
@@ -71,43 +71,55 @@ select,input[type=search]{font-family:var(--mono);font-size:11px;padding:5px 8px
     <span id="progress"></span>
   </div>
 
-  <div class="stats" id="stats"></div>
-
   <div class="panel">
-    <div class="panel-h"><span class="panel-t">Lines shown in all graphs and the table</span>
-      <span class="panel-s"><button class="dl" data-act="all">All</button> <button class="dl" data-act="strong">Strong lines</button> <button class="dl" data-act="none">None</button></span></div>
+    <div class="panel-h"><span class="panel-t">Choose an emission line</span>
+      <span class="panel-s">every spectrum of the campaign is shown for the chosen line</span></div>
     <div class="sel" id="lineSel"></div>
   </div>
 
+  <div class="stats" id="stats"></div>
+
   <div class="panel">
-    <div class="panel-h"><span class="panel-t">Graph A — all lines over the whole campaign (F / F̄, detected fluxes)</span>
-      <span class="panel-s"><button class="dl" onclick="dl('lcAll','png')">PNG</button> <button class="dl" onclick="dl('lcAll','svg')">SVG</button></span></div>
-    <div class="note">Each line divided by its own mean so different lines share one axis; error bars are 1σ. Click a point to open that spectrum below.</div>
-    <div id="lcAll" style="height:380px;"></div>
+    <div class="panel-h"><span class="panel-t" id="lcTitle">Light curve</span>
+      <span class="panel-s"><button class="dl" onclick="dl('lcMain','png')">PNG</button> <button class="dl" onclick="dl('lcMain','svg')">SVG</button></span></div>
+    <div class="note">Detected fluxes with 1σ error bars; open circles are non-detections (F/σ<sub>F</sub> &lt; 3). Click a point to open that spectrum's fit below.</div>
+    <div id="lcMain" style="height:380px;"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-h"><span class="panel-t" id="shapeTitle">Line width and equivalent width</span>
+      <span class="panel-s"><button class="dl" onclick="dl('fwhmPlot','png')">FWHM PNG</button> <button class="dl" onclick="dl('ewPlot','png')">EW PNG</button></span></div>
+    <div class="grid">
+      <div id="fwhmPlot" style="height:260px;"></div><div id="ewPlot" style="height:260px;"></div>
+    </div>
   </div>
 
   <div class="panel" id="specPanel">
     <div class="panel-h">
-      <span class="panel-t">Spectrum: <span id="specName">—</span> <span class="panel-s" id="specMeta"></span></span>
+      <span class="panel-t"><span id="fitLine">—</span> fit in <span id="specName">—</span> <span class="panel-s" id="specMeta"></span></span>
       <span class="spec-nav">
         <button class="dl" id="prev">◀ previous</button>
         <select id="specSelect"></select>
         <button class="dl" id="next">next ▶</button>
-        <button class="dl" onclick="dl('decomp','png')">decomposition PNG</button>
-        <button class="dl" onclick="dlAllCards()">all graphs of this spectrum (PNG)</button>
+        <button class="dl" onclick="dl('fitOne','png')">fit PNG</button>
+        <button class="dl" onclick="dl('resOne','png')">residuals PNG</button>
       </span>
     </div>
-    <div id="decomp" style="height:360px;"></div>
-    <div class="grid" id="cards"></div>
+    <div id="fitMsg" class="note"></div>
+    <div id="fitOne" style="height:300px;"></div>
+    <div id="resOne" style="height:160px;"></div>
+    <div class="panel-h"><span class="panel-t" style="font-size:11px;">Whole spectrum with the chosen line highlighted</span>
+      <span class="panel-s"><button class="dl" onclick="dl('decomp','png')">PNG</button></span></div>
+    <div id="decomp" style="height:340px;"></div>
   </div>
 
   <div class="panel">
-    <div class="panel-h"><span class="panel-t">Results — line by line for every spectrum</span>
+    <div class="panel-h"><span class="panel-t" id="tblTitle">Results — every spectrum for this line</span>
       <span class="panel-s"><input type="search" id="q" placeholder="filter spectrum…">
         <label><input type="checkbox" id="detOnly"> detected only</label> <span id="nrows"></span></span></div>
     <div style="max-height:520px;overflow:auto;">
       <table>
-        <thead><tr><th>Spectrum</th><th>Date</th><th>Line</th><th>F (erg s⁻¹ cm⁻²)</th><th>± σ<sub>F</sub></th><th>F/σ<sub>F</sub></th>
+        <thead><tr><th>Spectrum</th><th>Date</th><th>F (erg s⁻¹ cm⁻²)</th><th>± σ<sub>F</sub></th><th>F/σ<sub>F</sub></th>
           <th>μ (Å)</th><th>σ (Å)</th><th>FWHM (km/s)</th><th>EW (Å)</th><th>χ²<sub>red</sub></th><th>Status</th></tr></thead>
         <tbody id="tbody"></tbody>
       </table>
@@ -116,12 +128,14 @@ select,input[type=search]{font-family:var(--mono);font-size:11px;padding:5px 8px
 </main>
 
 <script>
-let rows = [], spectra = [], lineNames = [], selected = new Set(), job = '', cur = null;
-const STRONG = /Alpha|N V|C IV|Si IV/;
+let rows = [], spectra = [], lineNames = [], line = '', job = '', cur = null, record = null;
 const fx = v => v == null ? '—' : Number(v).toExponential(2);
 const fn = (v, d) => v == null ? '—' : Number(v).toFixed(d);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const short = n => n.replace(/\s*\(.*\)/, '');
 const colourOf = name => FitPlots.lineColour(lineNames.indexOf(name));
+const mjd = r => r.jd - 2400000.5;
+const lineRows = () => rows.filter(r => r.line === line).sort((a, b) => (a.jd ?? 1e12) - (b.jd ?? 1e12) || a.spectrum.localeCompare(b.spectrum));
 
 async function load() {
   const res = await fetch('/api/campaign/summary' + (job ? '?job=' + job : ''));
@@ -132,134 +146,120 @@ async function load() {
   const rest = {};
   rows.forEach(r => rest[r.line] = r.rest_wavelength);
   lineNames = Object.keys(rest).sort((a, b) => rest[a] - rest[b]);
-  if (!selected.size) selected = new Set(lineNames);
-  const bySpec = {};
-  rows.forEach(r => { (bySpec[r.spectrum] ??= { name: r.spectrum, jd: r.jd, date: r.date, n: 0, det: 0 }); bySpec[r.spectrum].n++; if (r.detected) bySpec[r.spectrum].det++; });
-  spectra = Object.values(bySpec).sort((a, b) => (a.jd ?? 1e12) - (b.jd ?? 1e12) || a.name.localeCompare(b.name));
+  if (!lineNames.includes(line)) line = lineNames.find(n => /Alpha/.test(n)) || lineNames[0];
+  spectra = [...new Set(rows.map(r => r.spectrum))];
   document.getElementById('meta').textContent =
-    `${spectra.length} spectra × ${lineNames.length} lines = ${rows.length} fits` + (job ? ' (your uploaded batch)' : ' (full 3C 273 campaign, precomputed on this machine)') +
+    `${lineNames.length} lines × ${spectra.length} spectra = ${rows.length} fits` + (job ? ' (your uploaded batch)' : ' (full 3C 273 campaign, precomputed on this machine)') +
     '. Weighted least-squares Gaussian + local continuum fits, verified and dated from the SWP log.';
   document.getElementById('showCampaign').style.display = job ? '' : 'none';
-  const sel = document.getElementById('specSelect');
-  sel.innerHTML = spectra.map((s, i) => `<option value="${i}">${esc(s.name)} ${s.date ? '· ' + esc(s.date) : ''}</option>`).join('');
-  buildSelector(); renderStats(); renderLightCurves(); renderTable();
-  openSpectrum(cur && spectra.findIndex(s => s.name === cur) >= 0 ? spectra.findIndex(s => s.name === cur) : 0);
+  buildSelector(); renderLine();
 }
 
 function buildSelector() {
   document.getElementById('lineSel').innerHTML = lineNames.map(n =>
-    `<label style="border-left:4px solid ${colourOf(n)}"><input type="checkbox" value="${esc(n)}" ${selected.has(n) ? 'checked' : ''}> ${esc(n.replace(/\s*\(.*\)/, ''))}</label>`).join('');
-  document.querySelectorAll('#lineSel input').forEach(cb => cb.onchange = () => {
-    cb.checked ? selected.add(cb.value) : selected.delete(cb.value); refresh();
-  });
-}
-document.querySelectorAll('[data-act]').forEach(b => b.onclick = () => {
-  const a = b.dataset.act;
-  selected = new Set(lineNames.filter(n => a === 'all' || (a === 'strong' && STRONG.test(n))));
-  buildSelector(); refresh();
-});
-function refresh() { renderStats(); renderLightCurves(); renderTable(); if (cur) openSpectrum(spectra.findIndex(s => s.name === cur)); }
-
-function renderStats() {
-  const html = lineNames.filter(n => selected.has(n)).map(n => {
-    const r = rows.filter(x => x.line === n), d = r.filter(x => x.detected);
-    const v = d.filter(x => x.verification === 'VERIFIED').length;
-    return `<div class="stat" style="border-top:3px solid ${colourOf(n)}"><b>${d.length}/${r.length}</b>
-      <span>${esc(n.replace(/\s*\(.*\)/, ''))} detected · ${v} verified</span></div>`;
-  }).join('');
-  document.getElementById('stats').innerHTML = html;
+    `<label style="border-left:4px solid ${colourOf(n)}"><input type="radio" name="ln" value="${esc(n)}" ${n === line ? 'checked' : ''}> ${esc(short(n))}</label>`).join('');
+  document.querySelectorAll('#lineSel input').forEach(cb => cb.onchange = () => { line = cb.value; cur = null; renderLine(); });
 }
 
-function renderLightCurves() {
-  const traces = [];
-  lineNames.filter(n => selected.has(n)).forEach(n => {
-    const d = rows.filter(r => r.line === n && r.detected && r.jd != null && r.flux != null);
-    if (!d.length) return;
-    const mean = d.reduce((a, r) => a + r.flux, 0) / d.length;
-    traces.push({ x: d.map(r => r.jd - 2400000.5), y: d.map(r => r.flux / mean), mode: 'markers', name: n.replace(/\s*\(.*\)/, ''),
-      marker: { size: 5, color: colourOf(n) }, error_y: { type: 'data', array: d.map(r => r.flux_err / mean), thickness: 0.6, width: 0, color: colourOf(n) },
-      customdata: d.map(r => r.spectrum), text: d.map(r => r.spectrum),
-      hovertemplate: '%{text}<br>MJD %{x:.1f}<br>F/F̄ %{y:.3f}<extra>' + n.replace(/\s*\(.*\)/, '') + '</extra>' });
-  });
-  if (!traces.length) { Plotly.purge('lcAll'); document.getElementById('lcAll').innerHTML = '<p class="note">No detected fluxes for the selected lines.</p>'; return; }
-  document.getElementById('lcAll').innerHTML = '';
-  Plotly.newPlot('lcAll', traces, {
-    paper_bgcolor: '#fff', plot_bgcolor: '#fff', margin: { t: 10, r: 15, l: 60, b: 45 }, font: { family: 'Inter', size: 11 },
-    xaxis: { title: 'MJD (JD − 2400000.5)', showline: true, mirror: true, ticks: 'inside', linecolor: '#1a1a1a', gridcolor: '#eee' },
-    yaxis: { title: 'F / F̄', showline: true, mirror: true, ticks: 'inside', linecolor: '#1a1a1a', gridcolor: '#eee' },
-    legend: { orientation: 'h', y: 1.08 }, hovermode: 'closest',
-  }, { responsive: true, displayModeBar: false });
-  document.getElementById('lcAll').on('plotly_click', ev => {
-    const i = spectra.findIndex(s => s.name === ev.points[0].customdata);
+function renderLine() {
+  const L = lineRows(), det = L.filter(r => r.detected), ver = det.filter(r => r.verification === 'VERIFIED');
+  const fl = det.map(r => r.flux).filter(v => v != null);
+  const mean = fl.length ? fl.reduce((a, v) => a + v, 0) / fl.length : null;
+  const stat = (b, t) => `<div class="stat" style="border-top:3px solid ${colourOf(line)}"><b>${b}</b><span>${t}</span></div>`;
+  document.getElementById('stats').innerHTML =
+    stat(esc(short(line)), 'rest ' + fn(L[0] && L[0].rest_wavelength, 1) + ' Å') + stat(`${det.length}/${L.length}`, 'spectra detected') +
+    stat(ver.length, 'verified') + stat(mean == null ? '—' : fx(mean), 'mean detected flux') +
+    stat(fl.length ? fx(Math.min(...fl)) : '—', 'min flux') + stat(fl.length ? fx(Math.max(...fl)) : '—', 'max flux');
+  document.getElementById('lcTitle').textContent = `${short(line)} — flux over the whole campaign (${L.length} spectra)`;
+  document.getElementById('shapeTitle').textContent = `${short(line)} — FWHM and equivalent width over the campaign`;
+  document.getElementById('tblTitle').textContent = `${short(line)} — every spectrum`;
+  document.getElementById('specSelect').innerHTML = L.map((r, i) => `<option value="${i}">${esc(r.spectrum)} ${r.date ? '· ' + esc(r.date) : ''}</option>`).join('');
+  series(L, 'lcMain', 'flux', 'flux_err', 'F (erg s⁻¹ cm⁻²)');
+  series(L, 'fwhmPlot', 'fwhm_kms', 'fwhm_kms_err', 'FWHM (km/s)');
+  series(L, 'ewPlot', 'ew', 'ew_err', 'EW (Å)');
+  renderTable();
+  const i = cur ? L.findIndex(r => r.spectrum === cur) : -1;
+  openSpectrum(i >= 0 ? i : 0);
+}
+
+const AX = t => ({ title: t, showline: true, mirror: true, ticks: 'inside', linecolor: '#1a1a1a', gridcolor: '#eee' });
+function series(L, id, ykey, ekey, ytitle) {
+  const c = colourOf(line), el = document.getElementById(id);
+  const d = L.filter(r => r.detected && r.jd != null && r[ykey] != null);
+  const nd = id === 'lcMain' ? L.filter(r => !r.detected && r.jd != null && r[ykey] != null) : [];
+  const pt = (arr, o) => ({ x: arr.map(mjd), y: arr.map(r => r[ykey]), mode: 'markers', customdata: arr.map(r => r.spectrum), text: arr.map(r => r.spectrum),
+    hovertemplate: '%{text}<br>MJD %{x:.1f}<br>%{y:.4g}<extra></extra>', ...o });
+  const traces = [pt(d, { name: 'detected', marker: { size: 5, color: c },
+    error_y: { type: 'data', array: d.map(r => r[ekey] ?? 0), thickness: 0.6, width: 0, color: c } })];
+  if (nd.length) traces.push(pt(nd, { name: 'not detected', marker: { size: 5, color: '#fff', line: { color: '#888', width: 1 } } }));
+  if (!d.length && !nd.length) { Plotly.purge(id); el.innerHTML = '<p class="note">No measurements for this line.</p>'; return; }
+  el.innerHTML = '';
+  Plotly.newPlot(id, traces, { paper_bgcolor: '#fff', plot_bgcolor: '#fff', margin: { t: 10, r: 15, l: 65, b: 45 }, font: { family: 'Inter', size: 11 },
+    xaxis: AX('MJD (JD − 2400000.5)'), yaxis: AX(ytitle), legend: { orientation: 'h', y: 1.1 }, hovermode: 'closest', showlegend: id === 'lcMain' },
+    { responsive: true, displayModeBar: false });
+  el.on('plotly_click', ev => {
+    const i = L.findIndex(r => r.spectrum === ev.points[0].customdata);
     if (i >= 0) { openSpectrum(i); document.getElementById('specPanel').scrollIntoView({ behavior: 'smooth' }); }
   });
 }
 
 function renderTable() {
   const q = document.getElementById('q').value.toLowerCase(), det = document.getElementById('detOnly').checked;
-  const order = Object.fromEntries(spectra.map((s, i) => [s.name, i]));
-  const list = rows.filter(r => selected.has(r.line) && (!det || r.detected) && (!q || r.spectrum.toLowerCase().includes(q)))
-    .sort((a, b) => order[a.spectrum] - order[b.spectrum] || lineNames.indexOf(a.line) - lineNames.indexOf(b.line));
+  const list = lineRows().filter(r => (!det || r.detected) && (!q || r.spectrum.toLowerCase().includes(q)));
   document.getElementById('nrows').textContent = `${list.length} rows`;
-  document.getElementById('tbody').innerHTML = list.slice(0, 3000).map(r => {
+  document.getElementById('tbody').innerHTML = list.map(r => {
     const st = !r.detected ? '<span class="no">not detected</span>' : (r.verification === 'VERIFIED' ? '<span class="ok">verified</span>' : '<span class="chk" title="' + esc(r.failed_checks) + '">check</span>');
     return `<tr data-s="${esc(r.spectrum)}" class="${r.spectrum === cur ? 'cur' : ''}"><td>${esc(r.spectrum)}</td><td>${esc(r.date || '—')}</td>
-      <td style="border-left:4px solid ${colourOf(r.line)}">${esc(r.line.replace(/\s*\(.*\)/, ''))}</td>
       <td>${fx(r.flux)}</td><td>${fx(r.flux_err)}</td><td>${fn(r.significance, 1)}</td><td>${fn(r.center, 2)}</td><td>${fn(r.sigma, 2)}</td>
       <td>${fn(r.fwhm_kms, 0)}</td><td>${fn(r.ew, 1)}</td><td>${fn(r.reduced_chi2, 2)}</td><td>${st}</td></tr>`;
   }).join('');
   document.querySelectorAll('#tbody tr').forEach(tr => tr.onclick = () => {
-    openSpectrum(spectra.findIndex(s => s.name === tr.dataset.s));
+    openSpectrum(lineRows().findIndex(r => r.spectrum === tr.dataset.s));
     document.getElementById('specPanel').scrollIntoView({ behavior: 'smooth' });
   });
 }
 document.getElementById('q').oninput = renderTable;
 document.getElementById('detOnly').onchange = renderTable;
 
-let record = null;
 async function openSpectrum(i) {
-  if (i < 0 || i >= spectra.length) return;
-  const s = spectra[i]; cur = s.name;
+  const L = lineRows();
+  if (i < 0 || i >= L.length) return;
+  const r = L[i]; cur = r.spectrum;
   document.getElementById('specSelect').value = i;
-  document.getElementById('specName').textContent = s.name;
-  document.getElementById('specMeta').textContent = `${s.date ? 'observed ' + s.date + ' · ' : ''}${s.det}/${s.n} lines detected`;
+  document.getElementById('fitLine').textContent = short(line);
+  document.getElementById('specName').textContent = r.spectrum;
+  document.getElementById('specMeta').textContent = (r.date ? 'observed ' + r.date + ' · ' : '') +
+    (r.detected ? `F = ${fx(r.flux)} ± ${fx(r.flux_err)}` : 'not detected');
   document.querySelectorAll('#tbody tr').forEach(tr => tr.classList.toggle('cur', tr.dataset.s === cur));
-  const res = await fetch('/api/campaign/spectrum/' + encodeURIComponent(s.name) + (job ? '?job=' + job : ''));
-  if (!res.ok) { document.getElementById('cards').innerHTML = '<p class="note">Graphs not available for this spectrum (run the batch with JSON output).</p>'; return; }
+  const msg = document.getElementById('fitMsg');
+  const res = await fetch('/api/campaign/spectrum/' + encodeURIComponent(r.spectrum) + (job ? '?job=' + job : ''));
+  if (cur !== r.spectrum) return;
+  if (!res.ok) {
+    msg.textContent = 'Graphs not available for this spectrum (run the batch with JSON output).';
+    ['fitOne', 'resOne', 'decomp'].forEach(id => { Plotly.purge(id); document.getElementById(id).innerHTML = ''; });
+    return;
+  }
   record = await res.json();
-  if (cur !== s.name) return;
-  const idx = new Set((record.lines || []).map((l, k) => selected.has(l.line_name) ? k : -1).filter(k => k >= 0));
-  FitPlots.decomposition('decomp', record, idx);
-  document.getElementById('cards').innerHTML = (record.lines || []).map((l, k) => {
-    if (!selected.has(l.line_name)) return '';
-    const v = l.verification ? l.verification.status : '';
-    return `<div class="card"><div class="panel-h" style="border-left:4px solid ${colourOf(l.line_name)}">
-      <span class="panel-t" style="font-size:11px;">${esc(l.line_name)} — ${l.detected ? `F = ${fx(l.flux)} ± ${fx(l.flux_err)}` : 'not detected'} ${v ? '· ' + v : ''}</span>
-      <span class="panel-s"><button class="dl" onclick="dl('fit${k}','png')">PNG</button></span></div>
-      <div id="fit${k}" style="height:230px;"></div><div id="res${k}" style="height:140px;"></div></div>`;
-  }).join('');
-  (record.lines || []).forEach((l, k) => {
-    if (!selected.has(l.line_name)) return;
-    FitPlots.lineFit('fit' + k, l);
-    FitPlots.residuals('res' + k, l);
-  });
+  if (cur !== r.spectrum) return;
+  const k = (record.lines || []).findIndex(l => l.line_name === line);
+  if (k < 0) { msg.textContent = 'This line was not fitted in this spectrum.'; return; }
+  const l = record.lines[k], v = l.verification ? l.verification.status : '';
+  msg.textContent = v ? 'Verification: ' + v : '';
+  FitPlots.decomposition('decomp', record, new Set([k]));
+  FitPlots.lineFit('fitOne', l);
+  FitPlots.residuals('resOne', l);
 }
 document.getElementById('specSelect').onchange = e => openSpectrum(+e.target.value);
-document.getElementById('prev').onclick = () => openSpectrum(spectra.findIndex(s => s.name === cur) - 1);
-document.getElementById('next').onclick = () => openSpectrum(spectra.findIndex(s => s.name === cur) + 1);
+document.getElementById('prev').onclick = () => openSpectrum(lineRows().findIndex(r => r.spectrum === cur) - 1);
+document.getElementById('next').onclick = () => openSpectrum(lineRows().findIndex(r => r.spectrum === cur) + 1);
 
 function dl(id, format) {
   const el = document.getElementById(id);
   if (!el || !el.data) return;
-  const base = (cur || 'campaign').replace(/\.txt$/i, '');
-  const name = id === 'lcAll' ? 'campaign_lightcurves_' + [...selected].map(n => n.replace(/\s*\(.*\)/, '').replace(/[^A-Za-z0-9]+/g, '')).join('-')
-    : id === 'decomp' ? base + '_decomposition'
-    : base + '_' + (record.lines[+id.replace(/\D/g, '')].line_name.replace(/[^A-Za-z0-9]+/g, '_'));
+  const ln = short(line).replace(/[^A-Za-z0-9]+/g, '_'), base = (cur || 'campaign').replace(/\.txt$/i, '');
+  const name = id === 'lcMain' ? 'lightcurve_' + ln : id === 'fwhmPlot' ? 'fwhm_' + ln : id === 'ewPlot' ? 'ew_' + ln
+    : id === 'decomp' ? base + '_decomposition' : base + '_' + ln + (id === 'resOne' ? '_residuals' : '');
   Plotly.downloadImage(el, { format, scale: format === 'png' ? 2 : 1, width: el.offsetWidth, height: el.offsetHeight, filename: name });
-}
-async function dlAllCards() {
-  const ids = ['decomp', ...[...document.querySelectorAll('#cards [id^="fit"]')].map(e => e.id)];
-  for (const id of ids) { dl(id, 'png'); await new Promise(r => setTimeout(r, 400)); }
 }
 
 document.getElementById('files').onchange = async e => {
@@ -280,12 +280,12 @@ document.getElementById('files').onchange = async e => {
       clearInterval(timer);
       if (s.state === 'error') { p.textContent = 'Failed: ' + s.error; return; }
       p.textContent = `Done: ${s.total} spectra in ${Math.round((Date.now() - t0) / 1000)} s.`;
-      job = data.job; cur = null; selected = new Set(); load();
+      job = data.job; cur = null; load();
     }
   }, 1500);
   e.target.value = '';
 };
-document.getElementById('showCampaign').onclick = () => { job = ''; cur = null; selected = new Set(); load(); };
+document.getElementById('showCampaign').onclick = () => { job = ''; cur = null; load(); };
 
 load();
 </script>

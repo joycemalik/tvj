@@ -66,7 +66,7 @@ def run_batch(files: List[str], out_dir: str, method: str = 'refine', workers: O
     `progress(done, total)` is called as spectra finish.
     """
     from src.variability import load_jd, fvar_by_year, light_curve_points
-    from src.excel_export import write_variability_workbook
+    from src.excel_export import write_variability_workbook, write_per_line_workbook
 
     os.makedirs(out_dir, exist_ok=True)
     if json_dir:
@@ -101,4 +101,5 @@ def run_batch(files: List[str], out_dir: str, method: str = 'refine', workers: O
              if len(used) else pd.DataFrame())
     table.to_csv(os.path.join(out_dir, 'fvar_by_year.csv'), index=False)
     write_variability_workbook(os.path.join(out_dir, 'variability_results.xlsx'), fits, table, curves, method)
+    write_per_line_workbook(os.path.join(out_dir, 'all_lines_results.xlsx'), fits, table, method)
     return {'fits': fits, 'table': table, 'curves': curves}
