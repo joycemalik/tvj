@@ -64,7 +64,8 @@ select,input[type=search]{font-family:var(--mono);font-size:11px;padding:5px 8px
   <div class="meta" id="meta">Weighted least-squares Gaussian + local continuum fits (the most accurate method; see /about), verified and dated from the SWP log. Loading…</div>
 
   <div class="bar">
-    <a class="btn primary" id="xlsx" href="/download/campaign.xlsx">Download all results (Excel)</a>
+    <a class="btn primary" id="xlsxLine" href="/download/campaign_by_line.xlsx">Download by line (Excel, one sheet per line)</a>
+    <a class="btn" id="xlsx" href="/download/campaign.xlsx">Download all results (Excel)</a>
     <label class="btn">Process my own spectra (.txt, many at once)
       <input type="file" id="files" accept=".txt" multiple style="display:none;"></label>
     <button class="btn" id="showCampaign" style="display:none;">Back to the full campaign</button>
@@ -143,6 +144,7 @@ async function load() {
   if (!res.ok) { document.getElementById('meta').textContent = data.error; return; }
   rows = data.rows;
   document.getElementById('xlsx').href = data.workbook;
+  document.getElementById('xlsxLine').href = data.workbook_by_line;
   const rest = {};
   rows.forEach(r => rest[r.line] = r.rest_wavelength);
   lineNames = Object.keys(rest).sort((a, b) => rest[a] - rest[b]);

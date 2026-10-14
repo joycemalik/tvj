@@ -179,9 +179,12 @@ def _flux_matrix(xw, f: pd.DataFrame, order: List[str]) -> None:
     _sheet(xw, 'Flux matrix', base, cols)
 
 
-LINE_COLS = [c for c in FIT_COLS if c[0] not in ('line', 'rest_wavelength')] + [
-    ('f_mean', 'Year F avg (erg s-1 cm-2)', SCI), ('fvar', 'Year Fvar', '0.0000'), ('fvar_err', 'Year Fvar error', '0.0000'),
-    ('rmax', 'Year Rmax', '0.000'), ('rmax_err', 'Year Rmax error', '0.000'),
+LINE_COLS = [
+    ('no', 'No.', '0'), ('spectrum', 'Spectrum', '@'), ('date', 'Date', '@'), ('jd', 'JD', '0.00000'),
+    ('detected', 'Detected', '@'), ('verification', 'Verification', '@'),
+    ('center', 'Line centre (Å)', '0.00'), ('fwhm_kms', 'FWHM (km/s)', '0'),
+    ('flux', 'Flux (erg s-1 cm-2)', SCI), ('flux_err', 'Flux error', SCI),
+    ('significance', 'F/σF', '0.0'), ('ew', 'EW (Å)', '0.00'),
 ]
 
 
@@ -231,5 +234,6 @@ def write_per_line_workbook(path: str, fits: pd.DataFrame, table: pd.DataFrame, 
             ws.cell(row=i, column=1, value=a)
             ws.cell(row=i, column=2, value=b)
         for ln in order:
-            g = f[f['line'] == ln].sort_values(['jd', 'spectrum'], na_position='last')
+            g = f[f['line'] == ln].sort_values(['jd', 'spectrum'], na_position='last').reset_index(drop=True)
+            g.insert(0, 'no', range(1, len(g) + 1))
             _sheet(xw, names[ln], g, LINE_COLS)

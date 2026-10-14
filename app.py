@@ -101,7 +101,8 @@ def campaign_summary():
             rows.append(out)
     has_json = os.path.isdir(os.path.join(d, 'campaign'))
     return jsonify({'rows': rows, 'has_spectra': has_json,
-                    'workbook': '/download/campaign.xlsx' + (f'?job={request.args.get("job")}' if request.args.get('job') else '')})
+                    'workbook': '/download/campaign.xlsx' + (f'?job={request.args.get("job")}' if request.args.get('job') else ''),
+                    'workbook_by_line': '/download/campaign_by_line.xlsx' + (f'?job={request.args.get("job")}' if request.args.get('job') else '')})
 
 
 @app.route('/api/campaign/spectrum/<path:name>')
@@ -120,6 +121,15 @@ def campaign_workbook():
         return jsonify({'error': 'no workbook yet'}), 404
     return send_from_directory(d, 'variability_results.xlsx', as_attachment=True,
                                download_name='3C273_campaign_results.xlsx')
+
+
+@app.route('/download/campaign_by_line.xlsx')
+def campaign_by_line():
+    d = _campaign_dir(request.args.get('job', ''))
+    if d is None or not os.path.exists(os.path.join(d, 'all_lines_results.xlsx')):
+        return jsonify({'error': 'no workbook yet'}), 404
+    return send_from_directory(d, 'all_lines_results.xlsx', as_attachment=True,
+                               download_name='3C273_campaign_by_line.xlsx')
 
 
 @app.route('/api/campaign/process', methods=['POST'])
