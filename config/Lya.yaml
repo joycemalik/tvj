@@ -70,6 +70,28 @@ refine:
     - {rest: 1240.0, sigma_min: 2.2, sigma_max: 12.0, sigma_seed: 6.0}
 
 # Detection: flux / flux_err >= snr_min. Low reduced χ² is not penalised.
+# ===========================================================================
+# NARROW + BROAD PROFILE
+# ===========================================================================
+# Lyα = narrow core + broad base, two Gaussians fitted together (src/refine.py).
+# The σ ranges do not overlap, so the components cannot swap. Fitted freely, the
+# two trade flux and the broad flux is poorly constrained in most spectra, so the
+# broad centre and σ are held at their campaign medians, measured from the
+# well-constrained free fits by derive_broad_shape.py; only the amplitudes (and
+# the narrow centre/σ) are fitted per spectrum. `sigma` above still seeds the grid.
+profile: narrow_broad
+narrow:
+  sigma_min: 2.2        # instrumental
+  sigma_max: 7.0
+  center_tol: 3.0       # around this spectrum's observed peak
+broad:
+  sigma_min: 7.0
+  sigma_max: 25.0
+  center_tol: 10.0
+  # campaign medians of 19 well-constrained free fits (derive_broad_shape.py)
+  center_fixed: 1214.77
+  sigma_fixed: 10.38      # FWHM 24.4 Å
+
 snr_min: 3.0
 snr_max: 20.0
 chi2_red_max: 5.0

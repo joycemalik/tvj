@@ -24,6 +24,28 @@ refine:
   window: [1510, 1590]
   center_tol: 8.0
 
+# ===========================================================================
+# NARROW + BROAD PROFILE
+# ===========================================================================
+# C IV = narrow core + broad base, two Gaussians fitted together (src/refine.py).
+# The σ ranges do not overlap, so the components cannot swap. Fitted freely, the
+# two trade flux and the broad flux is poorly constrained in most spectra, so the
+# broad centre and σ are held at their campaign medians, measured from the
+# well-constrained free fits by derive_broad_shape.py; only the amplitudes (and
+# the narrow centre/σ) are fitted per spectrum. `sigma` above still seeds the grid.
+profile: narrow_broad
+narrow:
+  sigma_min: 2.2        # instrumental
+  sigma_max: 7.0
+  center_tol: 3.0       # around this spectrum's observed peak
+broad:
+  sigma_min: 7.0
+  sigma_max: 25.0
+  center_tol: 10.0
+  # campaign medians of 26 well-constrained free fits (derive_broad_shape.py)
+  center_fixed: 1546.54
+  sigma_fixed: 12.86      # FWHM 30.3 Å
+
 snr_min: 3.0
 snr_max: 15.0
 chi2_red_max: 5.0

@@ -53,7 +53,21 @@ def fit_one(path: str, method: str = 'refine', json_dir: Optional[str] = None) -
             min_wavelength=ln.get('min_wavelength'), max_wavelength=ln.get('max_wavelength'),
             spectral_index=res.get('spectral_index'), spectral_index_err=res.get('spectral_index_err'),
             continuum_amplitude=res.get('continuum_amplitude'),
-            continuum_amplitude_err=res.get('continuum_amplitude_err')))
+            continuum_amplitude_err=res.get('continuum_amplitude_err'),
+            flux_broad=ln.get('flux_broad'), flux_narrow=ln.get('flux_narrow'),
+            flux_narrow_err=ln.get('flux_narrow_err'), sigma_narrow=ln.get('sigma_narrow'),
+            center_narrow=ln.get('center_narrow'), delta_bic=ln.get('delta_bic')))
+        if ln.get('flux_broad') is not None:
+            # the broad component as its own "line", so it gets light curves and F_var
+            snr_b = ln.get('snr_broad') or 0.0
+            rows.append({**rows[-1], 'line': ln['line_name'] + ' broad',
+                         'detected': bool(ln.get('refined')) and snr_b >= 3.0,
+                         'center': ln.get('center_broad'), 'center_err': ln.get('center_broad_err'),
+                         'sigma': ln.get('sigma_broad'), 'sigma_err': ln.get('sigma_broad_err'),
+                         'fwhm_kms': ln.get('fwhm_kms_broad'), 'fwhm_kms_intrinsic': None,
+                         'fwhm_ang_err': None, 'fwhm_kms_err': None, 'flux_window': None,
+                         'flux': ln.get('flux_broad'), 'flux_err': ln.get('flux_broad_err'),
+                         'significance': snr_b, 'ew': ln.get('ew_broad'), 'ew_err': None})
     return rows
 
 

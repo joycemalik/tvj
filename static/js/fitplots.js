@@ -95,10 +95,12 @@
         error_y: { type: 'data', array: err, visible: true, color: T.muted, thickness: 0.8, width: 0 } },
       { x: p.x, y: p.continuum, mode: 'lines', name: 'Local continuum', line: { color: T.cont, width: 1.2, dash: 'dash' } },
     ];
+    const nLine = p.n_line || 1;
     p.components.forEach((c, k) => {
+      const own = k < nLine;
       traces.push({ x: p.x, y: c.y.map((v, i) => v + p.continuum[i]), mode: 'lines',
-        name: k === 0 ? 'Gaussian (this line)' : c.label,
-        line: { color: k === 0 ? T.comp : T.cont, width: 1, dash: k === 0 ? 'solid' : 'dot' } });
+        name: nLine === 1 && k === 0 ? 'Gaussian (this line)' : c.label,
+        line: { color: own ? T.comp : T.cont, width: 1, dash: own ? (k === 0 ? 'solid' : 'dash') : 'dot' } });
     });
     traces.push({ x: p.x, y: p.model, mode: 'lines', name: 'Total model', line: { color: T.model, width: 1.8 } });
     const shapes = (p.mask_ranges || []).map(([a, b]) => ({
@@ -176,7 +178,8 @@
       if (!p || !p.components.length) return;
       const col = lineColour(i);
       const name = shortName(l.line_name) + (l.detected ? '' : ' (not detected)');
-      const y = p.components[0].y.map((v, k) => v + p.continuum[k]);
+      const own = p.components.slice(0, p.n_line || 1);
+      const y = p.continuum.map((c, k) => c + own.reduce((s, g) => s + g.y[k], 0));
       traces.push({ x: p.x, y, mode: 'lines', name, line: { color: col, width: 1.8, dash: l.detected ? 'solid' : 'dot' } });
       traces.push({ x: p.x.concat(p.x.slice().reverse()), y: y.concat(p.continuum.slice().reverse()),
         fill: 'toself', fillcolor: hexA(col, 0.18), line: { width: 0 }, hoverinfo: 'skip', showlegend: false, mode: 'none' });

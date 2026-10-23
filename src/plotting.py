@@ -48,7 +48,7 @@ def save_publication_plots(record: Dict[str, Any], output_dir: str = "outputs/pl
                 continue
             col = palette[i % len(palette)]
             cont_l = np.asarray(p['continuum']) / U
-            g = np.asarray(p['components'][0]['y']) / U + cont_l
+            g = sum(np.asarray(c['y']) for c in p['components'][:p.get('n_line', 1)]) / U + cont_l
             ax0.fill_between(p['x'], cont_l, g, color=col, alpha=0.2, lw=0)
             ax0.plot(p['x'], g, color=col, lw=1.1, label=l['line_name'].split(' (')[0])
         ax0.set_xlabel('Rest wavelength (Å)')
@@ -67,9 +67,11 @@ def save_publication_plots(record: Dict[str, Any], output_dir: str = "outputs/pl
             ax.errorbar(x, np.asarray(p['y']) / U, yerr=p['yerr'] / U, fmt='o', ms=2, color='k',
                         ecolor='0.6', elinewidth=0.6, lw=0)
             ax.plot(x, np.asarray(p['continuum']) / U, color='0.5', lw=0.8, ls='--')
+            n_line = p.get('n_line', 1)
             for k, comp in enumerate(p['components']):
                 ax.plot(x, (np.asarray(comp['y']) + np.asarray(p['continuum'])) / U,
-                        color='#c0504d' if k == 0 else '0.5', lw=0.8, ls='-' if k == 0 else ':')
+                        color='#c0504d' if k < n_line else '0.5', lw=0.8,
+                        ls=('-' if k == 0 else '--') if k < n_line else ':')
             ax.plot(x, np.asarray(p['model']) / U, color='#1f4e8c', lw=1.2)
             for lo, hi in p.get('mask_ranges', []):
                 ax.axvspan(lo, hi, color='0.92', zorder=0)

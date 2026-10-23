@@ -55,6 +55,11 @@ The full method, with every formula and its source, is on the **About** page (`/
 
 **Width ranges (Lyα).** FWHM 10–24 Å ⇒ σ = 4.25–10.19 Å (continuous); wing window 10–24 Å. The range brackets the approved fits (FWHM 10.6–20.0 Å, 2600–4950 km s⁻¹) and published 3C 273 broad-line widths (Paltani & Türler 2005). For every line the lower limit is the instrumental resolution (σ ≥ 2.2 Å).
 
+**Narrow + broad lines (Lyα, C IV).** These lines are fitted as two Gaussians, a narrow core plus a broad base (`profile: narrow_broad` in the line YAML). When both are left free they trade flux, and the broad flux is poorly constrained. So the broad centre and σ are fixed at campaign medians. `derive_broad_shape.py` measures these from the free fits with broad F/σ_F ≥ 5, no parameter at a bound, and ΔBIC > 10. In each spectrum only the amplitudes and the narrow centre and σ are fitted. Reported values:
+- `flux` is narrow + broad, and `flux_broad` / `flux_narrow` are the two components.
+- `delta_bic` is the BIC gain of two Gaussians over one.
+- The campaign tables carry a separate "… broad" line, so the broad component gets its own light curve and F_var.
+
 **Reference-compatible flux.** `flux_window` integrates the Gaussian only over μ ± W/2, the convention of the reference tables; it captures erf(W/(2√2σ)) of the line (72–92 % for the approved Lyα windows). `flux` is the full Gaussian flux.
 
 ## 3. Verification

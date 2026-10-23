@@ -49,6 +49,9 @@ FIT_COLS = [
     ('wing_window', 'Wing window (Å)', '0'), ('min_wavelength', 'Min λ (Å)', '0.00'),
     ('max_wavelength', 'Max λ (Å)', '0.00'), ('reduced_chi2', 'Reduced χ²', '0.00'),
     ('at_bound', 'Parameter at bound', '@'),
+    ('flux_broad', 'Broad flux (narrow + broad lines)', SCI), ('flux_narrow', 'Narrow flux', SCI),
+    ('flux_narrow_err', 'Narrow flux error', SCI), ('sigma_narrow', 'Narrow σ (Å)', '0.00'),
+    ('center_narrow', 'Narrow centre (Å)', '0.00'), ('delta_bic', 'ΔBIC (1 → 2 Gaussians)', '0.0'),
 ]
 SPEC_COLS = [
     ('spectrum', 'Spectrum', '@'), ('date', 'Date', '@'), ('year', 'Year', '0'), ('jd', 'JD', '0.00000'),
@@ -76,6 +79,9 @@ README = [
     ('Fvar error (S²/σ²err ≥ 10)', '√(ΔF̄²/N) / F̄'),
     ('Rmax', 'Rmax = Fmax / Fmin;  error = Rmax · √((σ_min/F_min)² + (σ_max/F_max)²)'),
     ('Line flux', '{flux_method}'),
+    ('Narrow + broad', 'Lyα and C IV are fitted as a narrow core + broad base (two Gaussians). The broad centre and σ '
+                       'are fixed at campaign medians (derive_broad_shape.py); the line\'s F is narrow + broad, and the '
+                       '"… broad" line is the broad component alone (detected when F_broad/σ ≥ 3).'),
     ('', ''),
     ('Data', 'Rest-frame IUE SWP low-dispersion spectra (z = 0.158); dates from jd.xlsx (SWP log).'),
     ('Sources', 'Vaughan et al. 2003, MNRAS 345, 1271; Sukanya et al. 2018; Rodríguez-Pascual et al. 1997, ApJS 110, 9.'),
@@ -139,13 +145,15 @@ def write_variability_workbook(path: str, fits: pd.DataFrame, table: pd.DataFram
     t['_r'] = t['line'].map(rank)
     t = t.sort_values(['_r', 'year'])
 
-    s = (fits.assign(date=pd.to_datetime(fits['date'], errors='coerce').dt.strftime('%Y-%m-%d'))
+    # broad-component rows are part of a line already counted
+    s = (fits.assign(date=pd.to_datetime(fits['date'], errors='coerce').dt.strftime('%Y-%m-%d'),
+                     _line_det=fits['detected'].astype(bool) & ~fits['line'].str.endswith(' broad'))
          .groupby('spectrum', as_index=False)
          .agg(date=('date', 'first'), year=('year', 'first'), jd=('jd', 'first'),
               spectral_index=('spectral_index', 'first'), spectral_index_err=('spectral_index_err', 'first'),
               continuum_amplitude=('continuum_amplitude', 'first'),
               continuum_amplitude_err=('continuum_amplitude_err', 'first'),
-              n_detected=('detected', 'sum'))
+              n_detected=('_line_det', 'sum'))
          .sort_values(['jd', 'spectrum'], na_position='last'))
 
     with pd.ExcelWriter(path, engine='openpyxl') as xw:

@@ -101,12 +101,31 @@ def refine_line(
     if len(x) < 8 or not np.isfinite(noise) or noise <= 0:
         return None
 
-    comps = [dict(rest=rest_wl,
-                  smin=float(sig_cfg.get('min', SIGMA_INSTR)),
-                  smax=float(sig_cfg.get('max', 12.0)),
-                  mu0=float(seed.get('center', rest_wl)),
-                  s0=float(seed.get('sigma', 5.0)),
-                  a0=float(seed.get('amplitude', 0.0)) / UNIT)]
+    mu_seed = float(seed.get('center', rest_wl))
+    s_seed = float(seed.get('sigma', 5.0))
+    a_seed = float(seed.get('amplitude', 0.0)) / UNIT
+    narrow_broad = cfg.get('profile') == 'narrow_broad'
+    if narrow_broad:
+        # Broad base + narrow core of the same line. Their σ ranges do not overlap,
+        # so the two components cannot swap roles. Broad first: it is "the line".
+        # center_fixed / sigma_fixed hold the broad shape at its campaign value
+        # (derive_broad_shape.py); only the amplitudes are then fitted per spectrum.
+        bc, nc = cfg.get('broad') or {}, cfg.get('narrow') or {}
+        comps = [dict(rest=rest_wl, smin=float(bc['sigma_min']), smax=float(bc['sigma_max']),
+                      tol=float(bc.get('center_tol', tol)),
+                      mu0=float(bc.get('center_fixed', mu_seed)),
+                      s0=float(bc.get('sigma_fixed', bc.get('sigma_seed', 2.0 * s_seed))), a0=0.6 * a_seed,
+                      fix_mu='center_fixed' in bc, fix_s='sigma_fixed' in bc),
+                 # narrow core: centred on this spectrum's observed peak
+                 dict(rest=mu_seed, smin=float(nc.get('sigma_min', SIGMA_INSTR)), smax=float(nc['sigma_max']),
+                      tol=float(nc.get('center_tol', tol)), mu0=mu_seed,
+                      s0=float(nc.get('sigma_seed', s_seed)), a0=0.4 * a_seed)]
+    else:
+        comps = [dict(rest=rest_wl,
+                      smin=float(sig_cfg.get('min', SIGMA_INSTR)),
+                      smax=float(sig_cfg.get('max', 12.0)),
+                      mu0=mu_seed, s0=s_seed, a0=a_seed)]
+    n_line = len(comps)          # Gaussians that make up the primary line
     for c in rcfg.get('companions', []):
         comps.append(dict(rest=float(c['rest']),
                           smin=float(c.get('sigma_min', SIGMA_INSTR)),
@@ -114,35 +133,44 @@ def refine_line(
                           mu0=float(c['rest']), s0=float(c.get('sigma_seed', 5.0)), a0=None))
 
     base = float(np.percentile(y, 10))
-    p0, plo, phi = [], [], []
+    p0, plo, phi, free = [], [], [], []
     for c in comps:
         k = int(np.argmin(np.abs(x - c['mu0'])))
         a0 = c['a0'] if c['a0'] and c['a0'] > 0 else max(y[k] - base, noise)
-        mlo, mhi = c['rest'] - tol, c['rest'] + tol
+        ctol = c.get('tol', tol)
+        mlo, mhi = c['rest'] - ctol, c['rest'] + ctol
         p0 += [a0, float(np.clip(c['mu0'], mlo, mhi)), float(np.clip(c['s0'], c['smin'], c['smax']))]
         plo += [0.0, mlo, c['smin']]
         phi += [np.inf, mhi, c['smax']]
+        free += [True, not c.get('fix_mu'), not c.get('fix_s')]
     p0 += [base, 0.0]
     plo += [-np.inf, -np.inf]
     phi += [np.inf, np.inf]
-    plo, phi = np.array(plo), np.array(phi)
+    free += [True, True]
+    plo, phi, free = np.array(plo), np.array(phi), np.array(free)
     # least_squares needs a strictly interior start
     eps = 1e-6 * np.where(np.isfinite(phi - plo), phi - plo, 1.0)
-    p0 = np.minimum(np.maximum(np.array(p0, dtype=float), plo + eps), phi - eps)
+    p0 = np.array(p0, dtype=float)
+    p0[free] = np.minimum(np.maximum(p0[free], plo[free] + eps[free]), phi[free] - eps[free])
 
     n_g = len(comps)
     x_mid = float(np.mean(x))
 
-    def resid(p):
-        return (y - _model(x, p, n_g, x_mid)) / noise
+    def full(q):
+        p = p0.copy()
+        p[free] = q
+        return p
+
+    def resid(q):
+        return (y - _model(x, full(q), n_g, x_mid)) / noise
 
     try:
-        res = least_squares(resid, p0, bounds=(plo, phi), method='trf', x_scale='jac',
+        res = least_squares(resid, p0[free], bounds=(plo[free], phi[free]), method='trf', x_scale='jac',
                             max_nfev=20000)
     except Exception:
         return None
 
-    p = res.x
+    p = full(res.x)
     # Weights are uniform, so the best-fit parameters do not depend on `noise`.
     # Re-estimate it from the residuals: DER_SNR on the raw spectrum is inflated
     # by the line's own curvature; on (data - model) it measures only the
@@ -155,24 +183,29 @@ def refine_line(
         scale = 1.0
     fun = res.fun * scale
     jac = res.jac * scale
-    dof = max(len(x) - len(p), 1)
+    dof = max(len(x) - int(free.sum()), 1)
     chi2r = float(np.sum(fun ** 2) / dof)
     try:
-        cov = np.linalg.pinv(jac.T @ jac) * max(1.0, chi2r)
+        cov_free = np.linalg.pinv(jac.T @ jac) * max(1.0, chi2r)
     except np.linalg.LinAlgError:
         return None
+    cov = np.zeros((len(p), len(p)))          # fixed parameters carry no variance
+    cov[np.ix_(free, free)] = cov_free
 
+    # For a narrow+broad line, μ, σ and FWHM describe the broad component and
+    # F is the total line flux (broad + narrow, with their covariance).
     A, mu, s = p[0:3]
-    vA, vmu, vs, cAs = cov[0, 0], cov[1, 1], cov[2, 2], cov[0, 2]
-    F = math.sqrt(2.0 * math.pi) * A * s
-    varF = 2.0 * math.pi * (s * s * vA + A * A * vs + 2.0 * A * s * cAs)
-    F_err = math.sqrt(max(varF, 0.0))
+    vA, vmu, vs = cov[0, 0], cov[1, 1], cov[2, 2]
+    F, F_err = gaussian_flux(p, cov, range(n_line))
 
     cont_at_mu = p[3 * n_g] + p[3 * n_g + 1] * (mu - x_mid)
     fwhm_ang = FWHM_PER_SIGMA * s
     fwhm_int = math.sqrt(max(fwhm_ang ** 2 - INSTRUMENTAL_FWHM_REST ** 2, 0.0))
-    at_bound = bool(np.isclose(s, comps[0]['smin'], rtol=1e-3) or np.isclose(s, comps[0]['smax'], rtol=1e-3)
-                    or np.isclose(abs(mu - rest_wl), tol, rtol=1e-3))
+    at_bound = any((free[3 * k + 2] and (np.isclose(p[3 * k + 2], comps[k]['smin'], rtol=1e-3)
+                                         or np.isclose(p[3 * k + 2], comps[k]['smax'], rtol=1e-3)))
+                   or (free[3 * k + 1] and np.isclose(abs(p[3 * k + 1] - comps[k]['rest']),
+                                                      comps[k].get('tol', tol), rtol=1e-3))
+                   for k in range(n_line))
 
     model = _model(x, p, n_g, x_mid)
     continuum = p[3 * n_g] + p[3 * n_g + 1] * (x - x_mid)
@@ -181,8 +214,10 @@ def refine_line(
 
     rho = pixel_correlation(wavelength, flux)
     verification = verify_fit(x, y, model, continuum, gauss, norm_resid, noise, chi2r, dof,
-                              mu, s, F, F_err, fwhm_ang, at_bound, rho)
-    labels = [cfg.get('line_name', f'{rest_wl:g} Å')] + [f"companion {c['rest']:g} Å" for c in comps[1:]]
+                              mu, s, F, F_err, fwhm_ang, bool(at_bound), rho, n_line=n_line)
+    name = cfg.get('line_name', f'{rest_wl:g} Å')
+    labels = ([f'{name} broad', f'{name} narrow'] if narrow_broad else [name]) + \
+             [f"companion {c['rest']:g} Å" for c in comps[n_line:]]
     plot = {
         'x': x.tolist(),
         'y': (y * UNIT).tolist(),
@@ -192,9 +227,10 @@ def refine_line(
         'components': [{'label': lab, 'y': (g * UNIT).tolist()} for lab, g in zip(labels, gauss)],
         'norm_resid': norm_resid.tolist(),
         'mask_ranges': cfg.get('mask_ranges') or [],
+        'n_line': n_line,             # components[:n_line] belong to this line (broad, narrow)
     }
 
-    return {
+    out = {
         'refined': True,
         'amplitude': A * UNIT,
         'amplitude_err': math.sqrt(max(vA, 0.0)) * UNIT,
@@ -214,12 +250,49 @@ def refine_line(
         'reduced_chi2_indep': chi2r,
         'pixel_noise': noise * UNIT,
         'refine_window': [float(lo), float(hi)],
-        'at_bound': at_bound,
+        'at_bound': bool(at_bound),
         'n_pix': int(len(x)),
         'dof': int(dof),
+        'rss': float(np.sum((y - model) ** 2)),
+        'n_params': int(free.sum()),
         'plot': plot,
         'verification': verification,
     }
+    if narrow_broad:
+        for key, k in (('broad', 0), ('narrow', 1)):
+            Fk, Fk_err = gaussian_flux(p, cov, [k])
+            mk, sk = float(p[3 * k + 1]), float(p[3 * k + 2])
+            out.update({
+                f'flux_{key}': Fk * UNIT, f'flux_{key}_err': Fk_err * UNIT,
+                f'snr_{key}': Fk / Fk_err if Fk_err > 0 else 0.0,
+                f'center_{key}': mk, f'center_{key}_err': math.sqrt(max(cov[3 * k + 1, 3 * k + 1], 0.0)),
+                f'sigma_{key}': sk, f'sigma_{key}_err': math.sqrt(max(cov[3 * k + 2, 3 * k + 2], 0.0)),
+                f'fwhm_kms_{key}': FWHM_PER_SIGMA * sk / mk * SPEED_OF_LIGHT_KMS,
+                f'ew_{key}': (Fk / cont_at_mu) if cont_at_mu > 0 else float('nan'),
+            })
+        # Is the second Gaussian justified? BIC = n ln(RSS/n) + k ln n for the
+        # 1- and 2-Gaussian fits of the same pixels; ΔBIC > 10 strongly favours
+        # narrow + broad (Kass & Raftery 1995).
+        single = refine_line(wavelength, flux, rest_wl, {k: v for k, v in cfg.items() if k != 'profile'}, seed)
+        if single is not None and single['n_pix'] == len(x):
+            n = len(x)
+            bic = lambda rss, k: n * math.log(rss / n) + k * math.log(n)
+            out['delta_bic'] = bic(single['rss'], single['n_params']) - bic(out['rss'], out['n_params'])
+        else:
+            out['delta_bic'] = float('nan')
+    return out
+
+
+def gaussian_flux(p: np.ndarray, cov: np.ndarray, ks) -> Tuple[float, float]:
+    """F = Σ_k √(2π) A_k σ_k over Gaussians `ks`, and σ_F = √(gᵀ C g) with g = ∂F/∂p."""
+    g = np.zeros(len(p))
+    F = 0.0
+    for k in ks:
+        A, s = p[3 * k], p[3 * k + 2]
+        F += math.sqrt(2.0 * math.pi) * A * s
+        g[3 * k] = math.sqrt(2.0 * math.pi) * s
+        g[3 * k + 2] = math.sqrt(2.0 * math.pi) * A
+    return F, math.sqrt(max(float(g @ cov @ g), 0.0))
 
 
 def runs_test(signs: np.ndarray) -> Tuple[int, float, float]:
@@ -237,7 +310,7 @@ def runs_test(signs: np.ndarray) -> Tuple[int, float, float]:
 
 
 def verify_fit(x, y, model, continuum, gauss, norm_resid, noise, chi2r, dof,
-               mu, s, F, F_err, fwhm_ang, at_bound, rho=0.0) -> Dict[str, Any]:
+               mu, s, F, F_err, fwhm_ang, at_bound, rho=0.0, n_line=1) -> Dict[str, Any]:
     """
     Statistical checks of a refined fit (all quantities in fit units).
 
@@ -275,8 +348,8 @@ def verify_fit(x, y, model, continuum, gauss, norm_resid, noise, chi2r, dof,
 
     core = np.abs(x - mu) <= 3.0 * s
     if np.sum(core) >= 3:
-        primary = gauss[0]
-        others = sum(gauss[1:]) if len(gauss) > 1 else 0.0
+        primary = sum(gauss[:n_line])          # all Gaussians of the line (narrow + broad)
+        others = sum(gauss[n_line:]) if len(gauss) > n_line else 0.0
         net = (y - continuum - others)[core]
         xc = x[core]
         f_direct = float(_trapz(net, xc))
