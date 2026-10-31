@@ -114,21 +114,54 @@ def results_page():
 
 @app.route('/api/results/sheets')
 def results_sheets():
-    """The emission-line workbook as JSON: {sheets: [{name, columns, rows}], spectra: [file names]}."""
-    import pandas as pd
-    from src.excel_export import component_tables, COMPONENT_COLS
+    """
+    The emission-line workbook as JSON: {sheets: [{name, columns, rows}], spectra: [file names]}.
+    Same content as src.excel_export.component_tables, but read with the csv module:
+    pandas is not installed on the deployed server.
+    """
+    import csv
+    import re
     path = os.path.join(_ROOT, 'outputs', 'line_fluxes.csv')
     if not os.path.exists(path):
         return jsonify({'error': 'no campaign results yet — run `python run_variability.py`'}), 404
-    fits = pd.read_csv(path)
-    heads = {c: h for c, h, _ in COMPONENT_COLS}
+    cols = [('no', 'No.'), ('spectrum', 'Spectrum'), ('label', 'Emission-Line'), ('center', 'Wavelength (Å)'),
+            ('flux', 'Flux (erg/cm²/s)'), ('flux_err', 'Flux Error (erg/cm²/s)'), ('significance', 'SNR (F/σF)'),
+            ('ew', 'EW (Å)'), ('ew_err', 'EW Error (Å)'), ('fwhm_ang', 'FWHM (Å)'), ('fwhm_kms', 'FWHM (km/s)'),
+            ('wing_window', 'Wing Window (Å)'), ('min_wavelength', 'Min Wavelength (Å)'),
+            ('max_wavelength', 'Max Wavelength (Å)'), ('reduced_chi2', 'Reduced χ²'),
+            ('detected', 'Detected (F/σF ≥ 3)'), ('verification', 'Verification'), ('date', 'Date')]
+    text = {'spectrum', 'label', 'detected', 'verification', 'date'}
+
+    def num(v):
+        try:
+            x = float(v)
+            return x if np.isfinite(x) else None
+        except (TypeError, ValueError):
+            return None
+
+    by_label, rest = {}, {}
+    with open(path, newline='', encoding='utf-8') as fh:
+        for r in csv.DictReader(fh):
+            lab = r.get('label') or r.get('line') or ''
+            if lab.endswith('(N+B)'):              # total of a narrow + broad line: shown as its two components
+                continue
+            m = re.match(r'^(\d+)', r.get('spectrum', ''))
+            sigma = num(r.get('sigma'))
+            row = {'no': int(m.group(1)) if m else None, 'fwhm_ang': 2.3548 * sigma if sigma is not None else None,
+                   'detected': 'yes' if r.get('detected') == 'True' else 'no', 'date': (r.get('date') or '')[:10],
+                   'label': lab}
+            for k, _ in cols:
+                if k not in row:
+                    row[k] = r.get(k, '') if k in text else num(r.get(k))
+            by_label.setdefault(lab, []).append(row)
+            rest.setdefault(lab, (num(r.get('rest_wavelength')) or 0.0, lab.endswith('-B')))
+    big = 10 ** 6
     sheets = []
-    for lab, t in component_tables(fits).items():
-        t = t.astype(object).where(pd.notna(t), None)
-        sheets.append({'name': lab, 'columns': [{'key': c, 'title': heads[c]} for c in t.columns],
-                       'rows': t.to_dict(orient='records')})
-    names = sorted(fits['spectrum'].dropna().unique(),
-                   key=lambda s: (int(s.split('d')[0]) if s.split('d')[0].isdigit() else 10 ** 6, s))
+    for lab in sorted(by_label, key=lambda l: rest[l]):
+        rows = sorted(by_label[lab], key=lambda x: (x['no'] if x['no'] is not None else big, x['spectrum']))
+        sheets.append({'name': lab, 'columns': [{'key': k, 'title': t} for k, t in cols], 'rows': rows})
+    names = sorted({r['spectrum'] for rs in by_label.values() for r in rs},
+                   key=lambda s: (int(re.match(r'^(\d+)', s).group(1)) if re.match(r'^\d+', s) else big, s))
     return jsonify({'sheets': sheets, 'spectra': names})
 
 
