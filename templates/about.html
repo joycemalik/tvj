@@ -443,7 +443,9 @@ sup.cite {
     The continuum is a power law fitted by log–log least squares in five line-free windows.
     Each line is located on a coarse grid and then fitted by weighted least squares as a
     Gaussian plus a local linear continuum (overlapping lines jointly), with DER_SNR pixel
-    noise and covariance-based uncertainties. Every fit is verified with a
+    noise and covariance-based uncertainties. Ly\(\alpha\) and C&nbsp;IV are decomposed into a
+    narrow core and a broad base (Lya-N/Lya-B, CIV-N/CIV-B), with the broad Gaussian held at the
+    widths of the reference hand fits. Every fit is verified with a
     goodness-of-fit test corrected for pixel correlation, a runs test, a normality test and a
     model-independent flux check. Line variability is quantified by the fractional variability
     amplitude \(F_\text{var}\) computed per line and per calendar year (Vaughan et al. 2003).
@@ -540,7 +542,7 @@ sup.cite {
         <div class="pipe-num">5</div>
         <div class="pipe-body">
           <div class="pipe-title">Weighted Least-Squares Refinement</div>
-          <div class="pipe-desc">Fit Gaussian(s) plus a local linear continuum to the observed flux with <code>scipy.optimize.least_squares</code> (§7). Overlapping lines (Ly\(\alpha\) + N&nbsp;V) are fitted together. Parameter uncertainties come from the covariance matrix.</div>
+          <div class="pipe-desc">Fit Gaussian(s) plus a local linear continuum to the observed flux with <code>scipy.optimize.least_squares</code> (§7). Overlapping lines (Ly\(\alpha\) + N&nbsp;V) are fitted together. Ly\(\alpha\) and C&nbsp;IV are fitted as narrow + broad Gaussians (§7.3). Parameter uncertainties come from the covariance matrix.</div>
         </div>
       </div>
 
@@ -865,8 +867,8 @@ sup.cite {
 
     <p>
       The grid candidate seeds a continuous fit of the observed flux over a per-line window
-      (e.g. 1180–1265 Å for Ly\(\alpha\) + N&nbsp;V, 998–1085 Å for Ly\(\beta\) + O&nbsp;VI,
-      1510–1590 Å for C&nbsp;IV). The model contains the line, any overlapping companion line
+      (e.g. 1140–1290 Å for Ly\(\alpha\) + N&nbsp;V, 998–1085 Å for Ly\(\beta\) + O&nbsp;VI,
+      1495–1595 Å for C&nbsp;IV; the Ly\(\alpha\) and C&nbsp;IV windows are those of the reference hand fits). The model contains the line, any overlapping companion line
       and a local linear continuum, all fitted simultaneously:
     </p>
 
@@ -904,6 +906,57 @@ sup.cite {
       The covariance matrix is \(C = (J^\mathsf{T}J)^{-1}\,\max(1, \chi^2_\text{red})\), where
       \(J\) is the Jacobian of the normalised residuals; scaling by \(\chi^2_\text{red}\) when it
       exceeds 1 inflates errors for imperfect models.<sup class="cite">[10]</sup>
+      Parameters held fixed (§7.3) are left out of the fit and carry no variance; \(\nu\) counts
+      only the free parameters.
+    </p>
+
+    <h3>7.3 Narrow + broad decomposition (Ly\(\alpha\), C&nbsp;IV)</h3>
+    <p>
+      The Ly\(\alpha\) and C&nbsp;IV profiles of 3C&nbsp;273 have a sharp core on a wide base, which a single
+      Gaussian cannot follow. Each of these lines is therefore modelled as two Gaussians of the same line,
+      a <strong>narrow</strong> component (N) and a <strong>broad</strong> component (B), fitted together with
+      the local continuum (and N&nbsp;V for Ly\(\alpha\)) in Eq.&nbsp;8:
+    </p>
+    <div class="math-block">
+      <span class="math-label">(Eq. 8a)</span>
+      \[
+      M(\lambda) = A_B\, e^{-(\lambda-\mu_B)^2/2\sigma_B^2} + A_N\, e^{-(\lambda-\mu_N)^2/2\sigma_N^2}
+                   + \ldots + c_0 + c_1(\lambda-\bar\lambda)
+      \]
+    </div>
+    <p>
+      When all six line parameters are free, the two components trade flux and the broad flux is poorly
+      constrained. In a free fit of 51 spectra the broad component reached \(F/\sigma_F \ge 3\) in only
+      11 (Ly\(\alpha\)) and 21 (C&nbsp;IV). The broad centre and width are therefore <strong>held fixed</strong>
+      at the median of the reference hand fits (<code>references/CT-3C273-LUCK-EMMY.xls</code>, sheet
+      <em>Check</em>, 15 spectra). Per spectrum, only \(A_B\), \(A_N\), \(\mu_N\) and \(\sigma_N\) are fitted.
+      \(\mu_N\) may move ±3 Å around the observed peak of that spectrum.
+    </p>
+    <table class="data-table">
+      <thead><tr><th>Line</th><th>Window (Å)</th><th>Broad \(\mu_B\), \(\sigma_B\) (fixed)</th><th>Narrow \(\sigma_N\) (fitted)</th></tr></thead>
+      <tbody>
+        <tr><td>Ly\(\alpha\)</td><td>1140–1290</td><td class="val">1215.0 Å, 17.0 Å (FWHM 40.0 Å)</td><td class="val">2.2–9.0 Å</td></tr>
+        <tr><td>C&nbsp;IV</td><td>1495–1595</td><td class="val">1546.0 Å, 15.0 Å (FWHM 35.3 Å)</td><td class="val">2.2–9.0 Å</td></tr>
+      </tbody>
+    </table>
+    <p>
+      The two σ ranges do not overlap, so the components cannot swap roles. The values are set in
+      <code>config/Lya.yaml</code> and <code>config/CIV.yaml</code> (<code>profile: narrow_broad</code>).
+      <code>derive_broad_shape.py</code> gives the alternative measured from the data alone: the median of the
+      free fits with broad \(F/\sigma_F \ge 5\), no parameter at a bound and \(\Delta\text{BIC} &gt; 10\), which
+      gives \(\sigma_B \approx 10.4\) Å (Ly\(\alpha\)) and 12.9 Å (C&nbsp;IV). Which of the two to use is an open
+      question (<code>questions.txt</code>).
+    </p>
+    <p>
+      <strong>Is the second Gaussian justified?</strong> Each spectrum is also fitted with one Gaussian over the
+      same pixels, and \(\Delta\text{BIC} = \text{BIC}_1 - \text{BIC}_2\) is reported, with
+      \(\text{BIC} = n\ln(\text{RSS}/n) + k\ln n\). \(\Delta\text{BIC} &gt; 10\) strongly favours narrow + broad
+      (Kass &amp; Raftery 1995).
+    </p>
+    <p>
+      <strong>Naming.</strong> Every line carries the short label of the reference sheets (<code>label</code> in
+      its YAML): Ly-B, Lya-N, Lya-B, NV, OI, CII, SIV, CIV-N, CIV-B, HeII, OIII]. Each component is reported,
+      plotted and tabulated as its own emission line, with its own light curve and \(F_\text{var}\).
     </p>
   </div>
 
@@ -923,6 +976,12 @@ sup.cite {
       \sigma_F^2 = 2\pi\left(\sigma^2 C_{AA} + A^2 C_{\sigma\sigma} + 2A\sigma\,C_{A\sigma}\right)
       \]
     </div>
+    <p>
+      For a sum of Gaussians (narrow + broad, §7.3) the same propagation is written as
+      \(F = \sum_k \sqrt{2\pi}A_k\sigma_k\), \(\sigma_F^2 = \mathbf{g}^\mathsf{T} C\, \mathbf{g}\) with
+      \(\mathbf{g} = \partial F/\partial \mathbf{p}\), which includes the covariance between the components.
+      Each component's own flux uses only its own terms.
+    </p>
     <p>
       This is the full Gaussian flux, independent of any window. For comparison with the campaign
       tables, <code>flux_window</code> also reports the Gaussian integrated only over
@@ -1062,6 +1121,14 @@ sup.cite {
       their stated errors; the model-independent flux check passes for 98.8 % of them.
     </div>
 
+    <div class="callout">
+      <strong>With the narrow + broad model (current run).</strong> Of 1,518 detected component fits, 45 % verify.
+      Two Gaussians are strongly preferred over one (\(\Delta\text{BIC} &gt; 10\)) in 249 of 255 Ly\(\alpha\) and
+      158 of 255 C&nbsp;IV spectra. C&nbsp;IV now verifies in 59 % of spectra. Ly\(\alpha\) and N&nbsp;V verify in only
+      25–29 %: with the broad width held at the hand-fit value (σ = 17 Å), the Ly\(\alpha\) + N&nbsp;V region still
+      leaves structured residuals. Si&nbsp;IV verifies in 86 %.
+    </div>
+
     <h3>9.2 Diagnostic graphs</h3>
     <ol>
       <li><strong>Rest-frame spectrum</strong>: observed flux, power-law continuum, shaded continuum windows, fitted line centres.</li>
@@ -1071,7 +1138,13 @@ sup.cite {
     </ol>
     <p>The same panels are written for every line to a publication figure (PNG) per spectrum.</p>
 
-    <h3>9.3 Profile Diagnostic Viewer (/v2)</h3>
+    <h3>9.3 Profile Diagnostic Viewer (/ and /v2)</h3>
+    <p>
+      This is the home page. For Ly\(\alpha\) and C&nbsp;IV the line-fit graph shows the broad component (solid,
+      shaded) and the narrow component (dashed) separately, and the parameter table adds the broad and narrow
+      fluxes and FWHMs. The old single-spectrum fitter is kept at <a href="/v1">/v1</a> (footer link
+      “Old version (v1)”).
+    </p>
     <p>After a spectrum is loaded the page shows, from top to bottom:</p>
     <ol>
       <li><strong>Header</strong>: file name, number of detected and verified lines, and the continuum
@@ -1097,6 +1170,23 @@ sup.cite {
       decomposition and per-line fit and residual panels, and a line-by-line results table. The campaign workbook
       adds a <em>Flux matrix</em> sheet (one row per spectrum, all lines side by side). Uploaded batches of
       <code>.txt</code> spectra are fitted the same way and dated by their SWP image number.
+    </p>
+
+    <h3>9.3b Emission-line results (/results)</h3>
+    <p>
+      <a href="/results">/results</a> shows the precomputed campaign without any upload:
+    </p>
+    <ol>
+      <li><strong>Spectrum picker</strong> (1–255, with ◀ ▶). It draws the spectrum in the style of the reference
+          figures: the continuum-subtracted flux \(F - F_c\) with every fitted component drawn alone and named
+          (Lya-N, Lya-B, NV, CIV-N, CIV-B, SIV, Ly-B, …). A table below gives that spectrum's values for every line.</li>
+      <li><strong>Emission-line workbook</strong>, displayed like the Excel file: sheet tabs along the bottom, one
+          tab per emission line, one row per spectrum. Clicking a row opens that spectrum above.
+          The buttons download the same workbook by line or by spectrum (§9.5).</li>
+    </ol>
+    <p>
+      The table is served by <code>/api/results/sheets</code>, which reads <code>outputs/line_fluxes.csv</code>
+      with the standard <code>csv</code> module so it also runs on the deployed server, where pandas is not installed.
     </p>
 
     <h3>9.4 Manuscript method (/v4)</h3>
@@ -1139,6 +1229,15 @@ sup.cite {
         <tr><td>Campaign (<code>outputs/variability_results.xlsx</code>, “Download campaign workbook”)</td>
             <td>README (formulas, units, sources) · Fvar by year · Light curves (JD, JD − JD<sub>min</sub>, F, F<sub>err</sub>) ·
                 Line fits (every spectrum × line with verification) · Spectra (date, JD, continuum)</td></tr>
+        <tr><td>By emission line (<code>outputs/emission_lines.xlsx</code>, main download on /v5 and /results)</td>
+            <td>One sheet per emission line (Ly-B, Lya-N, Lya-B, NV, OI, CII, SIV, CIV-N, CIV-B, HeII, OIII]), one row per
+                spectrum 1–255, with the reference columns: wavelength, flux, flux error, SNR, EW, EW error, FWHM (Å, km/s),
+                wing window, min/max λ, \(\chi^2_\text{red}\), detected, verification, date</td></tr>
+        <tr><td>By spectrum (<code>outputs/emission_lines_by_spectrum.xlsx</code>)</td>
+            <td>All (every spectrum as a block of its lines, as in the reference sheet) · one sheet per spectrum 1–255
+                with all of its lines</td></tr>
+        <tr><td>Per line (<code>outputs/all_lines_results.xlsx</code>)</td>
+            <td>One sheet per pipeline line with the year's \(F_\text{avg}\), \(F_\text{var}\) and \(R_\text{max}\)</td></tr>
       </tbody>
     </table>
 
@@ -1317,7 +1416,7 @@ sup.cite {
         </tr>
         <tr>
           <td><code>src/refine.py</code></td>
-          <td>Weighted least-squares refinement, DER_SNR noise, verification checks (§7, §9.1)</td>
+          <td>Weighted least-squares refinement, narrow + broad decomposition with fixed parameters, ΔBIC, DER_SNR noise, verification checks (§7, §9.1)</td>
           <td>Parameters ± errors, plot arrays, verification</td>
         </tr>
         <tr>
@@ -1327,8 +1426,13 @@ sup.cite {
         </tr>
         <tr>
           <td><code>src/excel_export.py</code></td>
-          <td>Campaign workbook (§9.4)</td>
-          <td><code>outputs/variability_results.xlsx</code></td>
+          <td>Campaign workbooks (§9.5)</td>
+          <td><code>variability_results.xlsx</code>, <code>emission_lines.xlsx</code>, <code>emission_lines_by_spectrum.xlsx</code>, <code>all_lines_results.xlsx</code></td>
+        </tr>
+        <tr>
+          <td><code>derive_broad_shape.py</code></td>
+          <td>Measures the broad-component shape from free fits of all spectra (§7.3)</td>
+          <td>Median broad centre and σ for Ly\(\alpha\), C&nbsp;IV</td>
         </tr>
         <tr>
           <td><code>run_variability.py</code></td>
@@ -1372,19 +1476,20 @@ sup.cite {
         </tr>
         <tr>
           <td><code>app.py</code></td>
-          <td>Flask web server; routes: /, /v2, /v3, /about, /fit, /stream</td>
+          <td>Flask web server; pages: / (= /v2), /results, /v3, /v4, /v5, /about, /v1 (old); API: /fit, /stream, /api/campaign/*, /api/results/sheets; downloads: /download/*.xlsx</td>
           <td>JSON responses; SSE log stream; HTML pages</td>
         </tr>
       </tbody>
     </table>
 
     <p>
-      The web application exposes the pipeline through three interactive interfaces:
-      <strong>V1</strong> (dark Nolan theme, full diagnostic output),
-      <strong>V2</strong> (academic off-white theme, real-time SSE log stream,
-      campaign statistics panel), and
-      <strong>V3</strong> (client-side campaign viewer using the pre-computed
-      reference Excel, no server-side fitting required).
+      The web application exposes the pipeline through these pages:
+      <strong>Profile Diagnostic Viewer</strong> (/ and /v2; one spectrum, all graphs and checks),
+      <strong>Results (Excel)</strong> (/results; any of the 255 precomputed spectra and the emission-line
+      workbook, §9.3b), <strong>Campaign Results</strong> (/v5; light curves, \(F_\text{var}\) and downloads),
+      <strong>Manuscript Method</strong> (/v4), <strong>Multi-Epoch Ensemble</strong> (/v3; client-side viewer of the
+      reference Excel) and this documentation. The original dark-theme fitter is kept at <strong>/v1</strong>,
+      linked from the footer as “Old version (v1)”.
     </p>
   </div>
 
