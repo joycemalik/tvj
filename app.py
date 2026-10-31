@@ -141,6 +141,15 @@ def emission_lines_workbook():
                                download_name='3C273_emission_lines.xlsx')
 
 
+@app.route('/download/emission_lines_by_spectrum.xlsx')
+def emission_lines_by_spectrum():
+    d = os.path.join(_ROOT, 'outputs')
+    if not os.path.exists(os.path.join(d, 'emission_lines_by_spectrum.xlsx')):
+        return jsonify({'error': 'no workbook yet'}), 404
+    return send_from_directory(d, 'emission_lines_by_spectrum.xlsx', as_attachment=True,
+                               download_name='3C273_emission_lines_by_spectrum.xlsx')
+
+
 @app.route('/api/campaign/spectrum/<path:name>')
 def campaign_spectrum(name):
     d = _campaign_dir(request.args.get('job', ''))

@@ -291,3 +291,26 @@ def write_component_workbook(path: str, fits: pd.DataFrame) -> None:
     with pd.ExcelWriter(path, engine='openpyxl') as xw:
         for lab, t in component_tables(fits).items():
             _sheet(xw, _sheet_name(lab, taken), t, COMPONENT_COLS)
+
+
+def write_spectrum_workbook(path: str, fits: pd.DataFrame) -> None:
+    """
+    outputs/emission_lines_by_spectrum.xlsx: sheet "All" lists every spectrum as a block
+    of its lines (the teacher's layout); then one sheet per spectrum (1, 2, …, 255)
+    with all of that spectrum's lines.
+    """
+    rows = pd.concat(component_tables(fits).values(), ignore_index=True)
+    lab_order = {lab: i for i, lab in enumerate(component_tables(fits))}
+    rows['_l'] = rows['label'].map(lab_order)
+    rows = rows.sort_values(['no', 'spectrum', '_l']).drop(columns='_l')
+    cols = [c for c in COMPONENT_COLS if c[0] != 'no']
+    with pd.ExcelWriter(path, engine='openpyxl') as xw:
+        # blank row between spectra, as in the reference sheet
+        blocks = []
+        for _, g in rows.groupby(['no', 'spectrum'], sort=False):
+            blocks += [g, pd.DataFrame([{}])]
+        _sheet(xw, 'All', pd.concat(blocks, ignore_index=True), cols)
+        taken = {'All'}
+        for (no, spec), g in rows.groupby(['no', 'spectrum'], sort=False):
+            name = str(int(no)) if pd.notna(no) else spec
+            _sheet(xw, _sheet_name(name, taken), g.reset_index(drop=True), cols)
