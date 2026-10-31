@@ -1,4 +1,5 @@
 line_name: "O I + Si II"
+label: "OI"                  # short name used in plots and the workbook (teacher's naming)
 rest_wavelength: 1305.0       # Angstrom (O I 1302.2 + Si II 1304.4 blend)
 
 center:

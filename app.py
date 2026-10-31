@@ -31,11 +31,13 @@ DEMO_FILE = os.path.join(os.path.dirname(__file__), '70dcdr2dswp35476mxlo.txt')
 from src.serialize import serialize_record as _serialize_record  # noqa: E402
 
 
-@app.route('/')
+@app.route('/v1')
 def index():
+    """Old single-spectrum fitter, kept for reference (linked from the footer)."""
     return render_template('index.html')
 
 
+@app.route('/')
 @app.route('/v2')
 def index_v2():
     return render_template('index_v2.html')
@@ -103,6 +105,40 @@ def campaign_summary():
     return jsonify({'rows': rows, 'has_spectra': has_json,
                     'workbook': '/download/campaign.xlsx' + (f'?job={request.args.get("job")}' if request.args.get('job') else ''),
                     'workbook_by_line': '/download/campaign_by_line.xlsx' + (f'?job={request.args.get("job")}' if request.args.get('job') else '')})
+
+
+@app.route('/results')
+def results_page():
+    return render_template('results.html')
+
+
+@app.route('/api/results/sheets')
+def results_sheets():
+    """The emission-line workbook as JSON: {sheets: [{name, columns, rows}], spectra: [file names]}."""
+    import pandas as pd
+    from src.excel_export import component_tables, COMPONENT_COLS
+    path = os.path.join(_ROOT, 'outputs', 'line_fluxes.csv')
+    if not os.path.exists(path):
+        return jsonify({'error': 'no campaign results yet — run `python run_variability.py`'}), 404
+    fits = pd.read_csv(path)
+    heads = {c: h for c, h, _ in COMPONENT_COLS}
+    sheets = []
+    for lab, t in component_tables(fits).items():
+        t = t.astype(object).where(pd.notna(t), None)
+        sheets.append({'name': lab, 'columns': [{'key': c, 'title': heads[c]} for c in t.columns],
+                       'rows': t.to_dict(orient='records')})
+    names = sorted(fits['spectrum'].dropna().unique(),
+                   key=lambda s: (int(s.split('d')[0]) if s.split('d')[0].isdigit() else 10 ** 6, s))
+    return jsonify({'sheets': sheets, 'spectra': names})
+
+
+@app.route('/download/emission_lines.xlsx')
+def emission_lines_workbook():
+    d = os.path.join(_ROOT, 'outputs')
+    if not os.path.exists(os.path.join(d, 'emission_lines.xlsx')):
+        return jsonify({'error': 'no workbook yet'}), 404
+    return send_from_directory(d, 'emission_lines.xlsx', as_attachment=True,
+                               download_name='3C273_emission_lines.xlsx')
 
 
 @app.route('/api/campaign/spectrum/<path:name>')

@@ -50,8 +50,8 @@ select,input[type=search]{font-family:var(--mono);font-size:11px;padding:5px 8px
 <div class="topbar"><div class="topbar-inner">
   <span class="topbar-brand">3C 273 · IUE SWP · Emission-line pipeline</span>
   <nav>
-    <a href="/" class="nav-pill">Single-Spectrum Fitter</a>
     <a href="/v2" class="nav-pill">Profile Diagnostic Viewer</a>
+    <a href="/results" class="nav-pill">Results (Excel)</a>
     <a href="/v4" class="nav-pill">Manuscript Method</a>
     <a href="/v5" class="nav-pill active">Campaign Results</a>
     <a href="/v3" class="nav-pill">Multi-Epoch Ensemble</a>
@@ -112,6 +112,9 @@ select,input[type=search]{font-family:var(--mono);font-size:11px;padding:5px 8px
     <div class="panel-h"><span class="panel-t" style="font-size:11px;">Whole spectrum with the chosen line highlighted</span>
       <span class="panel-s"><button class="dl" onclick="dl('decomp','png')">PNG</button></span></div>
     <div id="decomp" style="height:340px;"></div>
+    <div class="panel-h"><span class="panel-t" style="font-size:11px;">Residual plot — data − continuum − all fitted lines (this line's window shaded in its colour)</span>
+      <span class="panel-s"><button class="dl" onclick="dl('resFull','png')">PNG</button></span></div>
+    <div id="resFull" style="height:380px;"></div>
   </div>
 
   <div class="panel">
@@ -127,6 +130,9 @@ select,input[type=search]{font-family:var(--mono);font-size:11px;padding:5px 8px
     </div>
   </div>
 </main>
+<footer style="max-width:1200px;margin:2rem auto 1rem;padding:0 16px;font-size:12px;color:#6b6b6b;">
+  <a href="/v1" style="color:inherit;">Old version (v1)</a>
+</footer>
 
 <script>
 let rows = [], spectra = [], lineNames = [], line = '', job = '', cur = null, record = null;
@@ -238,7 +244,7 @@ async function openSpectrum(i) {
   if (cur !== r.spectrum) return;
   if (!res.ok) {
     msg.textContent = 'Graphs not available for this spectrum (run the batch with JSON output).';
-    ['fitOne', 'resOne', 'decomp'].forEach(id => { Plotly.purge(id); document.getElementById(id).innerHTML = ''; });
+    ['fitOne', 'resOne', 'decomp', 'resFull'].forEach(id => { Plotly.purge(id); document.getElementById(id).innerHTML = ''; });
     return;
   }
   record = await res.json();
@@ -248,6 +254,7 @@ async function openSpectrum(i) {
   const l = record.lines[k], v = l.verification ? l.verification.status : '';
   msg.textContent = v ? 'Verification: ' + v : '';
   FitPlots.decomposition('decomp', record, new Set([k]));
+  FitPlots.fullResidual('resFull', record, new Set([k]));
   FitPlots.lineFit('fitOne', l);
   FitPlots.residuals('resOne', l);
 }
@@ -260,7 +267,7 @@ function dl(id, format) {
   if (!el || !el.data) return;
   const ln = short(line).replace(/[^A-Za-z0-9]+/g, '_'), base = (cur || 'campaign').replace(/\.txt$/i, '');
   const name = id === 'lcMain' ? 'lightcurve_' + ln : id === 'fwhmPlot' ? 'fwhm_' + ln : id === 'ewPlot' ? 'ew_' + ln
-    : id === 'decomp' ? base + '_decomposition' : base + '_' + ln + (id === 'resOne' ? '_residuals' : '');
+    : id === 'decomp' ? base + '_decomposition' : id === 'resFull' ? base + '_residual_plot' : base + '_' + ln + (id === 'resOne' ? '_residuals' : '');
   Plotly.downloadImage(el, { format, scale: format === 'png' ? 2 : 1, width: el.offsetWidth, height: el.offsetHeight, filename: name });
 }
 

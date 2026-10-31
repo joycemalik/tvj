@@ -98,9 +98,12 @@
     const nLine = p.n_line || 1;
     p.components.forEach((c, k) => {
       const own = k < nLine;
+      const broad = own && nLine > 1 && k === 0;      // narrow + broad line: broad base shaded
+      const col = !own ? T.cont : (nLine > 1 && k === 1 ? T.model : T.comp);
       traces.push({ x: p.x, y: c.y.map((v, i) => v + p.continuum[i]), mode: 'lines',
         name: nLine === 1 && k === 0 ? 'Gaussian (this line)' : c.label,
-        line: { color: own ? T.comp : T.cont, width: 1, dash: own ? (k === 0 ? 'solid' : 'dash') : 'dot' } });
+        line: { color: col, width: own ? 1.4 : 1, dash: own ? (k === 0 ? 'solid' : 'dash') : 'dot' },
+        ...(broad ? { fill: 'tonexty', fillcolor: 'rgba(192,80,77,0.15)' } : {}) });
     });
     traces.push({ x: p.x, y: p.model, mode: 'lines', name: 'Total model', line: { color: T.model, width: 1.8 } });
     const shapes = (p.mask_ranges || []).map(([a, b]) => ({
@@ -134,6 +137,40 @@
       ref(0, 'solid'), ref(1, 'dash', '±1σ'), ref(-1, 'dash'), ref(2, 'dot', '±2σ'), ref(-2, 'dot'),
       { x: p.x, y: p.norm_resid, mode: 'markers', name: '(data − model)/σ', marker: { color: T.data, size: 4 } },
     ], layout('Rest wavelength (Å)', '(F − F<sub>model</sub>) / σ', { yaxis: axis('(F − F<sub>model</sub>) / σ', { range: [-m, m] }) }), CFG);
+  }
+
+  /* Whole-spectrum residual plot: data − power-law continuum − every fitted (detected) line, in purple.
+     Each fitted line's window is marked in that line's own colour (same colours as the decomposition plot). */
+  const RESID_PURPLE = '#800080';
+  function fullResidual(el, data, selected) {
+    const wl = data.wavelength || [], flux = data.observed_flux || [], cont = data.continuum_fit || [];
+    if (!wl.length) return message(el, 'No spectrum data.');
+    const idx = new Map(wl.map((w, i) => [w, i]));
+    const model = wl.map((_, i) => cont[i]);
+    const shapes = [], ann = [];
+    (data.lines || []).forEach((l, k) => {
+      const p = l.plot;
+      if (!p || !l.detected || !p.components.length) return;
+      const own = p.components.slice(0, p.n_line || 1);
+      p.x.forEach((x, j) => { const i = idx.get(x); if (i != null) own.forEach(g => { model[i] += g.y[j]; }); });
+      if (selected && !selected.has(k)) return;
+      const col = lineColour(k);
+      shapes.push({ type: 'rect', x0: p.x[0], x1: p.x[p.x.length - 1], y0: 0, y1: 1, yref: 'paper',
+        fillcolor: hexA(col, 0.12), line: { width: 0 }, layer: 'below' });
+      shapes.push({ type: 'line', x0: l.center, x1: l.center, y0: 0, y1: 1, yref: 'paper', line: { color: col, width: 1.2, dash: 'dot' } });
+      ann.push({ x: l.center, y: 1, yref: 'paper', yanchor: 'bottom', text: shortName(l.line_name), showarrow: false, font: { size: 9, color: col } });
+    });
+    const xs = [], ys = [];
+    wl.forEach((w, i) => { if (flux[i] !== 0) { xs.push(w); ys.push(flux[i] - model[i]); } });
+    const traces = [{ x: xs, y: ys, mode: 'lines', name: 'Residuals', line: { color: RESID_PURPLE, width: 1.6 },
+      hovertemplate: 'λ = %{x:.2f} Å<br>R = %{y:.3e}<extra></extra>' }];
+    shapes.push({ type: 'line', x0: xs[0], x1: xs[xs.length - 1], y0: 0, y1: 0, line: { color: '#c8c8c8', width: 1.5 } });
+    Plotly.newPlot(el, traces, layout('Wavelength (Å)', 'Residuals', {
+      title: { text: 'Residual Plot', font: { family: T.font, size: 14, color: T.ink } },
+      shapes, annotations: ann, showlegend: false, margin: { t: 50, r: 20, l: 80, b: 50 },
+      xaxis: axis('Wavelength (Å)', { linewidth: 2, exponentformat: 'SI' }),
+      yaxis: axis('Residuals', { linewidth: 2, exponentformat: 'SI' }),
+    }), CFG);
   }
 
   /* Graph 4 */
@@ -194,6 +231,35 @@
       legend: { orientation: 'h', x: 0, y: -0.22, font: { size: 10, color: T.ink } },
     }), CFG);
   }
+  /* Graph 3b: teacher's style — continuum-subtracted spectrum with every fitted
+     component drawn alone and named (Lya-N, Lya-B, NV, CIV-N, CIV-B, SIV, Ly-B, …). */
+  function emissionFit(el, data) {
+    const wl = data.wavelength || [], flux = data.observed_flux || [], cont = data.continuum_fit || [];
+    if (!wl.length) return message(el, 'No spectrum data.');
+    const keep = wl.map((w, i) => flux[i] !== 0);
+    const traces = [{ x: wl.filter((_, i) => keep[i]), y: flux.map((f, i) => f - cont[i]).filter((_, i) => keep[i]),
+      mode: 'lines', name: 'Continuum subtracted', line: { color: '#4b0082', width: 1.2 } }];
+    let k = 0;
+    (data.lines || []).forEach(l => {
+      const p = l.plot;
+      if (!p || !p.components.length || !l.detected) return;
+      p.components.slice(0, p.n_line || 1).forEach(c => {
+        traces.push({ x: p.x, y: c.y, mode: 'lines', name: c.label,
+          line: { color: COMPONENT_COLOURS[k++ % COMPONENT_COLOURS.length], width: 2 } });
+      });
+    });
+    const s = traces[0].y.slice().sort((a, b) => a - b);
+    const lo = s[Math.floor(s.length * 0.005)] || 0, hi = s[Math.floor(s.length * 0.995)] || 1;
+    Plotly.newPlot(el, traces, layout('Wavelength (Å)', 'Flux (erg/cm²/s/Å)', {
+      title: { text: `${esc(data.spectrum_name || '')} — Emission Line Fit`, font: { size: 13, color: T.ink } },
+      margin: { t: 40, r: 15, l: 70, b: 45 },
+      yaxis: axis('Flux (erg/cm²/s/Å)', { range: [Math.min(lo * 1.2, 0), hi * 1.2], exponentformat: 'e' }),
+      legend: { orientation: 'h', x: 0, y: -0.22, font: { size: 11, color: T.ink } },
+    }), CFG);
+  }
+  // matplotlib "tab10", the colours of the reference plots
+  const COMPONENT_COLOURS = ['#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf', '#1f77b4'];
+
   function hexA(hex, a) {
     const n = parseInt(hex.slice(1), 16);
     return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
@@ -259,5 +325,5 @@
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
   function shortName(n) { return String(n).replace(/\s*\(.*\)/, ''); }
 
-  global.FitPlots = { setTheme, overview, lineFit, residuals, residualDistribution, lightCurve, decomposition, lineColour, verification };
+  global.FitPlots = { setTheme, overview, lineFit, residuals, fullResidual, residualDistribution, lightCurve, decomposition, emissionFit, lineColour, verification };
 })(window);

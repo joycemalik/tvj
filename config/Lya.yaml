@@ -1,4 +1,5 @@
 line_name: "Lyman Alpha (Lya)"
+label: "Lya"                  # short name used in plots and the workbook (teacher's naming)
 rest_wavelength: 1216.0       # Angstrom
 model: "single_gaussian"
 
@@ -64,7 +65,7 @@ peak_search_radius: 15.0
 # Least-squares refinement: Lyα and N V overlap, so both are fitted together
 # with a local linear continuum over 1180–1265 Å.
 refine:
-  window: [1180, 1265]
+  window: [1140, 1290]            # teacher's fitting window (references/CT-3C273-LUCK-EMMY.xls)
   center_tol: 8.0
   companions:
     - {rest: 1240.0, sigma_min: 2.2, sigma_max: 12.0, sigma_seed: 6.0}
@@ -76,21 +77,22 @@ refine:
 # Lyα = narrow core + broad base, two Gaussians fitted together (src/refine.py).
 # The σ ranges do not overlap, so the components cannot swap. Fitted freely, the
 # two trade flux and the broad flux is poorly constrained in most spectra, so the
-# broad centre and σ are held at their campaign medians, measured from the
-# well-constrained free fits by derive_broad_shape.py; only the amplitudes (and
+# broad centre and σ are held fixed at the teacher's hand-fit values (below);
+# only the amplitudes (and
 # the narrow centre/σ) are fitted per spectrum. `sigma` above still seeds the grid.
 profile: narrow_broad
 narrow:
   sigma_min: 2.2        # instrumental
-  sigma_max: 7.0
+  sigma_max: 9.0
   center_tol: 3.0       # around this spectrum's observed peak
 broad:
-  sigma_min: 7.0
+  sigma_min: 9.0
   sigma_max: 25.0
   center_tol: 10.0
-  # campaign medians of 19 well-constrained free fits (derive_broad_shape.py)
-  center_fixed: 1214.77
-  sigma_fixed: 10.38      # FWHM 24.4 Å
+  # teacher's hand fits (references/CT-3C273-LUCK-EMMY.xls, sheet Check), median of 15 spectra.
+  # derive_broad_shape.py gives the data-only alternative (1214.77 / 10.38).
+  center_fixed: 1215.0
+  sigma_fixed: 17.0      # FWHM 40.0 Å
 
 snr_min: 3.0
 snr_max: 20.0

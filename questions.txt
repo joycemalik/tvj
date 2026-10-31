@@ -1,0 +1,18 @@
+Open questions for the teacher
+==============================
+
+1. C IV when one Gaussian is enough
+   In the reference sheet (CT-3C273-LUCK-EMMY.xls) some spectra have C IV split
+   into CIV-N + CIV-B, and others fitted as a single Gaussian ("CIV-T" / "CIV").
+   Should the pipeline:
+     (a) always split C IV into narrow + broad, or
+     (b) use a single Gaussian (CIV-T) when the data do not need two, e.g. when
+         the two-Gaussian fit is not clearly better (ΔBIC < 10)?
+   Currently: always split (a). ΔBIC is reported for every spectrum, so (b)
+   can be switched on later.
+
+2. Broad widths
+   The broad Lyα and C IV Gaussians are now held at the median of your hand
+   fits: Lyα-B σ = 17.0 Å at 1215 Å, CIV-B σ = 15.0 Å at 1546 Å.
+   From the data alone (free fits) the widths come out narrower:
+   Lyα-B σ ≈ 10.4 Å, CIV-B σ ≈ 12.9 Å. Which should be used?

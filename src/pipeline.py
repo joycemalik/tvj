@@ -215,6 +215,7 @@ def run_single_spectrum_pipeline(
             method=method,
             sigma_c=sigma_c,
         )
+        result['label'] = cfg.get('label', cfg['line_name'])
         line_results.append(result)
 
     if not line_results:

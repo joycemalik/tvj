@@ -1,4 +1,5 @@
 line_name: "C III]"
+label: "CIII]"                  # short name used in plots and the workbook (teacher's naming)
 rest_wavelength: 1909.0       # Angstrom (C III] semi-forbidden)
 
 amplitude:

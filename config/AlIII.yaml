@@ -1,4 +1,5 @@
 line_name: "Al III"
+label: "AlIII"                  # short name used in plots and the workbook (teacher's naming)
 rest_wavelength: 1857.0       # Angstrom (Al III 1854.7 + 1862.8 doublet)
 
 amplitude:

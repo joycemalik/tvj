@@ -80,8 +80,9 @@ README = [
     ('Rmax', 'Rmax = Fmax / Fmin;  error = Rmax · √((σ_min/F_min)² + (σ_max/F_max)²)'),
     ('Line flux', '{flux_method}'),
     ('Narrow + broad', 'Lyα and C IV are fitted as a narrow core + broad base (two Gaussians). The broad centre and σ '
-                       'are fixed at campaign medians (derive_broad_shape.py); the line\'s F is narrow + broad, and the '
-                       '"… broad" line is the broad component alone (detected when F_broad/σ ≥ 3).'),
+                       'are fixed at the teacher\'s hand-fit values (config/Lya.yaml, config/CIV.yaml); the line\'s F '
+                       'is narrow + broad, and the "… narrow" / "… broad" lines (Lya-N, Lya-B, CIV-N, CIV-B) are the '
+                       'components alone (detected when F/σ ≥ 3).'),
     ('', ''),
     ('Data', 'Rest-frame IUE SWP low-dispersion spectra (z = 0.158); dates from jd.xlsx (SWP log).'),
     ('Sources', 'Vaughan et al. 2003, MNRAS 345, 1271; Sukanya et al. 2018; Rodríguez-Pascual et al. 1997, ApJS 110, 9.'),
@@ -147,7 +148,7 @@ def write_variability_workbook(path: str, fits: pd.DataFrame, table: pd.DataFram
 
     # broad-component rows are part of a line already counted
     s = (fits.assign(date=pd.to_datetime(fits['date'], errors='coerce').dt.strftime('%Y-%m-%d'),
-                     _line_det=fits['detected'].astype(bool) & ~fits['line'].str.endswith(' broad'))
+                     _line_det=fits['detected'].astype(bool) & ~fits['line'].str.endswith((' broad', ' narrow')))
          .groupby('spectrum', as_index=False)
          .agg(date=('date', 'first'), year=('year', 'first'), jd=('jd', 'first'),
               spectral_index=('spectral_index', 'first'), spectral_index_err=('spectral_index_err', 'first'),
@@ -245,3 +246,48 @@ def write_per_line_workbook(path: str, fits: pd.DataFrame, table: pd.DataFrame, 
             g = f[f['line'] == ln].sort_values(['jd', 'spectrum'], na_position='last').reset_index(drop=True)
             g.insert(0, 'no', range(1, len(g) + 1))
             _sheet(xw, names[ln], g, LINE_COLS)
+
+
+# ---- Emission-line workbook: one sheet per fitted component, teacher's layout ----
+COMPONENT_COLS = [
+    ('no', 'No.', '0'), ('spectrum', 'Spectrum', '@'), ('label', 'Emission-Line', '@'),
+    ('center', 'Wavelength (Å)', '0.00'), ('flux', 'Flux (erg/cm²/s)', SCI), ('flux_err', 'Flux Error (erg/cm²/s)', SCI),
+    ('significance', 'SNR (F/σF)', '0.0'), ('ew', 'EW (Å)', '0.00'), ('ew_err', 'EW Error (Å)', '0.00'),
+    ('fwhm_ang', 'FWHM (Å)', '0.00'), ('fwhm_kms', 'FWHM (km/s)', '0.0'),
+    ('wing_window', 'Wing Window (Å)', '0'), ('min_wavelength', 'Min Wavelength (Å)', '0.00'),
+    ('max_wavelength', 'Max Wavelength (Å)', '0.00'), ('reduced_chi2', 'Reduced χ²', '0.00'),
+    ('detected', 'Detected (F/σF ≥ 3)', '@'), ('verification', 'Verification', '@'), ('date', 'Date', '@'),
+]
+
+
+def component_tables(fits: pd.DataFrame) -> Dict[str, pd.DataFrame]:
+    """
+    {label: table} in wavelength order, one row per spectrum (numbered 1–255 by file name).
+    A narrow + broad line appears as its two components (Lya-N, Lya-B), not as the total.
+    """
+    f = fits.copy()
+    if 'label' not in f:
+        f['label'] = f['line']
+    f['label'] = f['label'].fillna(f['line']).astype(str)
+    f = f[~f['label'].str.endswith('(N+B)')]
+    f['no'] = pd.to_numeric(f['spectrum'].astype(str).str.extract(r'^(\d+)', expand=False), errors='coerce')
+    f['fwhm_ang'] = 2.3548 * pd.to_numeric(f['sigma'], errors='coerce')
+    if 'date' in f:
+        f['date'] = pd.to_datetime(f['date'], errors='coerce').dt.strftime('%Y-%m-%d')
+    f['detected'] = f['detected'].astype(bool).map({True: 'yes', False: 'no'})
+    # narrow before broad at the same rest wavelength
+    f['_o'] = f['label'].str.endswith('-B').astype(int)
+    order = f.groupby('label')[['rest_wavelength', '_o']].first().sort_values(['rest_wavelength', '_o']).index
+    out = {}
+    for lab in order:
+        g = f[f['label'] == lab].sort_values(['no', 'spectrum'])
+        out[lab] = g[[c for c, _, _ in COMPONENT_COLS if c in g.columns]].reset_index(drop=True)
+    return out
+
+
+def write_component_workbook(path: str, fits: pd.DataFrame) -> None:
+    """outputs/emission_lines.xlsx: one sheet per component (Ly-B, Lya-N, Lya-B, NV, …), all spectra in each."""
+    taken = set()
+    with pd.ExcelWriter(path, engine='openpyxl') as xw:
+        for lab, t in component_tables(fits).items():
+            _sheet(xw, _sheet_name(lab, taken), t, COMPONENT_COLS)

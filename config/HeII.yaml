@@ -1,4 +1,5 @@
 line_name: "He II"
+label: "HeII"                  # short name used in plots and the workbook (teacher's naming)
 rest_wavelength: 1640.0       # Angstrom (He II 1640.4)
 
 center:

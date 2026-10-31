@@ -216,7 +216,8 @@ def refine_line(
     verification = verify_fit(x, y, model, continuum, gauss, norm_resid, noise, chi2r, dof,
                               mu, s, F, F_err, fwhm_ang, bool(at_bound), rho, n_line=n_line)
     name = cfg.get('line_name', f'{rest_wl:g} Å')
-    labels = ([f'{name} broad', f'{name} narrow'] if narrow_broad else [name]) + \
+    short = cfg.get('label', name)
+    labels = ([f'{short}-B', f'{short}-N'] if narrow_broad else [short]) + \
              [f"companion {c['rest']:g} Å" for c in comps[n_line:]]
     plot = {
         'x': x.tolist(),
@@ -269,6 +270,7 @@ def refine_line(
                 f'sigma_{key}': sk, f'sigma_{key}_err': math.sqrt(max(cov[3 * k + 2, 3 * k + 2], 0.0)),
                 f'fwhm_kms_{key}': FWHM_PER_SIGMA * sk / mk * SPEED_OF_LIGHT_KMS,
                 f'ew_{key}': (Fk / cont_at_mu) if cont_at_mu > 0 else float('nan'),
+                f'ew_{key}_err': (Fk_err / cont_at_mu) if cont_at_mu > 0 else float('nan'),
             })
         # Is the second Gaussian justified? BIC = n ln(RSS/n) + k ln n for the
         # 1- and 2-Gaussian fits of the same pixels; ΔBIC > 10 strongly favours

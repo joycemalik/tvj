@@ -38,7 +38,7 @@ def fit_one(path: str, method: str = 'refine', json_dir: Optional[str] = None) -
     for ln in res['lines']:
         v = ln.get('verification') or {}
         rows.append(dict(
-            spectrum=name, line=ln['line_name'],
+            spectrum=name, line=ln['line_name'], label=ln.get('label', ln['line_name']),
             rest_wavelength=ln.get('rest_wavelength'), detected=bool(ln.get('detected')),
             refined=bool(ln.get('refined')), status=ln.get('fit_status', ''),
             center=ln.get('center'), center_err=ln.get('center_err'),
@@ -58,16 +58,20 @@ def fit_one(path: str, method: str = 'refine', json_dir: Optional[str] = None) -
             flux_narrow_err=ln.get('flux_narrow_err'), sigma_narrow=ln.get('sigma_narrow'),
             center_narrow=ln.get('center_narrow'), delta_bic=ln.get('delta_bic')))
         if ln.get('flux_broad') is not None:
-            # the broad component as its own "line", so it gets light curves and F_var
-            snr_b = ln.get('snr_broad') or 0.0
-            rows.append({**rows[-1], 'line': ln['line_name'] + ' broad',
-                         'detected': bool(ln.get('refined')) and snr_b >= 3.0,
-                         'center': ln.get('center_broad'), 'center_err': ln.get('center_broad_err'),
-                         'sigma': ln.get('sigma_broad'), 'sigma_err': ln.get('sigma_broad_err'),
-                         'fwhm_kms': ln.get('fwhm_kms_broad'), 'fwhm_kms_intrinsic': None,
-                         'fwhm_ang_err': None, 'fwhm_kms_err': None, 'flux_window': None,
-                         'flux': ln.get('flux_broad'), 'flux_err': ln.get('flux_broad_err'),
-                         'significance': snr_b, 'ew': ln.get('ew_broad'), 'ew_err': None})
+            # narrow and broad components as their own "lines" (Lya-N, Lya-B, ...),
+            # so each gets light curves, F_var and a workbook sheet
+            total = rows[-1]
+            for key, suffix in (('narrow', 'N'), ('broad', 'B')):
+                snr = ln.get(f'snr_{key}') or 0.0
+                rows.append({**total, 'line': f"{ln['line_name']} {key}", 'label': f"{total['label']}-{suffix}",
+                             'detected': bool(ln.get('refined')) and snr >= 3.0,
+                             'center': ln.get(f'center_{key}'), 'center_err': ln.get(f'center_{key}_err'),
+                             'sigma': ln.get(f'sigma_{key}'), 'sigma_err': ln.get(f'sigma_{key}_err'),
+                             'fwhm_kms': ln.get(f'fwhm_kms_{key}'), 'fwhm_kms_intrinsic': None,
+                             'fwhm_ang_err': None, 'fwhm_kms_err': None, 'flux_window': None,
+                             'flux': ln.get(f'flux_{key}'), 'flux_err': ln.get(f'flux_{key}_err'),
+                             'significance': snr, 'ew': ln.get(f'ew_{key}'), 'ew_err': ln.get(f'ew_{key}_err')})
+            total['label'] += ' (N+B)'
     return rows
 
 
@@ -80,7 +84,7 @@ def run_batch(files: List[str], out_dir: str, method: str = 'refine', workers: O
     `progress(done, total)` is called as spectra finish.
     """
     from src.variability import load_jd, fvar_by_year, light_curve_points
-    from src.excel_export import write_variability_workbook, write_per_line_workbook
+    from src.excel_export import write_variability_workbook, write_per_line_workbook, write_component_workbook
 
     os.makedirs(out_dir, exist_ok=True)
     if json_dir:
@@ -116,4 +120,5 @@ def run_batch(files: List[str], out_dir: str, method: str = 'refine', workers: O
     table.to_csv(os.path.join(out_dir, 'fvar_by_year.csv'), index=False)
     write_variability_workbook(os.path.join(out_dir, 'variability_results.xlsx'), fits, table, curves, method)
     write_per_line_workbook(os.path.join(out_dir, 'all_lines_results.xlsx'), fits, table, method)
+    write_component_workbook(os.path.join(out_dir, 'emission_lines.xlsx'), fits)
     return {'fits': fits, 'table': table, 'curves': curves}

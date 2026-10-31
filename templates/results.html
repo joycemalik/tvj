@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Emission-line results | 3C273</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap">
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<script src="/static/js/fitplots.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{--paper:#f7f5f0;--paper2:#f0ede6;--ink:#1a1814;--ink2:#4a4640;--ink3:#7a756e;--rule:#d4cfc6;--rule2:#c4bfb6;
+  --accent:#1a3a5c;--green:#2a5a2a;--red:#7a2020;--mono:'IBM Plex Mono',monospace;--serif:'EB Garamond',Georgia,serif;--sans:'Inter',system-ui,sans-serif;}
+html{font-size:14px;} body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.5;}
+.topbar{background:var(--paper2);border-bottom:2px solid var(--ink);}
+.topbar-inner{max-width:1440px;margin:0 auto;padding:8px 28px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.topbar-brand{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--accent);}
+.nav-pill{display:inline-block;padding:5px 12px;font-size:11px;font-family:var(--mono);color:var(--ink2);border:1px solid var(--rule2);text-decoration:none;}
+.nav-pill.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+main{max-width:1440px;margin:0 auto;padding:16px 28px 40px;}
+h1{font-family:var(--serif);font-size:20px;font-weight:500;}
+.meta{font-size:12px;color:var(--ink3);margin-top:3px;}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0;}
+.btn{font-family:var(--mono);font-size:11px;padding:6px 12px;border:1px solid var(--rule2);background:#fff;color:var(--ink);cursor:pointer;text-decoration:none;}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+.dl{font-family:var(--mono);font-size:10px;padding:2px 7px;border:1px solid var(--rule2);background:#fff;cursor:pointer;}
+.panel{border:1px solid var(--rule);background:#fff;margin-top:14px;}
+.panel-h{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;background:var(--paper2);border-bottom:1px solid var(--rule);}
+.panel-t{font-size:12px;font-weight:600;}
+.panel-s{font-family:var(--mono);font-size:11px;color:var(--ink3);}
+.sel{display:flex;flex-wrap:wrap;gap:6px 14px;padding:10px 12px;font-family:var(--mono);font-size:11px;}
+.sel label{cursor:pointer;white-space:nowrap;padding-left:5px;}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);margin-top:10px;}
+.stat{background:#fff;padding:8px 12px;} .stat b{display:block;font-family:var(--mono);font-size:16px;font-weight:500;} .stat span{font-size:11px;color:var(--ink3);}
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;}
+th{position:sticky;top:0;background:var(--paper2);text-align:left;padding:6px 8px;border-bottom:1px solid var(--rule2);color:var(--ink3);font-weight:500;}
+td{padding:5px 8px;border-bottom:1px solid var(--rule);}
+tbody tr{cursor:pointer;} tbody tr:hover{background:var(--paper2);} tr.cur td{background:rgba(26,58,92,.06);}
+.ok{color:var(--green);font-weight:600;} .no{color:var(--ink3);} .chk{color:var(--red);}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:12px;padding:12px;}
+.card{border:1px solid var(--rule);}
+.spec-nav{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+select,input[type=search]{font-family:var(--mono);font-size:11px;padding:5px 8px;border:1px solid var(--rule2);background:#fff;}
+#progress{font-family:var(--mono);font-size:11px;color:var(--ink2);}
+.note{font-size:12px;color:var(--ink2);padding:8px 12px;}
+.tabs{display:flex;flex-wrap:wrap;border-top:1px solid var(--rule2);background:var(--paper2);}
+.tab{font-family:var(--mono);font-size:11px;padding:6px 14px;border:none;border-right:1px solid var(--rule2);background:transparent;cursor:pointer;color:var(--ink2);}
+.tab.on{background:#fff;color:var(--accent);font-weight:600;box-shadow:inset 0 2px 0 var(--accent);}
+.sheet{max-height:560px;overflow:auto;}
+.sheet td,.sheet th{white-space:nowrap;border-right:1px solid var(--rule);}
+.sheet td.n{text-align:right;}
+.sheet th.rn,.sheet td.rn{background:var(--paper2);color:var(--ink3);text-align:center;position:sticky;left:0;}
+#plot{height:520px;}
+@media (max-width:640px){main{padding:12px 16px 32px;} #plot{height:380px;}}
+</style>
+</head>
+<body>
+<div class="topbar"><div class="topbar-inner">
+  <span class="topbar-brand">3C 273 · IUE SWP · Emission-line pipeline</span>
+  <nav>
+    <a href="/v2" class="nav-pill">Profile Diagnostic Viewer</a>
+    <a href="/results" class="nav-pill active">Results (Excel)</a>
+    <a href="/v4" class="nav-pill">Manuscript Method</a>
+    <a href="/v5" class="nav-pill">Campaign Results</a>
+    <a href="/v3" class="nav-pill">Multi-Epoch Ensemble</a>
+    <a href="/about" class="nav-pill">Pipeline Documentation</a>
+  </nav>
+</div></div>
+
+<main>
+  <h1>Emission-line results — all spectra</h1>
+  <div class="meta" id="meta">Every spectrum is already fitted. Pick one to see its fit, or browse the workbook below. Loading…</div>
+
+  <div class="panel">
+    <div class="panel-h">
+      <span class="panel-t">Spectrum</span>
+      <div class="spec-nav">
+        <button class="btn" id="prev" aria-label="Previous spectrum">◀</button>
+        <select id="spec" aria-label="Spectrum"></select>
+        <button class="btn" id="next" aria-label="Next spectrum">▶</button>
+      </div>
+    </div>
+    <div id="plot"></div>
+    <div style="overflow-x:auto;"><table id="specTable"></table></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-h">
+      <span class="panel-t">Emission-line workbook <span class="panel-s" id="sheetInfo"></span></span>
+      <a class="btn primary" href="/download/emission_lines.xlsx">Download Excel (.xlsx)</a>
+    </div>
+    <div class="sheet"><table id="sheet"></table></div>
+    <div class="tabs" id="tabs"></div>
+  </div>
+</main>
+<footer style="max-width:1200px;margin:2rem auto 1rem;padding:0 16px;font-size:12px;color:#6b6b6b;">
+  <a href="/v1" style="color:inherit;">Old version (v1)</a>
+</footer>
+
+<script>
+let sheets = [], spectra = [], tab = 0;
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const SCI = new Set(['flux', 'flux_err']);
+const DEC = { center: 2, significance: 1, ew: 2, ew_err: 2, fwhm_ang: 2, fwhm_kms: 1, wing_window: 0,
+              min_wavelength: 2, max_wavelength: 2, reduced_chi2: 2, no: 0 };
+const numeric = k => SCI.has(k) || k in DEC;
+function cell(k, v) {
+  if (v == null || v === '') return '';
+  if (SCI.has(k)) return Number(v).toExponential(3);
+  if (k in DEC) return Number(v).toFixed(DEC[k]);
+  return esc(v);
+}
+
+/* Excel-like sheet: row numbers, header row, sheet tabs at the bottom */
+function drawSheet() {
+  const s = sheets[tab];
+  if (!s) return;
+  document.getElementById('tabs').innerHTML = sheets.map((x, i) =>
+    `<button class="tab ${i === tab ? 'on' : ''}" data-i="${i}">${esc(x.name)}</button>`).join('');
+  document.getElementById('sheetInfo').textContent = `· sheet ${s.name}: ${s.rows.length} spectra`;
+  const cur = document.getElementById('spec').value;
+  document.getElementById('sheet').innerHTML =
+    '<thead><tr><th class="rn">1</th>' + s.columns.map(c => `<th>${esc(c.title)}</th>`).join('') + '</tr></thead><tbody>' +
+    s.rows.map((r, i) => `<tr data-s="${esc(r.spectrum)}" class="${r.spectrum === cur ? 'cur' : ''}"><td class="rn">${i + 2}</td>` +
+      s.columns.map(c => `<td class="${numeric(c.key) ? 'n' : ''}">${cell(c.key, r[c.key])}</td>`).join('') + '</tr>').join('') +
+    '</tbody>';
+}
+
+async function showSpectrum(name) {
+  document.getElementById('spec').value = name;
+  const cols = sheets.length ? sheets[0].columns.filter(c => !['no', 'spectrum', 'date'].includes(c.key)) : [];
+  const mine = sheets.map(s => s.rows.find(r => r.spectrum === name)).filter(Boolean);
+  document.getElementById('specTable').innerHTML =
+    '<thead><tr>' + cols.map(c => `<th>${esc(c.title)}</th>`).join('') + '</tr></thead><tbody>' +
+    mine.map(r => '<tr>' + cols.map(c => `<td>${cell(c.key, r[c.key])}</td>`).join('') + '</tr>').join('') + '</tbody>';
+  document.querySelectorAll('#sheet tbody tr').forEach(tr => tr.classList.toggle('cur', tr.dataset.s === name));
+  try {
+    const res = await fetch('/api/campaign/spectrum/' + encodeURIComponent(name));
+    if (!res.ok) throw new Error('not found');
+    FitPlots.emissionFit('plot', await res.json());
+  } catch (e) {
+    document.getElementById('plot').innerHTML = '<p class="note">No saved fit for this spectrum — run python run_variability.py.</p>';
+  }
+}
+
+function step(d) {
+  const i = spectra.indexOf(document.getElementById('spec').value);
+  const j = Math.min(Math.max(i + d, 0), spectra.length - 1);
+  if (j !== i) showSpectrum(spectra[j]);
+}
+
+document.getElementById('tabs').addEventListener('click', e => {
+  const b = e.target.closest('.tab'); if (!b) return;
+  tab = +b.dataset.i; drawSheet();
+});
+document.getElementById('sheet').addEventListener('click', e => {
+  const tr = e.target.closest('tr[data-s]'); if (!tr) return;
+  showSpectrum(tr.dataset.s); window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+document.getElementById('spec').addEventListener('change', e => showSpectrum(e.target.value));
+document.getElementById('prev').onclick = () => step(-1);
+document.getElementById('next').onclick = () => step(1);
+
+(async () => {
+  const meta = document.getElementById('meta');
+  const res = await fetch('/api/results/sheets');
+  const data = await res.json();
+  if (!res.ok) { meta.textContent = data.error || 'No results.'; return; }
+  sheets = data.sheets; spectra = data.spectra;
+  document.getElementById('spec').innerHTML = spectra.map((s, i) => {
+    const n = (s.match(/^\d+/) || [i + 1])[0];
+    return `<option value="${esc(s)}">${esc(n)} — ${esc(s)}</option>`;
+  }).join('');
+  meta.textContent = `${spectra.length} spectra · ${sheets.length} emission lines (${sheets.map(s => s.name).join(', ')}). ` +
+    'Pick a spectrum to see its fit, or click any row of the workbook.';
+  const start = new URLSearchParams(location.search).get('s');
+  drawSheet();
+  showSpectrum(spectra.includes(start) ? start : spectra[0]);
+})();
+</script>
+</body>
+</html>

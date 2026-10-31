@@ -1,4 +1,5 @@
 line_name: "C II"
+label: "CII"                  # short name used in plots and the workbook (teacher's naming)
 rest_wavelength: 1335.0       # Angstrom (C II 1334.5 + 1335.7 doublet)
 
 center:

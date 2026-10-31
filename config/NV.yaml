@@ -1,4 +1,5 @@
 line_name: "N V"
+label: "NV"                  # short name used in plots and the workbook (teacher's naming)
 rest_wavelength: 1240.0       # Angstrom (doublet 1238.8 + 1242.8, blended)
 
 # The 4 Å doublet separation is below the ~5.2 Å rest-frame IUE resolution,

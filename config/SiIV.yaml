@@ -1,4 +1,5 @@
 line_name: "Si IV + O IV]"
+label: "SIV"                  # short name used in plots and the workbook (teacher's naming)
 rest_wavelength: 1400.0       # Angstrom (Si IV 1393.8 + 1402.8, O IV] 1402.0 blend)
 
 center:
